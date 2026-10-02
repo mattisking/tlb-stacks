@@ -1,0 +1,17 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Matt Philmon"
+            }
+        ],
+        "Category": "Application Launchers",
+        "Description": "Organize applications into compact launcher groups",
+        "Icon": "applications-all",
+        "Id": "com.mattphilmon.truelaunchbar",
+        "Name": "True Launch Bar",
+        "Version": "0.0.1"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPackageStructure": "Plasma/Applet"
+}
