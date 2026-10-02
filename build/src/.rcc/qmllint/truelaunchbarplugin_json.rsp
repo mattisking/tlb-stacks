@@ -1,0 +1,13 @@
+--bare
+-I
+/home/mattisking/Projects/true-launch-bar/build/qml
+-I
+/home/mattisking/Projects/true-launch-bar/build/qml/com/mattphilmon/truelaunchbar
+-I
+/home/mattisking/Projects/true-launch-bar/build/src
+-I
+/usr/lib64/qt6/qml
+--resource
+/home/mattisking/Projects/true-launch-bar/build/src/.qt/rcc/qmake_com_mattphilmon_truelaunchbar.qrc
+--json
+/home/mattisking/Projects/true-launch-bar/build/truelaunchbarplugin_qmllint.json

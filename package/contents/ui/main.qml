@@ -3,6 +3,7 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.plasmoid
+import com.mattphilmon.truelaunchbar
 
 PlasmoidItem {
     id: root
@@ -10,33 +11,48 @@ PlasmoidItem {
     Plasmoid.icon: "applications-all"
 
     toolTipMainText: "True Launch Bar"
-    toolTipSubText: "Application group"
+    toolTipSubText: "Development"
+
+    Launcher {
+        id: launcher
+    }
+
+    property var applications: [
+        "com.microsoft.VSCode",
+        "org.kde.dolphin",
+        "org.mozilla.firefox"
+    ]
 
     fullRepresentation: Item {
-        Layout.minimumWidth: 300
-        Layout.minimumHeight: 180
-        Layout.preferredWidth: 300
-        Layout.preferredHeight: 180
+        Layout.minimumWidth: 360
+        Layout.minimumHeight: 140
+        Layout.preferredWidth: 360
+        Layout.preferredHeight: 140
 
-        ColumnLayout {
+        RowLayout {
             anchors.centerIn: parent
             spacing: Kirigami.Units.largeSpacing
 
-            Kirigami.Icon {
-                source: "applications-all"
-                Layout.preferredWidth: 64
-                Layout.preferredHeight: 64
-                Layout.alignment: Qt.AlignHCenter
-            }
+            Repeater {
+                model: root.applications
 
-            PlasmaComponents.Label {
-                text: "True Launch Bar"
-                Layout.alignment: Qt.AlignHCenter
-            }
+                delegate: PlasmaComponents.ToolButton {
+                    required property string modelData
 
-            PlasmaComponents.Label {
-                text: "It lives!"
-                Layout.alignment: Qt.AlignHCenter
+                    visible: launcher.exists(modelData)
+
+                    text: launcher.name(modelData)
+
+                    display: PlasmaComponents.AbstractButton.TextUnderIcon
+
+                    icon.name: launcher.icon(modelData)
+
+                    onClicked: {
+                        if (launcher.launch(modelData)) {
+                            root.expanded = false
+                        }
+                    }
+                }
             }
         }
     }

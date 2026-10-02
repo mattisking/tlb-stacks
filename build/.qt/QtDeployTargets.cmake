@@ -1,0 +1,2 @@
+set(__QT_DEPLOY_TARGET_truelaunchbarplugin_FILE /home/mattisking/Projects/true-launch-bar/build/qml/com/mattphilmon/truelaunchbar/libtruelaunchbarplugin.so)
+set(__QT_DEPLOY_TARGET_truelaunchbarplugin_TYPE MODULE_LIBRARY)

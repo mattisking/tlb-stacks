@@ -1,0 +1,7 @@
+module com.mattphilmon.truelaunchbar
+linktarget truelaunchbarplugin
+optional plugin truelaunchbarplugin
+classname com_mattphilmon_truelaunchbarPlugin
+typeinfo truelaunchbarplugin.qmltypes
+prefer :/qt/qml/com/mattphilmon/truelaunchbar/
+
