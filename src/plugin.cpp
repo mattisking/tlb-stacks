@@ -1,4 +1,5 @@
 #include "launcher.h"
+#include "foldersource.h"
 
 #include <QQmlExtensionPlugin>
 #include <qqml.h>
@@ -11,6 +12,7 @@ class TrueLaunchBarPlugin : public QQmlExtensionPlugin
 public:
     void registerTypes(const char *uri) override
     {
+        qmlRegisterType<FolderSource>(uri, 1, 0, "FolderSource");
         qmlRegisterType<Launcher>(uri, 1, 0, "Launcher");
     }
 };

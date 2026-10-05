@@ -1,6 +1,0 @@
-<RCC>
-  <qresource prefix="/">
-    <file alias="/qt/qml/com/mattphilmon/truelaunchbar">/home/mattisking/Projects/true-launch-bar/build/qml/com/mattphilmon/truelaunchbar</file>
-
-  </qresource>
-</RCC>

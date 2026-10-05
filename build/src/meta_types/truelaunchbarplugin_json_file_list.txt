@@ -1,2 +1,0 @@
-/home/mattisking/Projects/true-launch-bar/build/src/truelaunchbarplugin_autogen/include/../EWIEGA46WW/moc_launcher.cpp.json
-/home/mattisking/Projects/true-launch-bar/build/src/truelaunchbarplugin_autogen/include/plugin.moc.json

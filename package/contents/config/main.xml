@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+                          http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+
+    <kcfgfile name=""/>
+
+    <group name="General">
+        <entry name="groupName" type="String">
+            <label>Name of this launcher group</label>
+            <default>Development</default>
+        </entry>
+
+        <entry name="groupIcon" type="String">
+            <label>Icon for this launcher group</label>
+            <default>applications-all</default>
+        </entry>
+
+        <entry name="iconsOnly" type="Bool">
+            <label>Show only icons in the menu</label>
+            <default>false</default>
+        </entry>
+
+        <entry name="hoverDelay" type="Int">
+            <label>Delay before opening menus on hover, in milliseconds</label>
+            <default>250</default>
+            <min>0</min>
+            <max>2000</max>
+        </entry>
+
+        <entry name="menuIconSize" type="Int">
+            <label>Application icon size in the menu</label>
+            <default>22</default>
+            <min>16</min>
+            <max>64</max>
+        </entry>
+
+        <entry name="applicationIcons" type="String">
+            <label>Custom icons by desktop application ID</label>
+            <default>{}</default>
+        </entry>
+
+        <entry name="menuSource" type="String">
+            <default>applications</default>
+        </entry>
+        <entry name="applicationCategories" type="StringList">
+            <label>Match any of these application categories</label>
+            <default></default>
+        </entry>
+        <entry name="folderUrl" type="String">
+            <default></default>
+        </entry>
+        <!-- Runtime sizing cache; not part of a portable profile. -->
+        <entry name="folderHeightCache" type="String">
+            <default>{}</default>
+        </entry>
+        <entry name="folderFilters" type="String">
+            <default>*</default>
+        </entry>
+
+        <entry name="applications" type="StringList">
+            <label>Desktop application IDs in this group</label>
+            <default>com.microsoft.VSCode,org.kde.dolphin,org.mozilla.firefox</default>
+        </entry>
+    </group>
+</kcfg>

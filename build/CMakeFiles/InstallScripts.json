@@ -1,8 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/mattisking/Projects/true-launch-bar/build/cmake_install.cmake",
-		"/home/mattisking/Projects/true-launch-bar/build/src/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

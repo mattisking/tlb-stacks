@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 3.24)
+project(FolderPopupTests LANGUAGES CXX)
+set(CMAKE_AUTOMOC ON)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Test Concurrent Qml Quick)
+find_package(KF6Service REQUIRED)
+find_package(KF6KIO REQUIRED)
+add_executable(folder-popup-test test.cpp ../../src/folderpopup.cpp ../../src/folderreader.cpp ../../src/foldersource.cpp ../../src/launcher.cpp)
+target_link_libraries(folder-popup-test PRIVATE Qt6::Widgets Qt6::Qml Qt6::Quick KF6::KIOGui Qt6::Concurrent Qt6::Test KF6::Service)

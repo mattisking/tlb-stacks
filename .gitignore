@@ -1,0 +1,8 @@
+# Local CMake/Qt output and install staging
+/build/
+/build-tests/
+/lib64/
+
+# Python caches
+__pycache__/
+*.py[cod]
