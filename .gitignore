@@ -3,6 +3,9 @@
 /build-tests/
 /lib64/
 
+# Local implementation worktrees
+.worktrees/
+
 # Python caches
 __pycache__/
 *.py[cod]
