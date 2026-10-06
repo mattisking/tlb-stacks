@@ -95,3 +95,16 @@ Profile helpers run asynchronously with a busy state and a 15-second timeout.
 must not become an item identity, source-membership cache, or source of file counts.
 
 See [testing and status](TESTING_AND_STATUS.md) for validation and known limits.
+
+### Shortcut name tooltips
+
+Root rows show tooltips in both display modes after 700 ms on one selection.
+Application entries expose an optional `description`: the desktop-entry comment,
+falling back to its generic name. Tooltips include it beneath the application name.
+Root tooltips use a small, input-transparent Plasma window beside the popup.
+Native folder children use Qt menu tooltips with a 700 ms hover delay.
+Folder previews suppress their parent root tooltip while open.
+
+Live Folder always shows filenames. Its Icons only control is disabled; the saved
+preference is preserved for switching back to an application source. Tooltip timing
+is independent of menu opening. See [F-001](FEATURE_TRACKER.md#f-001).

@@ -38,7 +38,7 @@ PlasmoidItem {
 
     readonly property int hoverDelay: Math.max(0, Math.min(2000, Plasmoid.configuration.hoverDelay))
 
-    readonly property bool iconsOnly: Plasmoid.configuration.iconsOnly
+    readonly property bool iconsOnly: menuSource !== "folder" && Plasmoid.configuration.iconsOnly
     readonly property int menuIconSize: Math.max(16, Math.min(64,
         Plasmoid.configuration.menuIconSize || 22))
     readonly property int menuRowHeight: Math.max(40, menuIconSize + 16)
@@ -324,23 +324,15 @@ PlasmoidItem {
                         hoverEnabled: true
                         Accessible.name: applicationName || modelData.id
 
-                        // Plasma renders this tooltip in a separate window, so names
-                        // are not constrained by the narrow icons-only popup.
-                        PlasmaCore.ToolTipArea {
+                        StackToolTip {
                             id: applicationToolTip
                             anchors.fill: parent
-                            mainText: launcherItem.applicationName || launcherItem.modelData.id
-                            textFormat: Text.PlainText
-                            active: root.expanded && launcherItem.visible
-                            interactive: false
-                        }
-
-                        onActiveFocusChanged: {
-                            if (activeFocus && root.expanded) {
-                                applicationToolTip.showToolTip()
-                            } else {
-                                applicationToolTip.hideToolTip()
-                            }
+                            text: (launcherItem.applicationName || launcherItem.modelData.id)
+                                + (launcherItem.modelData.description ? "\n" + launcherItem.modelData.description : "")
+                            selected: root.expanded && launcherItem.visible
+                                && (launcherColumn.keyboardNavigation
+                                    ? launcherColumn.selectedApplication === launcherItem.index
+                                    : launcherItem.hovered)
                         }
 
                         // Consume only right-clicks; normal activation stays with the delegate.

@@ -12,7 +12,7 @@ recorded, details unresolved), **In progress**, **Implemented — needs verifica
 
 | ID | Request | Status |
 |---|---|---|
-| [F-001](#f-001) | Unobtrusive, delayed tooltips | Planned |
+| [F-001](#f-001) | Unobtrusive, delayed tooltips | Implemented — needs verification |
 | [F-002](#f-002) | Folders alongside selected application shortcuts | Needs design |
 | [F-003](#f-003) | Drag-sort selected items in the editor | Deferred |
 | [F-004](#f-004) | Future content/plugin extension support | Deferred |
@@ -22,7 +22,7 @@ recorded, details unresolved), **In progress**, **Implemented — needs verifica
 <a id="f-001"></a>
 ## F-001 — Unobtrusive, delayed tooltips
 
-Requested October 5, 2026. Status: **Planned**, after the current testing/docs round.
+Requested October 5, 2026. Status: **Implemented — needs verification**.
 
 Acceptance criteria:
 
@@ -30,13 +30,15 @@ Acceptance criteria:
   other items; account for screen edges.
 - Show after the pointer or keyboard selection pauses. Rapid traversal should not
   flash a tooltip for each row; cancel pending display when selection changes.
-- Suppress redundant name-only tooltips in icons-and-text mode. Revisit only if
-  additional useful information or truncated-label handling warrants one.
+- Show tooltips in both display modes (updated user preference). Application
+  descriptions appear when supplied by the desktop entry. Live Folder always shows filenames.
 - Keep tooltip timing separate from the existing panel/submenu opening delay.
 - Preserve mouse/keyboard handoff and menu dismissal behavior at each depth.
 
-Open decisions: delay value, whether it needs a setting, truncated-label exceptions,
-and how native submenu tooltips follow the same policy. These are not implemented.
+Implemented a fixed 700 ms selection delay, independent of menu opening. All
+root rows use small, input-transparent Plasma tooltip windows beside the popup; native submenus use Qt menu tooltips. Folder previews suppress the parent tooltip while open.
+A configurable delay remains a possible refinement.
+Desktop placement and input verification are still required.
 Context: [navigation contract](STACK_ENTRY_MODEL.md#navigation-contract) and
 [historical information display](TRUE_LAUNCH_BAR_WINDOWS_FEATURE_REFERENCE.md#8-appearance-and-information-display).
 
