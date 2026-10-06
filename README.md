@@ -13,7 +13,7 @@ a replacement desktop panel.
 ## What it does
 
 - **Selected Applications:** build an ordered group of installed applications,
-  add visual separators, customize icons, and remove shortcuts without
+  add visual separators with optional titles (e.g. `--- Office ---`), customize icons, and remove shortcuts without
   uninstalling applications.
 - **Application Categories:** populate a stack from one or more desktop-entry
   categories, with a preview of matching applications in the editor.
