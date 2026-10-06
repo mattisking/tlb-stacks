@@ -143,3 +143,13 @@ Remaining targeted checks: rapid mouse/keyboard traversal, dismissal during the
 700 ms delay, context menus, folder preview/Right/Left handoff, screen edges,
 multiple monitors, and scaling. These combinations are not all confirmed by the
 user's general feedback.
+
+### Two-column configuration editor
+
+Selected Applications places the ordered group and shared Up/Down/Remove controls
+beside the searchable application catalog. Per-row edit buttons retain custom icon
+selection. Categories places searchable checkboxes beside matching applications.
+Each pane scrolls independently. Existing configuration assignments and Apply/Cancel
+handling are preserved. Static QML checking found no syntax errors; Launcher type
+resolution remains unavailable to qmllint. Desktop sizing, selection after reorder
+or removal, and icon editing still need interactive verification.
