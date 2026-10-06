@@ -91,20 +91,31 @@ PlasmoidItem {
         refreshCategoryApplications()
         refreshActivity()
     }
-    Component.onCompleted: { refreshCategoryApplications(); refreshActivity() }
+    Component.onCompleted: { refreshCategoryApplications(); refreshActivity(); attachPanelHover() }
 
     // Attach to Plasma's existing panel button so its sizing, icon and
     // click/keyboard behavior stay managed by the shell.
-    HoverHandler {
-        id: panelHover
-        parent: root.compactRepresentationItem
-        onHoveredChanged: {
-            if (hovered && !root.expanded) {
-                if (root.hoverDelay === 0) root.expanded = true
-                else hoverOpenTimer.restart()
-            } else {
-                hoverOpenTimer.stop()
-            }
+    // A handler can't be reliably re-parented by binding, so create it on the
+    // compact item once Plasma has instantiated it.
+    property var panelHover: null
+    readonly property bool panelHovered: panelHover ? panelHover.hovered : false
+    function attachPanelHover() {
+        const item = root.compactRepresentationItem
+        if (!item || (panelHover && panelHover.parent === item)) return
+        if (panelHover) panelHover.destroy()
+        panelHover = panelHoverComponent.createObject(item)
+    }
+    onCompactRepresentationItemChanged: attachPanelHover()
+    Component {
+        id: panelHoverComponent
+        HoverHandler {}
+    }
+    onPanelHoveredChanged: {
+        if (panelHovered && !expanded) {
+            if (hoverDelay === 0) expanded = true
+            else hoverOpenTimer.restart()
+        } else {
+            hoverOpenTimer.stop()
         }
     }
 
@@ -112,7 +123,7 @@ PlasmoidItem {
         id: hoverOpenTimer
         interval: root.hoverDelay
         onTriggered: {
-            if (panelHover.hovered && !root.expanded) {
+            if (root.panelHovered && !root.expanded) {
                 root.expanded = true
             }
         }
