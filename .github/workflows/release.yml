@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:44
+    steps:
+      - name: Install build dependencies
+        run: |
+          dnf -y --setopt=install_weak_deps=False install \
+            git cmake extra-cmake-modules gcc-c++ \
+            qt6-qtbase-devel qt6-qtdeclarative-devel \
+            kf6-kio-devel kf6-kservice-devel \
+            plasma-activities-devel plasma-activities-stats-devel \
+            python3 zip tar
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build and run all test suites
+        run: scripts/ci-run.sh
+      - name: Assert versions and build release assets
+        run: scripts/release-assets.sh "${GITHUB_REF_NAME#v}"
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/tlbstacks-*-source.tar.gz
+            dist/tlbstacks-*-fedora*.tar.gz
+            dist/com.mattphilmon.tlbstacks.plasmoid
+          generate_release_notes: true
+          body: |
+            ## Install
+
+            Build from the **source tarball** following
+            [docs/DEPLOYMENT.md](https://github.com/mattisking/tlb-stacks/blob/main/docs/DEPLOYMENT.md).
+            The **prebuilt tree** is built in CI on Fedora 44 (Qt 6.11, KF6 6.30,
+            plasma-activities 6.7) and unpacks a `/usr` install tree — only use it on
+            distributions with compatible Qt6/KF6 versions.
+
+            Note: the `.plasmoid` payload alone will not run. TLBStacks includes a
+            compiled C++ plugin (`libtlbstacksplugin.so`), so it cannot be installed
+            through Plasma's "Get New Widgets" dialog.
