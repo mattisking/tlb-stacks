@@ -227,6 +227,7 @@ ColumnLayout {
                     }
                 }
                 onClicked: {
+                    tooltip.hideToolTip()
                     root.openError = ""
                     if (stackEntry.hasChildren) {
                         root.openSubfolder(entry)
@@ -267,6 +268,7 @@ ColumnLayout {
                     }
                 }
                 Keys.onMenuPressed: event => {
+                    tooltip.hideToolTip()
                     launcher.showEntryContextMenu(entry, entry.stackEntry)
                     event.accepted = true
                 }
@@ -278,18 +280,15 @@ ColumnLayout {
                         root.pendingEntry = null
                     }
                 }
-                onActiveFocusChanged: {
-                    if (activeFocus && root.popupOpen) tooltip.showToolTip()
-                    else tooltip.hideToolTip()
-                }
-                PlasmaCore.ToolTipArea {
+                StackToolTip {
                     id: tooltip
                     anchors.fill: parent
-                    mainText: entry.stackEntry.name
-                    subText: entry.stackEntry.hasChildren ? qsTr("Open subfolder") : ""
-                    textFormat: Text.PlainText
-                    active: root.popupOpen
-                    interactive: false
+                    text: entry.stackEntry.name
+                    selected: root.popupOpen
+                        && root.highlightedFolderEntry !== entry
+                        && (root.keyboardOwnsSelection
+                            ? root.keyboardNavigation && fileList.currentIndex === entry.index
+                            : entry.hovered)
                 }
             }
         }

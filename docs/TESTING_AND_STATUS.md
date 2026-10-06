@@ -126,3 +126,20 @@ unverified instead of marking the whole review as universally tested.
 Requests and acceptance criteria are maintained in the [feature tracker](FEATURE_TRACKER.md).
 That page owns tooltip polish, mixed application/folder items, and repository cleanup.
 This page owns test evidence and remaining verification only.
+
+### F-001 tooltip verification
+
+The user reports improved tooltip behavior after linking each tooltip to its host
+window and gating its delay on host visibility. The subsequent application
+metadata and display-mode changes built successfully and received positive user
+feedback. QML lint and a simplified Qt window-lifecycle test passed. The full
+Plasma component could not initialize in the bounded offscreen harness.
+
+Tooltips now appear in both application display modes. Live Folder always shows
+filenames; native children use Qt menu tooltips. Application descriptions use the
+desktop-entry comment with generic-name fallback.
+
+Remaining targeted checks: rapid mouse/keyboard traversal, dismissal during the
+700 ms delay, context menus, folder preview/Right/Left handoff, screen edges,
+multiple monitors, and scaling. These combinations are not all confirmed by the
+user's general feedback.

@@ -373,7 +373,10 @@ ColumnLayout {
         PlasmaComponents.CheckBox {
             id: iconsOnlyCheck
             Kirigami.FormData.label: i18n("Menu display:")
-            text: i18n("Icons only (show names on hover)")
+            text: root.cfg_menuSource === "folder"
+                ? i18n("Icons only (unavailable for Live Folder)")
+                : i18n("Icons only (show names on hover)")
+            enabled: root.cfg_menuSource !== "folder"
         }
 
         PlasmaComponents.SpinBox {

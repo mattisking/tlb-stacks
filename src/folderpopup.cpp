@@ -17,6 +17,7 @@ public:
                   const QWidget *widget = nullptr, QStyleHintReturn *data = nullptr) const override
     {
         if (hint == SH_Menu_SubMenuPopupDelay) return m_delay;
+        if (hint == SH_ToolTip_WakeUpDelay) return 700;
         return QProxyStyle::styleHint(hint, option, widget, data);
     }
 private:
@@ -78,8 +79,8 @@ void FolderPopup::populate()
                 connect(action, &QAction::triggered, this,
                         [open = m_activateEntry, entry]() { open(entry); });
             }
-            action->setData(entry);
             action->setToolTip(name);
+            action->setData(entry);
         }
         if (actions().isEmpty()) addAction(tr("No files match these patterns"))->setEnabled(false);
         if (m_selectFirstWhenReady) enterKeyboardMode();

@@ -21,8 +21,13 @@ inline QVariantMap applicationData(const QString &id, const QString &source, con
 {
     const QString icon = !overrideIcon.isEmpty() ? overrideIcon
         : service && !service->icon().isEmpty() ? service->icon() : QStringLiteral("application-x-executable");
-    return make(id, service ? service->name() : id, icon, source,
+    auto entry = make(id, service ? service->name() : id, icon, source,
                 "launchApplication", id, bool(service), false, source == "applications");
+    QString description = service ? service->comment().trimmed() : QString();
+    if (description.isEmpty() && service) description = service->genericName().trimmed();
+    if (description == entry.value("name").toString()) description.clear();
+    entry["description"] = description;
+    return entry;
 }
 inline QVariantMap application(const QString &id, const QString &source, const QString &overrideIcon)
 {
