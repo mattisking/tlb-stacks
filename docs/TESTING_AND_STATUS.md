@@ -42,6 +42,13 @@ variables below apply only to that terminal; do not use it to launch the desktop
 Python profile tests require Python 3. C++ tests need the same Qt/KDE development
 packages as the plugin; see [Deployment](DEPLOYMENT.md).
 
+`scripts/ci-run.sh` runs the same sequence in bash from the repo root: it accepts
+an optional build directory (relative or absolute) and resolves the Qt6 test
+runner across distributions (Fedora's `qmltestrunner-qt6`, then `qmltestrunner`
+and `/usr/lib/qt6/bin/qmltestrunner` on Debian/Ubuntu; override with
+`QML_TEST_RUNNER`). `tests/test_release_scripts.sh` adds regression coverage for
+the release scripts and also runs in CI after the gate.
+
 ```powershell
 cmake -S tests/native-menus -B build-tests/native-menus
 cmake --build build-tests/native-menus

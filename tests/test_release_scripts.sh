@@ -73,6 +73,25 @@ else
     ok 'T5 no hardcoded Qt/KF6 versions in release body'
 fi
 
+echo '== T6: an invalid QML_TEST_RUNNER override fails fast with a clear error =='
+# PATH must still resolve bash (the shebang uses /usr/bin/env); /usr/bin has the
+# build tools, so the pre-fix script would keep building instead of failing fast.
+out="$(QML_TEST_RUNNER=/nonexistent/qmltestrunner PATH=/usr/bin scripts/ci-run.sh 2>&1)"
+if printf '%s\n' "${out}" | grep 'QML_TEST_RUNNER=/nonexistent/qmltestrunner is not an executable' >/dev/null; then
+    ok 'T6 invalid runner override fails fast with a clear error'
+else
+    bad 'T6 invalid runner override fails fast with a clear error'
+fi
+
+echo '== T7: an absolute build-dir argument runs the full gate =='
+ABS_BUILD=/tmp/opencode/tlb-abs-build
+if scripts/ci-run.sh "${ABS_BUILD}" >/tmp/opencode/t7-run.log 2>&1 \
+    && grep 'ALL CHECKS PASSED' /tmp/opencode/t7-run.log >/dev/null; then
+    ok 'T7 absolute build-dir argument runs the full gate'
+else
+    bad 'T7 absolute build-dir argument runs the full gate'
+fi
+
 echo
 echo "result: ${pass} passed, ${fail} failed"
 [[ "${fail}" -eq 0 ]]

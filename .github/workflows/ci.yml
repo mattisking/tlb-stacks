@@ -23,3 +23,5 @@ jobs:
         uses: actions/checkout@v4
       - name: Build and run all test suites
         run: scripts/ci-run.sh
+      - name: Run release pipeline regression tests
+        run: tests/test_release_scripts.sh
