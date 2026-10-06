@@ -162,9 +162,10 @@ VERSION="${1:?usage: scripts/release-assets.sh <VERSION> [BUILD_DIR] [SOURCE_REF
 BUILD_DIR="${2:-build/ci}"
 REF="${3:-v${VERSION}}"
 PLASMOID_ID='com.mattphilmon.tlbstacks'
+MODULE_PATH='com/mattphilmon/tlbstacks'   # the import URI as a filesystem path
 
 [[ -f CMakeLists.txt && -d package ]] || { echo "ERROR: run from the repo root" >&2; exit 1; }
-[[ -f "${BUILD_DIR}/qml/${PLASMOID_ID}/libtlbstacksplugin.so" ]] || {
+[[ -f "${BUILD_DIR}/qml/${MODULE_PATH}/libtlbstacksplugin.so" ]] || {
     echo "ERROR: no built plugin in ${BUILD_DIR}; run scripts/ci-run.sh first" >&2
     exit 1
 }
