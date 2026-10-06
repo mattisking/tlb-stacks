@@ -17,7 +17,7 @@ ColumnLayout {
 
     property string title: i18n("General")
     property alias cfg_groupName: groupNameField.text
-    property string cfg_groupNameDefault: "Development"
+    property string cfg_groupNameDefault: ""
     property string cfg_groupIcon: "applications-all"
     property string cfg_groupIconDefault: "applications-all"
     property alias cfg_iconsOnly: iconsOnlyCheck.checked
@@ -33,6 +33,12 @@ ColumnLayout {
     property string iconTarget: ""
     property string cfg_menuSource: "applications"
     property string cfg_menuSourceDefault: "applications"
+    property string cfg_activityOrder: "recent"
+    property string cfg_activityOrderDefault: "recent"
+    property int cfg_activityLimit: 10
+    property int cfg_activityLimitDefault: 10
+    property bool cfg_activityCurrent: false
+    property bool cfg_activityCurrentDefault: false
     property var cfg_applicationCategories: []
     property var cfg_applicationCategoriesDefault: []
     property var categoryApplications: []
@@ -117,6 +123,9 @@ ColumnLayout {
             applications: Array.from(root.cfg_applications),
             applicationIcons: IconOverrides.parse(root.cfg_applicationIcons),
             menuSource: root.cfg_menuSource,
+            activityOrder: root.cfg_activityOrder,
+            activityLimit: root.cfg_activityLimit,
+            activityCurrent: root.cfg_activityCurrent,
             applicationCategories: Array.from(root.cfg_applicationCategories || []),
             folderUrl: root.cfg_folderUrl,
             folderFilters: root.cfg_folderFilters
@@ -174,6 +183,9 @@ ColumnLayout {
             root.cfg_applications = settings.applications
             root.cfg_applicationCategories = settings.applicationCategories || []
             root.cfg_menuSource = settings.menuSource
+            root.cfg_activityOrder = settings.activityOrder || "recent"
+            root.cfg_activityLimit = settings.activityLimit || 10
+            root.cfg_activityCurrent = settings.activityCurrent || false
             root.cfg_folderUrl = settings.folderUrl
             root.cfg_folderFilters = settings.folderFilters
             root.profileMessage = i18n("Menu imported into the editor. Apply to save, or Cancel to keep your previous menu.")
@@ -290,11 +302,32 @@ ColumnLayout {
 
         PlasmaComponents.ComboBox {
             Kirigami.FormData.label: i18n("Menu contents:")
-            model: [i18n("Selected applications"), i18n("Live folder"), i18n("Application categories")]
-            currentIndex: root.cfg_menuSource === "categories" ? 2 : root.cfg_menuSource === "folder" ? 1 : 0
-            onActivated: root.cfg_menuSource = ["applications", "folder", "categories"][currentIndex]
+            model: [i18n("Selected applications"), i18n("Live folder"), i18n("Application categories"), i18n("Recent / frequent applications")]
+            currentIndex: root.cfg_menuSource === "activity" ? 3 : root.cfg_menuSource === "categories" ? 2 : root.cfg_menuSource === "folder" ? 1 : 0
+            onActivated: root.cfg_menuSource = ["applications", "folder", "categories", "activity"][currentIndex]
         }
 
+        PlasmaComponents.ComboBox {
+            visible: root.cfg_menuSource === "activity"
+            Kirigami.FormData.label: i18n("Order:")
+            model: [i18n("Recently used"), i18n("Most frequent")]
+            currentIndex: root.cfg_activityOrder === "frequent" ? 1 : 0
+            onActivated: root.cfg_activityOrder = currentIndex === 1 ? "frequent" : "recent"
+        }
+        PlasmaComponents.SpinBox {
+            visible: root.cfg_menuSource === "activity"
+            Kirigami.FormData.label: i18n("Maximum applications:")
+            from: 1; to: 50
+            value: root.cfg_activityLimit
+            onValueModified: root.cfg_activityLimit = value
+        }
+        PlasmaComponents.CheckBox {
+            visible: root.cfg_menuSource === "activity"
+            Kirigami.FormData.label: i18n("Activity scope:")
+            text: i18n("Current Activity only")
+            checked: root.cfg_activityCurrent
+            onToggled: root.cfg_activityCurrent = checked
+        }
         ColumnLayout {
             visible: root.cfg_menuSource === "folder"
             Kirigami.FormData.label: i18n("Folder:")
@@ -342,7 +375,7 @@ ColumnLayout {
             id: groupNameField
 
             Kirigami.FormData.label: "Group name:"
-            placeholderText: "Development"
+            placeholderText: i18n("Stack name")
         }
 
         RowLayout {
@@ -409,7 +442,7 @@ ColumnLayout {
     }
 
     RowLayout {
-        visible: root.cfg_menuSource === "categories"
+        visible: root.cfg_menuSource === "categories" || root.cfg_menuSource === "activity"
         Layout.fillWidth: true
         Layout.fillHeight: true
         spacing: Kirigami.Units.largeSpacing
@@ -460,12 +493,14 @@ ColumnLayout {
             ColumnLayout {
                 anchors.fill: parent
                 PlasmaComponents.Label {
-                    text: i18n("Matching applications (%1)", root.categoryMatches.length)
+                    text: root.cfg_menuSource === "activity" ? i18n("Category filter") : i18n("Matching applications (%1)", root.categoryMatches.length)
                     font.bold: true
                 }
                 PlasmaComponents.Label {
                     Layout.fillWidth: true
-                    text: i18n("Include applications in any selected category. Category names come from installed applications.")
+                    text: root.cfg_menuSource === "activity"
+                        ? i18n("Leave categories unchecked for all applications. Usage ranking refreshes when the stack opens. KDE Activities tracking must be enabled; TLBStacks does not change tracking settings.")
+                        : i18n("Include applications in any selected category. Category names come from installed applications.")
                     wrapMode: Text.WordWrap
                 }
                 PlasmaComponents.Label {
@@ -473,7 +508,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     text: root.cfg_applicationCategories.length === 0
-                        ? i18n("Select at least one category.") : i18n("No installed applications match these categories.")
+                        ? (root.cfg_menuSource === "activity" ? i18n("All applications are eligible. Open the stack to see usage-ranked results.") : i18n("Select at least one category.")) : i18n("No installed applications match these categories.")
                 }
                 PlasmaComponents.ScrollView {
                     Layout.fillWidth: true

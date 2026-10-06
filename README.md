@@ -16,6 +16,8 @@ a replacement desktop panel.
   customize their icons, and remove shortcuts without uninstalling applications.
 - **Application Categories:** populate a stack from one or more desktop-entry
   categories, with a preview of matching applications in the editor.
+- **Recent / Frequent Applications:** rank KDE-recorded app usage, optionally filtered
+  by application categories and current Activity.
 - **Live Folder:** browse a local folder and cascading subfolders, filter files
   with patterns, and move files to Trash from the context menu.
 - **Your preferred presentation:** custom panel icons, configurable icon size,

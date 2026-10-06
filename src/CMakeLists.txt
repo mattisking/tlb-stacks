@@ -10,6 +10,8 @@ qt_add_qml_module(tlbstacksplugin
         "${CMAKE_BINARY_DIR}/qml/com/mattphilmon/tlbstacks"
 
     SOURCES
+        activitysource.cpp
+        activitysource.h
         folderreader.cpp
         folderreader.h
         foldersource.cpp
@@ -24,6 +26,8 @@ qt_add_qml_module(tlbstacksplugin
 
 target_link_libraries(tlbstacksplugin
     PRIVATE
+        Plasma::Activities
+        Plasma::ActivitiesStats
         Qt6::Core
         Qt6::Qml
         Qt6::Quick

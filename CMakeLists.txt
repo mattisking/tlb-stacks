@@ -10,6 +10,8 @@ set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
 
 find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick Widgets Concurrent)
 find_package(KF6 REQUIRED COMPONENTS KIO Service)
+find_package(PlasmaActivities REQUIRED)
+find_package(PlasmaActivitiesStats REQUIRED)
 include(KDEInstallDirs6)
 
 qt_policy(SET QTP0001 NEW)

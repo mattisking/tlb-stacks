@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import "MenuNavigation.js" as Navigation
 import QtQuick.Window
@@ -44,10 +46,18 @@ PlasmoidItem {
     readonly property int menuRowHeight: Math.max(40, menuIconSize + 16)
     readonly property int menuWidth: iconsOnly ? menuRowHeight : 220 + Math.max(0, menuIconSize - 22)
 
+    ActivitySource { id: activitySource }
+    function refreshActivity() {
+        if (menuSource === "activity") activitySource.refresh(
+            Plasmoid.configuration.activityOrder === "frequent",
+            Plasmoid.configuration.activityLimit, selectedCategories,
+            Plasmoid.configuration.activityCurrent)
+    }
     property int catalogRevision: 0
     property string activationError: ""
     readonly property var entries: {
         const revision = catalogRevision
+        if (root.menuSource === "activity") return activitySource.entries
         return launcher.applicationEntries(root.applications, root.applicationIcons, root.menuSource)
     }
     readonly property var visibleEntries: entries.filter(entry => entry.available)
@@ -70,8 +80,9 @@ PlasmoidItem {
         root.activationError = ""
         launcher.closeApplicationContextMenu()
         refreshCategoryApplications()
+        refreshActivity()
     }
-    Component.onCompleted: refreshCategoryApplications()
+    Component.onCompleted: { refreshCategoryApplications(); refreshActivity() }
 
     // Attach to Plasma's existing panel button so its sizing, icon and
     // click/keyboard behavior stay managed by the shell.
@@ -100,7 +111,7 @@ PlasmoidItem {
 
     onExpandedChanged: {
         hoverOpenTimer.stop()
-        if (expanded) refreshCategoryApplications()
+        if (expanded) { refreshCategoryApplications(); refreshActivity() }
         else launcher.closeApplicationContextMenu()
     }
 
@@ -169,22 +180,27 @@ PlasmoidItem {
         }
         readonly property real folderMenuHeight: folderLoader.item
             ? folderLoader.item.preferredMenuHeight : rememberedFolderHeight
-        implicitHeight: folderLoader.active ? folderMenuHeight : childrenRect.height
-        Layout.minimumHeight: folderLoader.active ? folderMenuHeight : 0
-        Layout.preferredHeight: folderLoader.active ? folderMenuHeight : implicitHeight
+        readonly property real activityMenuHeight: root.visibleEntries.length > 0
+            ? Math.min(root.visibleEntries.length * root.menuRowHeight, 480)
+            : Math.max(root.menuRowHeight, activityNotice.implicitHeight)
+        readonly property real dynamicMenuHeight: folderLoader.active ? folderMenuHeight : activityMenuHeight
+        readonly property bool dynamicMenu: folderLoader.active || root.menuSource === "activity"
+        implicitHeight: dynamicMenu ? dynamicMenuHeight : childrenRect.height
+        Layout.minimumHeight: dynamicMenu ? dynamicMenuHeight : 0
+        Layout.preferredHeight: dynamicMenu ? dynamicMenuHeight : implicitHeight
 
         // Plasma can retain the saved window size while the async list grows.
         // Resize the applet popup itself; layout hints alone only resize its items.
         function syncFolderPopupHeight() {
             const popup = launcherColumn.Window.window
-            if (!root.expanded || !folderLoader.active || !popup
+            if (!root.expanded || !dynamicMenu || !popup
                     || !popup.mainItem || popup.appletInterface !== root) return
             const extra = popup.mainItem.extraHeight || 0
-            const wanted = Math.ceil(folderMenuHeight + extra
+            const wanted = Math.ceil(dynamicMenuHeight + extra
                 + popup.topPadding + popup.bottomPadding)
             if (wanted > 0 && popup.height !== wanted) popup.height = wanted
         }
-        onFolderMenuHeightChanged: Qt.callLater(syncFolderPopupHeight)
+        onDynamicMenuHeightChanged: Qt.callLater(syncFolderPopupHeight)
         Connections {
             target: root
             function onExpandedChanged() {
@@ -224,6 +240,14 @@ PlasmoidItem {
             }
         }
 
+        PlasmaComponents.Label {
+            id: activityNotice
+            visible: root.menuSource === "activity" && root.visibleEntries.length === 0
+            Layout.fillWidth: true
+            Layout.maximumWidth: root.menuWidth
+            wrapMode: Text.WordWrap
+            text: activitySource.loading ? i18n("Loading usage history…") : activitySource.message
+        }
         PlasmaComponents.Label {
             visible: root.menuSource === "categories" && root.applications.length === 0
             Layout.fillWidth: true

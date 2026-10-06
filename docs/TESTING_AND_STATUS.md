@@ -153,3 +153,21 @@ Each pane scrolls independently. Existing configuration assignments and Apply/Ca
 handling are preserved. Static QML checking found no syntax errors; Launcher type
 resolution remains unavailable to qmllint. Desktop sizing, selection after reorder
 or removal, and icon editing still need interactive verification.
+
+### Activity source initial checks
+
+The plugin builds against PlasmaActivities/Stats 6.7.5. A read-only integration
+probe completed a recent-app query with five entries at a limit of five, without
+printing history. Profile tests cover new fields, round-trip, legacy defaults,
+and invalid values. Static QML checks retain warnings for manually registered
+native types; no claim of full QML lint cleanliness is made.
+
+Desktop checks still needed: recent versus frequent ordering, category restriction,
+current/all Activities, empty history, profile import/Apply, desktop actions, and
+keyboard navigation. Refresh is on opening, not continuous live rearrangement.
+
+Activity first-open follow-up: retain cached entries during refresh, prefetch on
+widget initialization, coalesce identical in-flight requests, and limit the query
+to twice the requested count for the two possible desktop-ID aliases. Extend the
+actual Plasma popup-height correction to this async source. User reported clipped
+first rows and repeated-click loading before this correction; desktop retest needed.

@@ -9,7 +9,7 @@
     <group name="General">
         <entry name="groupName" type="String">
             <label>Name of this launcher group</label>
-            <default>Development</default>
+            <default></default>
         </entry>
 
         <entry name="groupIcon" type="String">
@@ -48,6 +48,9 @@
             <label>Match any of these application categories</label>
             <default></default>
         </entry>
+        <entry name="activityOrder" type="String"><default>recent</default></entry>
+        <entry name="activityLimit" type="Int"><default>10</default><min>1</min><max>50</max></entry>
+        <entry name="activityCurrent" type="Bool"><default>false</default></entry>
         <entry name="folderUrl" type="String">
             <default></default>
         </entry>
@@ -61,7 +64,7 @@
 
         <entry name="applications" type="StringList">
             <label>Desktop application IDs in this group</label>
-            <default>com.microsoft.VSCode,org.kde.dolphin,org.mozilla.firefox</default>
+            <default></default>
         </entry>
     </group>
 </kcfg>

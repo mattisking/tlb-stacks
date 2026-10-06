@@ -406,7 +406,7 @@ bool Launcher::activateEntry(const QVariantMap &entry)
 {
     const auto action = entry.value("action").toString();
     const auto source = entry.value("source").toString();
-    if (action == "launchApplication" && (source == "applications" || source == "categories"))
+    if (action == "launchApplication" && (source == "applications" || source == "categories" || source == "activity"))
         return launch(entry.value("target").toString());
     if (action == "openFile" && source == "folder") return openFile(QUrl(entry.value("target").toString()));
     if (action == "moveToTrash" && source == "folder" &&
@@ -446,7 +446,7 @@ void Launcher::showEntryContextMenu(QQuickItem *anchor, const QVariantMap &entry
         return;
     }
     const auto source = entry.value("source").toString();
-    if (source == "applications" || source == "categories")
+    if (source == "applications" || source == "categories" || source == "activity")
         showApplicationContextMenu(anchor, entry.value("id").toString(),
             source == "applications" && entry.value("actions").toStringList().contains("removeFromStack"),
             entry.value("actions").toStringList().contains("desktopActions"));

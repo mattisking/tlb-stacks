@@ -96,8 +96,17 @@ def validate_settings(settings):
     if type(mode) is not bool:
         raise ValueError('Invalid menu display mode.')
     source = settings.get('menuSource', 'applications')
-    if source not in ('applications', 'folder', 'categories'):
+    if source not in ('applications', 'folder', 'categories', 'activity'):
         raise ValueError('Unknown menu source.')
+    activity_order = settings.get('activityOrder', 'recent')
+    activity_limit = settings.get('activityLimit', 10)
+    activity_current = settings.get('activityCurrent', False)
+    if activity_order not in ('recent', 'frequent'):
+        raise ValueError('Invalid activity order.')
+    if type(activity_limit) is not int or not 1 <= activity_limit <= 50:
+        raise ValueError('Activity limit must be between 1 and 50.')
+    if type(activity_current) is not bool:
+        raise ValueError('Invalid activity scope.')
     categories = settings.get('applicationCategories', [])
     if not isinstance(categories, list) or len(categories) > 512:
         raise ValueError('Invalid application categories.')
@@ -108,7 +117,7 @@ def validate_settings(settings):
     if folder:
         folder = local_path(folder).as_uri()
     filters = text(settings.get('folderFilters', '*'), 'file patterns', 4096)
-    return dict(menuSource=source, applicationCategories=categories, folderUrl=folder, folderFilters=filters,
+    return dict(activityOrder=activity_order, activityLimit=activity_limit, activityCurrent=activity_current, menuSource=source, applicationCategories=categories, folderUrl=folder, folderFilters=filters,
                 groupName=text(settings.get('groupName', ''), 'menu name', 256),
                 groupIcon=text(settings.get('groupIcon', 'applications-all'), 'menu icon', 4096),
                 applications=apps, applicationIcons=dict(icons),
@@ -147,7 +156,7 @@ def export_profile(request):
             return name
         return theme_icon(value)
     portable = map_icons(settings, pack)
-    manifest = json.dumps(dict(format='TLBStacks', version=3, settings=portable),
+    manifest = json.dumps(dict(format='TLBStacks', version=4, settings=portable),
                           ensure_ascii=False, indent=2).encode('utf-8')
     if len(manifest) > MAX_JSON:
         raise ValueError('Profile settings are too large.')
@@ -184,7 +193,7 @@ def import_profile(request):
             if info.file_size > limit or info.flag_bits & 1:
                 raise ValueError('Oversized or encrypted ZIP entry.')
         manifest = json.loads(archive.read('profile.json'))
-        if not isinstance(manifest, dict) or manifest.get('format') not in ('TLBStacks', 'TrueLaunchBar') or type(manifest.get('version')) is not int or manifest['version'] not in (1, 2, 3):
+        if not isinstance(manifest, dict) or manifest.get('format') not in ('TLBStacks', 'TrueLaunchBar') or type(manifest.get('version')) is not int or manifest['version'] not in (1, 2, 3, 4):
             raise ValueError('Unsupported TLBStacks profile format or version.')
         settings = validate_settings(manifest.get('settings'))
         assets = {}

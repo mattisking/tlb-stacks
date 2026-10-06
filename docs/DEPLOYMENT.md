@@ -270,3 +270,25 @@ and project versions agree (currently 0.1.0).
 `install.ps1` explicitly disables CMake's widget copy and continues to install it
 with kpackagetool6, preserving its existing user-specific/XDG data behavior. Its
 Fedora-oriented QML override is retained for the existing development environment.
+
+## Recent / frequent applications
+
+This source additionally requires PlasmaActivities and PlasmaActivitiesStats
+development libraries when building (Fedora: `plasma-activities-devel` and
+`plasma-activities-stats-devel`). Choose Recent / frequent applications as the
+content source, choose Recently used or Most frequent, and set a limit from 1–50.
+Optionally select desktop categories and restrict results to the current Activity.
+No category selection means all installed applications are eligible.
+
+The source reads KDE's recorded usage; it does not enable tracking or create a
+separate history database. Empty history, tracking disabled, or an unavailable
+Activities service can leave the stack empty. Membership refreshes on opening;
+normal usage updates do not reorder a menu while it is open. Activity/service
+changes can invalidate a pending query. Query settings travel in version 4 profile
+exports, but usage history does not. Older profiles retain default query settings.
+Documents are not part of this first implementation.
+
+New widgets start with an empty name and no selected applications. The source
+default remains Selected Applications; choose a source and configure its content.
+Explicitly saved names and application lists are retained. Old widgets relying
+solely on the former implicit defaults also inherit the new empty defaults.

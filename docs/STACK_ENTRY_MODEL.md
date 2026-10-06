@@ -116,3 +116,13 @@ visible actions. The context menu resolves those actions from KService and invok
 them using KIO::ApplicationLauncherJob. Category entries never offer removal;
 selected entries retain Remove from this stack below the application actions.
 No command strings are constructed by QML. Recent documents are not yet included.
+
+### Activity history source
+
+`ActivitySource` returns existing application-shaped entries with source `activity`.
+It reads KActivities::Stats on a worker and resolves eligible installed desktop IDs
+before limiting results; filtering does not select the top N globally and discard
+nonmatching categories afterward. IDs are deduplicated in ranking order.
+Entries support desktop actions but never Remove from this stack. No document
+resources are queried. Each instance permits one in-flight query and rejects stale
+results when new options or Activity changes arrive.

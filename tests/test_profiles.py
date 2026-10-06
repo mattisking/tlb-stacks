@@ -23,6 +23,30 @@ class Profiles(unittest.TestCase):
             iconsOnly=True, menuIconSize=32, menuSource='applications', folderUrl='', folderFilters='*', applicationCategories=[], hoverDelay=250)
         self.archive = self.root / 'menu.zip'
 
+    def test_activity_roundtrip_and_defaults(self):
+        self.settings.update(groupIcon='applications-all', applicationIcons={},
+                             menuSource='activity', activityOrder='frequent',
+                             activityLimit=7, activityCurrent=True,
+                             applicationCategories=['Development'])
+        self.export()
+        result = profile.import_profile(dict(file=str(self.archive)))['settings']
+        self.assertEqual(result, profile.validate_settings(self.settings))
+        self.write_manifest(settings=dict(self.settings, groupIcon='applications-all', applicationIcons={}), version=4)
+        self.assertEqual(profile.import_profile(dict(file=str(self.archive)))['settings']['activityLimit'], 7)
+        old = dict(self.settings)
+        for field in ('activityOrder', 'activityLimit', 'activityCurrent'): old.pop(field)
+        defaults = profile.validate_settings(old)
+        self.assertEqual(defaults['activityOrder'], 'recent')
+        self.assertEqual(defaults['activityLimit'], 10)
+        self.assertFalse(defaults['activityCurrent'])
+
+    def test_invalid_activity_settings(self):
+        for key, value in [('activityOrder', 'wrong'), ('activityLimit', 0),
+                           ('activityLimit', 51), ('activityLimit', True),
+                           ('activityCurrent', 'yes')]:
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                profile.validate_settings(dict(self.settings, **{key: value}))
+
     def test_category_roundtrip(self):
         self.settings.update(menuSource='categories', applicationCategories=['Development', 'IDE'])
         self.settings['applicationIcons']['dynamic.app'] = str(self.image)
@@ -93,7 +117,7 @@ class Profiles(unittest.TestCase):
         self.settings['applicationIcons'] = {'test.editor': 'vscode'}
         self.export()
         result = profile.handle(dict(action='import', file=str(self.archive)))['settings']
-        self.assertEqual(result, self.settings)
+        self.assertEqual(result, profile.validate_settings(self.settings))
 
     def test_missing_original_does_not_replace_export(self):
         self.archive.write_bytes(b'existing export')

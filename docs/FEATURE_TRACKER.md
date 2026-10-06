@@ -113,3 +113,50 @@ Actions launch through KDE's application launcher; Live Folder is unchanged.
 
 Recent documents: **Planned**, separate from desktop actions. Determine the KDE
 history source and respect its privacy settings before implementing this part.
+
+## F-007 — Recent / Frequent activity source
+
+Status: **Implemented — needs verification** (applications). Use KDE's Activities Stats API rather than maintaining a
+separate usage database. Initial implementation targets applications, ranked by
+recent use or frequency, with a configurable limit, optional desktop categories,
+and current/all Activities scope. Apply the category filter before the final item
+limit; preserve ranking and deduplicate desktop IDs.
+
+Reuse application entries, icons, activation, keyboard navigation, and desktop
+actions. Do not offer Remove from this stack for computed membership. Refresh
+on opening while keeping an open menu stable. Empty/unavailable history needs
+an explanatory state; never enable tracking or change KDE privacy settings.
+Exports contain query settings, not usage history. Regression coverage should
+include filtering/ranking, unavailable apps, deduplication, limits, and old-profile
+defaults. KDE service integration additionally needs desktop verification.
+
+Documents are a follow-up within this source: define document type/application
+filters separately from desktop application categories. Recent-document context
+menus must not inherit Live Folder deletion capabilities by accident.
+
+Build prerequisite: PlasmaActivities and PlasmaActivitiesStats development
+packages (Fedora: plasma-activities-devel and plasma-activities-stats-devel).
+
+## F-008 — KIO virtual and remote folders
+
+Status: **Needs design**. Investigate asynchronous KIO listing for virtual and
+remote URLs (timeline, tags, remote, SMB), contingent on installed workers and
+services. Current Live Folder remains local-only. Preserve URLs throughout
+listing, activation, configuration, and profile transport. First scope should be
+browsing/opening, with cancellation, authentication, and offline handling; file
+operations require capability checks rather than assuming Trash is supported.
+
+## F-009 — Custom launch commands and terminal entries
+
+Status: **Needs design**. Allow per-entry launch customization, especially command
+arguments, without modifying the system application desktop file. Add standalone
+command entries with name, icon, executable, arguments, working directory, and
+optional terminal execution. Separate direct executable/arguments from explicit
+shell-script execution. Investigate preferred-terminal integration and optional
+keep-open behavior. Preserve installed-app launch wrappers/field codes rather than
+blindly concatenating text to desktop Exec lines.
+
+Coordinate stable per-entry identity and duplicate app variants with F-002's
+mixed-item model (for example, two VS Code shortcuts opening different projects).
+Include Apply/Cancel and profile migration/export behavior in the design; profiles
+store commands, not arbitrary bundled executables. Importing must not run commands.
