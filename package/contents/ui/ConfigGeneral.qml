@@ -408,244 +408,281 @@ ColumnLayout {
         }
     }
 
-    ColumnLayout {
+    RowLayout {
         visible: root.cfg_menuSource === "categories"
         Layout.fillWidth: true
         Layout.fillHeight: true
-        PlasmaComponents.Label {
+        spacing: Kirigami.Units.largeSpacing
+        QQC2.Frame {
             Layout.fillWidth: true
-            text: i18n("Include applications in any selected category. Category names come from installed applications.")
-            wrapMode: Text.WordWrap
-        }
-        PlasmaComponents.TextField {
-            id: categorySearch
-            Layout.fillWidth: true
-            placeholderText: i18n("Filter categories…")
-            clearButtonShown: true
-            Keys.onReturnPressed: event => { event.accepted = true }
-            Keys.onEnterPressed: event => { event.accepted = true }
-        }
-        PlasmaComponents.ScrollView {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 150
-            ListView {
-                clip: true
-                model: root.availableCategories.filter(value => value.toLowerCase().includes(categorySearch.text.toLowerCase()))
-                delegate: PlasmaComponents.CheckBox {
-                    required property string modelData
-                    width: ListView.view.width
-                    text: modelData
-                    checked: (root.cfg_applicationCategories || []).indexOf(modelData) !== -1
-                    onClicked: root.toggleCategory(modelData, checked)
+            Layout.fillHeight: true
+            Layout.preferredWidth: 4
+            Layout.minimumWidth: 0
+            ColumnLayout {
+                anchors.fill: parent
+                PlasmaComponents.Label {
+                    text: i18n("Categories (%1 selected)", root.cfg_applicationCategories.length)
+                    font.bold: true
+                }
+                PlasmaComponents.TextField {
+                    id: categorySearch
+                    Layout.fillWidth: true
+                    placeholderText: i18n("Filter categories…")
+                    clearButtonShown: true
+                    Keys.onReturnPressed: event => { event.accepted = true }
+                    Keys.onEnterPressed: event => { event.accepted = true }
+                }
+                PlasmaComponents.ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 180
+                    contentWidth: availableWidth
+                    QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+                    ListView {
+                        clip: true
+                        model: root.availableCategories.filter(value => value.toLowerCase().includes(categorySearch.text.toLowerCase()))
+                        delegate: PlasmaComponents.CheckBox {
+                            required property string modelData
+                            width: ListView.view.width
+                            text: modelData
+                            checked: (root.cfg_applicationCategories || []).indexOf(modelData) !== -1
+                            onClicked: root.toggleCategory(modelData, checked)
+                        }
+                    }
                 }
             }
         }
-        PlasmaComponents.Label {
-            Layout.fillWidth: true
-            text: i18n("Matching applications: %1", root.categoryMatches.length)
-        }
-        PlasmaComponents.Label {
-            visible: root.categoryMatches.length === 0
-            Layout.fillWidth: true
-            wrapMode: Text.WordWrap
-            text: root.cfg_applicationCategories.length === 0
-                ? i18n("Select at least one category.") : i18n("No installed applications match these categories.")
-        }
-        PlasmaComponents.ScrollView {
+        QQC2.Frame {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: 100
-            Layout.preferredHeight: 150
-            ListView {
-                clip: true
-                model: root.categoryMatches
-                delegate: PlasmaComponents.ItemDelegate {
-                    required property var modelData
-                    width: ListView.view.width
-                    text: modelData.name
-                    icon.name: modelData.icon
+            Layout.preferredWidth: 5
+            Layout.minimumWidth: 0
+            ColumnLayout {
+                anchors.fill: parent
+                PlasmaComponents.Label {
+                    text: i18n("Matching applications (%1)", root.categoryMatches.length)
+                    font.bold: true
+                }
+                PlasmaComponents.Label {
+                    Layout.fillWidth: true
+                    text: i18n("Include applications in any selected category. Category names come from installed applications.")
+                    wrapMode: Text.WordWrap
+                }
+                PlasmaComponents.Label {
+                    visible: root.categoryMatches.length === 0
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: root.cfg_applicationCategories.length === 0
+                        ? i18n("Select at least one category.") : i18n("No installed applications match these categories.")
+                }
+                PlasmaComponents.ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 180
+                    contentWidth: availableWidth
+                    QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+                    ListView {
+                        clip: true
+                        model: root.categoryMatches
+                        delegate: PlasmaComponents.ItemDelegate {
+                            required property var modelData
+                            width: ListView.view.width
+                            text: modelData.name
+                            icon.name: modelData.icon
+                        }
+                    }
                 }
             }
         }
     }
 
-    ColumnLayout {
+    RowLayout {
         visible: root.cfg_menuSource === "applications"
         Layout.fillWidth: true
         Layout.fillHeight: true
-    PlasmaComponents.Label {
-        Layout.fillWidth: true
-        text: i18n("Launcher order (%1 selected)", root.cfg_applications.length)
-        wrapMode: Text.WordWrap
-    }
-
-    PlasmaComponents.ScrollView {
-        Layout.fillWidth: true
-        Layout.minimumHeight: 80
-        Layout.preferredHeight: 150
-
-        ListView {
-            id: selectedApplications
-
-            clip: true
-            model: root.cfg_applications
-            spacing: Kirigami.Units.smallSpacing
-
-            delegate: RowLayout {
-                id: selectedRow
-                required property int index
-                required property string modelData
-
-                width: ListView.view.width
-                readonly property string applicationName: {
-                    const revision = root.catalogRevision
-                    return launcher.name(modelData)
-                }
-
-                PlasmaComponents.Button {
-                    id: appIconButton
-                    readonly property string effectiveIcon: {
-                        const revision = root.catalogRevision
-                        return IconOverrides.get(root.applicationIcons, selectedRow.modelData) ||
-                            launcher.icon(selectedRow.modelData) || "application-x-executable"
+        spacing: Kirigami.Units.largeSpacing
+        QQC2.Frame {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.preferredWidth: 4
+            Layout.minimumWidth: 0
+            ColumnLayout {
+                anchors.fill: parent
+                RowLayout {
+                    Layout.fillWidth: true
+                    PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        text: i18n("In this group (%1)", root.cfg_applications.length)
+                        font.bold: true
+                        elide: Text.ElideRight
                     }
-                    display: QQC2.AbstractButton.IconOnly
-                    icon.name: IconOverrides.isFile(effectiveIcon) ? "" : effectiveIcon
-                    icon.source: IconOverrides.isFile(effectiveIcon) ? effectiveIcon : ""
-                    contentItem: ApplicationIcon {
-                        source: appIconButton.effectiveIcon
-                        implicitWidth: Kirigami.Units.iconSizes.small
-                        implicitHeight: Kirigami.Units.iconSizes.small
+                    PlasmaComponents.ToolButton {
+                        icon.name: "go-up"
+                        Accessible.name: i18n("Move selected application up")
+                        enabled: selectedApplications.currentIndex > 0
+                        onClicked: root.moveApplication(selectedApplications.currentIndex, -1)
                     }
-                    Accessible.name: i18n("Change icon for %1", selectedRow.applicationName || selectedRow.modelData)
-                    onClicked: appIconMenu.open()
-
-                    PlasmaComponents.ToolTip {
-                        text: i18n("Change icon")
+                    PlasmaComponents.ToolButton {
+                        icon.name: "go-down"
+                        Accessible.name: i18n("Move selected application down")
+                        enabled: selectedApplications.currentIndex >= 0 && selectedApplications.currentIndex < selectedApplications.count - 1
+                        onClicked: root.moveApplication(selectedApplications.currentIndex, 1)
                     }
-
-                    PlasmaComponents.Menu {
-                        id: appIconMenu
-                        PlasmaComponents.MenuItem {
-                            text: i18n("Choose icon…")
-                            onTriggered: root.chooseIcon(selectedRow.modelData, false)
-                        }
-                        PlasmaComponents.MenuItem {
-                            text: i18n("Choose image…")
-                            onTriggered: root.chooseIcon(selectedRow.modelData, true)
-                        }
-                        PlasmaComponents.MenuItem {
-                            text: i18n("Reset icon")
-                            enabled: IconOverrides.get(root.applicationIcons, selectedRow.modelData).length > 0
-                            onTriggered: root.setCustomIcon(selectedRow.modelData, "")
+                    PlasmaComponents.ToolButton {
+                        icon.name: "list-remove"
+                        Accessible.name: i18n("Remove selected application")
+                        enabled: selectedApplications.currentIndex >= 0 && selectedApplications.currentIndex < selectedApplications.count
+                        onClicked: {
+                            const index = selectedApplications.currentIndex
+                            root.setApplicationSelected(root.cfg_applications[index], false)
+                            selectedApplications.currentIndex = Math.min(index, root.cfg_applications.length - 1)
                         }
                     }
                 }
+                PlasmaComponents.ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 180
+                    contentWidth: availableWidth
+                    QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+                    ListView {
+                        id: selectedApplications
+                        clip: true
+                        model: root.cfg_applications
+                        currentIndex: -1
+                        delegate: PlasmaComponents.ItemDelegate {
+                            id: selectedRow
+                            required property int index
+                            required property string modelData
+                            width: ListView.view.width
+                            highlighted: ListView.isCurrentItem
+                            readonly property string applicationName: {
+                                const revision = root.catalogRevision
+                                return launcher.name(modelData)
+                            }
+                            Accessible.name: applicationName || modelData
+                            onClicked: { selectedApplications.currentIndex = index; forceActiveFocus() }
+                            contentItem: RowLayout {
+                                ApplicationIcon {
+                                    source: appIconButton.effectiveIcon
+                                    Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                                    Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                                }
+                                PlasmaComponents.Label {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    text: selectedRow.applicationName || selectedRow.modelData
+                                    elide: Text.ElideRight
+                                }
+                                PlasmaComponents.Button {
+                                    id: appIconButton
+                                    readonly property string effectiveIcon: {
+                                        const revision = root.catalogRevision
+                                        return IconOverrides.get(root.applicationIcons, selectedRow.modelData) ||
+                                            launcher.icon(selectedRow.modelData) || "application-x-executable"
+                                    }
+                                    display: QQC2.AbstractButton.IconOnly
+                                    icon.name: "document-edit"
+                                    Accessible.name: i18n("Change icon for %1", selectedRow.applicationName || selectedRow.modelData)
+                                    onClicked: { selectedApplications.currentIndex = selectedRow.index; appIconMenu.open() }
 
+                                    PlasmaComponents.ToolTip {
+                                        text: i18n("Change icon")
+                                    }
+
+                                    PlasmaComponents.Menu {
+                                        id: appIconMenu
+                                        PlasmaComponents.MenuItem {
+                                            text: i18n("Choose icon…")
+                                            onTriggered: root.chooseIcon(selectedRow.modelData, false)
+                                        }
+                                        PlasmaComponents.MenuItem {
+                                            text: i18n("Choose image…")
+                                            onTriggered: root.chooseIcon(selectedRow.modelData, true)
+                                        }
+                                        PlasmaComponents.MenuItem {
+                                            text: i18n("Reset icon")
+                                            enabled: IconOverrides.get(root.applicationIcons, selectedRow.modelData).length > 0
+                                            onTriggered: root.setCustomIcon(selectedRow.modelData, "")
+                                        }
+                                    }
+                                }
+
+                            }
+                        }
+                        PlasmaComponents.Label {
+                            anchors.centerIn: parent
+                            width: parent.width
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.WordWrap
+                            visible: selectedApplications.count === 0
+                            text: i18n("Add applications from the list on the right.")
+                        }
+                    }
+                }
                 PlasmaComponents.Label {
                     Layout.fillWidth: true
-                    text: selectedRow.applicationName || selectedRow.modelData
-                    elide: Text.ElideRight
-                }
-
-                PlasmaComponents.Button {
-                    text: i18n("Up")
-                    icon.name: "go-up"
-                    enabled: selectedRow.index > 0
-                    Accessible.name: i18n("Move %1 up", selectedRow.applicationName || selectedRow.modelData)
-                    onClicked: root.moveApplication(selectedRow.index, -1)
-                }
-
-                PlasmaComponents.Button {
-                    text: i18n("Down")
-                    icon.name: "go-down"
-                    enabled: selectedRow.index < root.cfg_applications.length - 1
-                    Accessible.name: i18n("Move %1 down", selectedRow.applicationName || selectedRow.modelData)
-                    onClicked: root.moveApplication(selectedRow.index, 1)
-                }
-
-                PlasmaComponents.Button {
-                    text: i18n("Remove")
-                    icon.name: "list-remove"
-                    Accessible.name: i18n("Remove %1", selectedRow.applicationName || selectedRow.modelData)
-                    onClicked: root.setApplicationSelected(selectedRow.modelData, false)
-                }
-            }
-
-            PlasmaComponents.Label {
-                anchors.centerIn: parent
-                width: parent.width
-                horizontalAlignment: Text.AlignHCenter
-                wrapMode: Text.WordWrap
-                visible: selectedApplications.count === 0
-                text: i18n("Add applications below to build this group.")
-            }
-        }
-    }
-
-    PlasmaComponents.TextField {
-        id: searchField
-
-        Layout.fillWidth: true
-
-        placeholderText: "Search applications…"
-        clearButtonShown: true
-        Keys.onReturnPressed: event => { event.accepted = true }
-        Keys.onEnterPressed: event => { event.accepted = true }
-    }
-
-    PlasmaComponents.Label {
-        Layout.fillWidth: true
-        text: i18n("Find applications to add to this group.")
-        wrapMode: Text.WordWrap
-    }
-
-    PlasmaComponents.ScrollView {
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-        Layout.minimumHeight: 180
-
-        ListView {
-            id: applicationList
-
-            clip: true
-            model: applicationsModel
-
-            delegate: RowLayout {
-                id: applicationDelegate
-                required property string desktopId
-                required property string applicationName
-                required property string applicationIcon
-
-                width: ListView.view.width
-                visible: (searchField.text.length === 0 ||
-                    applicationName.toLowerCase().includes(searchField.text.toLowerCase())) &&
-                    root.cfg_applications.indexOf(desktopId) === -1
-                height: visible ? implicitHeight : 0
-
-                Kirigami.Icon {
-                    source: applicationDelegate.applicationIcon || "application-x-executable"
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
-                }
-
-                PlasmaComponents.Label {
-                    Layout.fillWidth: true
-                    text: applicationDelegate.applicationName
-                    elide: Text.ElideRight
-                }
-
-                PlasmaComponents.Button {
-                    text: i18n("Add")
-                    icon.name: "list-add"
-                    Accessible.name: i18n("Add %1", applicationDelegate.applicationName)
-                    onClicked: root.setApplicationSelected(applicationDelegate.desktopId, true)
-                    PlasmaComponents.ToolTip {
-                        text: applicationDelegate.desktopId
-                    }
+                    wrapMode: Text.WordWrap
+                    text: i18n("Select a row to reorder or remove it. Use its edit button to customize the icon.")
+                    opacity: 0.7
                 }
             }
         }
-    }
+        QQC2.Frame {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.preferredWidth: 5
+            Layout.minimumWidth: 0
+            ColumnLayout {
+                anchors.fill: parent
+                PlasmaComponents.Label { text: i18n("Add applications"); font.bold: true }
+                PlasmaComponents.TextField {
+                    id: searchField
+                    Layout.fillWidth: true
+                    placeholderText: i18n("Search applications…")
+                    clearButtonShown: true
+                    Keys.onReturnPressed: event => { event.accepted = true }
+                    Keys.onEnterPressed: event => { event.accepted = true }
+                }
+                PlasmaComponents.ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 180
+                    contentWidth: availableWidth
+                    QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+                    ListView {
+                        id: applicationList
+                        clip: true
+                        model: applicationsModel
+                        delegate: RowLayout {
+                            id: applicationDelegate
+                            required property string desktopId
+                            required property string applicationName
+                            required property string applicationIcon
+                            width: ListView.view.width
+                            visible: (searchField.text.length === 0 || applicationName.toLowerCase().includes(searchField.text.toLowerCase()))
+                                && root.cfg_applications.indexOf(desktopId) === -1
+                            height: visible ? implicitHeight : 0
+                            Kirigami.Icon {
+                                source: applicationDelegate.applicationIcon || "application-x-executable"
+                                Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                                Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                            }
+                            PlasmaComponents.Label {
+                                Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                text: applicationDelegate.applicationName
+                                elide: Text.ElideRight
+                            }
+                            PlasmaComponents.ToolButton {
+                                icon.name: "list-add"
+                                Accessible.name: i18n("Add %1", applicationDelegate.applicationName)
+                                onClicked: root.setApplicationSelected(applicationDelegate.desktopId, true)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
