@@ -265,7 +265,9 @@ The staged tree contains the native plugin, qmldir and type metadata, widget
 contents and metadata, and GPL license. It excludes the historical manual and
 development tests. This is an install tree, not yet an RPM; it does not declare
 package-manager dependencies or restart Plasma. CMake checks that widget metadata
-and project versions agree (currently 0.1.0).
+and project versions agree. `scripts/release-assets.sh` automates this staging for
+tagged releases; its output is attached to each
+[GitHub release](https://github.com/mattisking/tlb-stacks/releases).
 
 `install.ps1` explicitly disables CMake's widget copy and continues to install it
 with kpackagetool6, preserving its existing user-specific/XDG data behavior. Its
