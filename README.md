@@ -64,9 +64,13 @@ Other distributions may work, but installation paths and dependencies vary.
 Screen-edge, scaling, and multi-monitor coverage is still incomplete; see
 [testing and known verification gaps](docs/TESTING_AND_STATUS.md).
 
-There is currently no packaged release or plugin SDK. Planned work is tracked in
-[the feature tracker](docs/FEATURE_TRACKER.md); historical True Launch Bar features
-are research material, not promises about this project.
+Releases are published on [the releases page](https://github.com/mattisking/tlb-stacks/releases):
+each tag builds and tests the widget in CI and attaches a source tarball, a prebuilt
+Fedora package tree, and the Plasma widget payload. TLBStacks includes a compiled
+C++ plugin, so it cannot be installed through Plasma's "Get New Widgets" dialog —
+build from the source tarball, or install a distribution package. Planned work is
+tracked in [the feature tracker](docs/FEATURE_TRACKER.md); historical True Launch Bar
+features are research material, not promises about this project.
 
 ## Getting started
 
