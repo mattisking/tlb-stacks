@@ -34,3 +34,15 @@ if(TLB_INSTALL_WIDGET)
         PATTERN "*.pyc" EXCLUDE)
 endif()
 install(FILES LICENSE DESTINATION "${KDE_INSTALL_DATADIR}/licenses/tlb-stacks")
+
+# Experimental group shell: intentionally excluded from normal release packages.
+option(TLB_INSTALL_GROUP "Install the experimental TLBStacks Group widget" OFF)
+if(TLB_INSTALL_GROUP)
+    file(READ "${CMAKE_CURRENT_SOURCE_DIR}/package-group/metadata.json" tlb_group_metadata)
+    string(JSON tlb_group_version GET "${tlb_group_metadata}" KPlugin Version)
+    if(NOT tlb_group_version STREQUAL PROJECT_VERSION)
+        message(FATAL_ERROR "Group metadata version must match project version ${PROJECT_VERSION}")
+    endif()
+    install(DIRECTORY package-group/
+        DESTINATION "${KDE_INSTALL_DATADIR}/plasma/plasmoids/com.mattphilmon.tlbstacks.group")
+endif()

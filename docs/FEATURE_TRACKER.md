@@ -25,6 +25,8 @@ recorded, details unresolved), **In progress**, **Implemented — needs verifica
 | [F-011](#f-011) | Menu column wrapping (True Launch Bar style) | Needs design |
 | [F-012](#f-012) | Distribution packaging (OBS) and KDE Store listing | Planned |
 | [F-013](#f-013) | Cross-machine profile portability | Implemented — needs verification |
+| [F-014](#f-014) | Direct panel launchers alongside stacks | Planned within F-015 |
+| [F-015](#f-015) | Stack Groups | In progress — steps 1–2 accepted |
 | [M-001](#m-001) | Clean source-control checkpoint | Verified |
 | [M-002](#m-002) | CI/release pipeline hardening follow-ups | In progress |
 
@@ -55,6 +57,11 @@ Context: [navigation contract](STACK_ENTRY_MODEL.md#navigation-contract) and
 ## F-002 — Folders alongside selected application shortcuts
 
 Requested October 5, 2026. Status: **Needs design**.
+
+October 6 clarification: the user's main everyday-launcher goal is direct panel
+shortcuts without opening a popup; that is tracked separately in [F-014](#f-014).
+This entry retains the earlier request for folders *inside* a stack, rather than
+making that a prerequisite for direct launchers or custom commands.
 
 Allow a Selected Applications stack to include a folder entry alongside application
 shortcuts. A folder should reuse the same preview, Right/Left, hover, and focus-return
@@ -169,8 +176,21 @@ shell-script execution. Investigate preferred-terminal integration and optional
 keep-open behavior. Preserve installed-app launch wrappers/field codes rather than
 blindly concatenating text to desktop Exec lines.
 
-Coordinate stable per-entry identity and duplicate app variants with F-002's
-mixed-item model (for example, two VS Code shortcuts opening different projects).
+October 6 clarification: keep this feature independent of [F-002](#f-002).
+Application selection should remain search-based: choose an installed application,
+then optionally configure arguments for that entry without editing its installed
+`.desktop` file. Distinct entries may reference the same application with different
+arguments, names, or icons (for example, VS Code opening two different projects).
+
+A second part is a library of common commands, which may have no installed
+application identity. Design this explicitly as command entries rather than
+pretending every command is an installed application. Executable/argument lists,
+working directory, terminal behavior, and explicit shell execution are separate
+settings; the exact editor and first supported subset remain to be agreed.
+
+Share launch definitions with [direct panel launchers](#f-014) so the same action
+can eventually be used in a popup or directly on the panel. Coordinate entry
+identity/schema when useful, but do not require mixed-folder support first.
 Include Apply/Cancel and profile migration/export behavior in the design; profiles
 store commands, not arbitrary bundled executables. Importing must not run commands.
 
@@ -268,3 +288,47 @@ user with a different Documents location; inspect the resolved path before Apply
 Check an unavailable theme icon in both panel and menu. Native/Flatpak application
 ID mapping remains manual; no guessed substitutions are made. Existing Qt6/KF6/
 Plasma6 builds and Fedora CI do not establish a cross-distribution minimum version.
+
+
+<a id="f-014"></a>
+## F-014 — Direct panel launchers alongside stacks
+
+Clarified October 6, 2026. Status: **Planned within [F-015](#f-015)**.
+
+Frequently used shortcuts should launch directly from the panel without opening
+a stack popup. The user wants to keep Icons Only Task Manager for running-window
+management while using TLBStacks for launching. This is distinct from folders
+inside a Selected Applications menu ([F-002](#f-002)) and does not require the
+whole-panel widget idea ([F-005](#f-005)).
+
+Earlier alternative, not selected: an explicit single-launcher mode on an
+individual widget instance, configured through application search with a name and
+icon. Click or keyboard activation launches; hover offers a tooltip, not a menu.
+Users arrange launcher instances alongside stack instances using Plasma's panel
+editor. Do not automatically change a one-item stack into a launcher: its intended
+interaction must remain explicit.
+
+Share launch behavior with [F-009](#f-009) when arguments and custom commands are
+introduced. A multi-launcher strip could follow if arranging separate instances
+proves cumbersome; no task-manager replacement or window-grouping behavior is
+part of this proposal.
+
+
+<a id="f-015"></a>
+## F-015 — Stack Groups
+
+Status: **In progress — steps 1–2 accepted**. The user selected an optional collection widget
+containing stacks and direct launchers, without task management. Preserve existing
+independent stack widgets and individual stack import/export. This is the scoped
+container direction discussed under F-005; it does not authorize a panel replacement.
+Direct launchers from F-014 belong here. F-009 remains independently scoped.
+
+Use one configuration window with an ordered item list and settings for the selected
+item, whole-window Apply/Cancel, Add stack/application, ordering and removal. Import
+an individual stack; export one stack or the group. Future item context actions can
+open this editor with the relevant item selected. Do not duplicate stack navigation
+and rendering implementations for the container.
+
+The six accepted checkpoints and the exact resume/test instructions are maintained
+in [Stack Groups](STACK_GROUPS.md). Complete and desktop-test each checkpoint before
+starting the next; keep changes small enough to resume across usage-limit pauses.

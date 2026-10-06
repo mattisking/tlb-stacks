@@ -3,6 +3,7 @@ param(
     [string] $BuildDirectory = (Join-Path $PSScriptRoot 'build'),
     [string] $InstallPrefix = (Join-Path $HOME '.local'),
     [string] $QmlDirectory = 'lib64/qt6/qml',
+    [switch] $WithGroup,
     [switch] $NoRestart
 )
 
@@ -22,7 +23,7 @@ function Invoke-Checked {
 # Always configure: the old cache may still use /usr/local or lack install rules.
 Invoke-Checked cmake @('-S', $PSScriptRoot, '-B', $BuildDirectory,
     "-DCMAKE_INSTALL_PREFIX=$InstallPrefix", "-DTLB_QML_INSTALL_DIR:STRING=$QmlDirectory",
-    "-DTLB_INSTALL_WIDGET:BOOL=OFF")
+    "-DTLB_INSTALL_WIDGET:BOOL=OFF", "-DTLB_INSTALL_GROUP:BOOL=OFF")
 Invoke-Checked cmake @('--build', $BuildDirectory)
 Invoke-Checked cmake @('--install', $BuildDirectory)
 
@@ -39,12 +40,17 @@ if ((Get-FileHash $installedPlugin).Hash -ne (Get-FileHash $builtPlugin).Hash) {
 }
 Write-Host "Verified plugin: $installedPlugin"
 
-$package = Join-Path $PSScriptRoot 'package'
-$packageId = (Get-Content (Join-Path $package 'metadata.json') -Raw | ConvertFrom-Json).KPlugin.Id
+# Group development is opt-in; existing stacks keep their package and settings.
+$packageNames = @('package')
+if ($WithGroup) { $packageNames += 'package-group' }
 $dataRoot = if ($env:XDG_DATA_HOME) { $env:XDG_DATA_HOME } else { Join-Path $HOME '.local/share' }
-$installedPackage = Join-Path $dataRoot "plasma/plasmoids/$packageId"
-$action = if (Test-Path $installedPackage) { '--upgrade' } else { '--install' }
-Invoke-Checked kpackagetool6 @('--type', 'Plasma/Applet', $action, $package)
+foreach ($packageName in $packageNames) {
+    $package = Join-Path $PSScriptRoot $packageName
+    $packageId = (Get-Content (Join-Path $package 'metadata.json') -Raw | ConvertFrom-Json).KPlugin.Id
+    $installedPackage = Join-Path $dataRoot "plasma/plasmoids/$packageId"
+    $action = if (Test-Path $installedPackage) { '--upgrade' } else { '--install' }
+    Invoke-Checked kpackagetool6 @('--type', 'Plasma/Applet', $action, $package)
+}
 
 if (-not $NoRestart) {
     # A loaded native plugin remains in memory until the shell exits.

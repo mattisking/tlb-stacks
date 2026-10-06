@@ -310,3 +310,24 @@ Selected Applications supports separators inserted from the configuration
 editor. They share the ordered application list, can be moved or removed like
 other rows, can carry an optional label, and are included in profile exports. Live Folder, Application
 Categories, and Recent / frequent applications are unchanged.
+
+
+## Experimental Stack Group
+
+[Stack Groups](STACK_GROUPS.md) is a separately identified experimental widget.
+Step 2 supports direct application launchers; contained stacks come later.
+Install it alongside the existing widget from PowerShell:
+
+```powershell
+./install.ps1 -WithGroup
+```
+
+Then add **TLBStacks Group** through Plasma's widget chooser. Name it and add applications through its
+configuration window. The switch can be combined with `-NoRestart`; restart Plasma
+before testing updated code. Subsequent group updates also require `-WithGroup`.
+Omitting the switch does not remove an already installed group.
+
+The group is not included in normal release binaries yet. Explicit CMake staging
+can include it with `-DTLB_INSTALL_GROUP=ON`; its metadata version must match the
+project version. Follow the [step-2 desktop checklist](STACK_GROUPS.md#step-2-desktop-test)
+before proceeding to contained stacks.

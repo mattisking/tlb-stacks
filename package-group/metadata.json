@@ -1,0 +1,20 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Matt Philmon"
+            }
+        ],
+        "Category": "Application Launchers",
+        "Description": "An experimental group of stacks and direct launchers",
+        "Icon": "view-grid",
+        "Id": "com.mattphilmon.tlbstacks.group",
+        "Name": "TLBStacks Group",
+        "Version": "0.1.0",
+        "License": "GPL-3.0-or-later",
+        "Website": "https://github.com/mattisking/tlb-stacks",
+        "BugReportUrl": "https://github.com/mattisking/tlb-stacks/issues"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPackageStructure": "Plasma/Applet"
+}

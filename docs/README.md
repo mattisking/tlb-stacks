@@ -13,6 +13,7 @@ and Live Folder share navigation rules, with source-specific content and actions
 | Need | Read |
 |---|---|
 | Build, install, or diagnose a stale plugin | [Deployment](DEPLOYMENT.md) and [import-path troubleshooting](DEPLOYMENT.md#import-path-and-restart-troubleshooting) |
+| Develop or test the optional group widget | [Stack Groups checkpoints](STACK_GROUPS.md) |
 | Understand entries and source-specific actions | [Entry model](STACK_ENTRY_MODEL.md#item-description) |
 | Understand keyboard and pointer behavior | [Navigation contract](STACK_ENTRY_MODEL.md#navigation-contract) |
 | Debug with VS Code | [Debugging](DEBUGGING.md) |
