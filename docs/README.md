@@ -1,4 +1,4 @@
-# TrueLaunchBar — living project guide
+# TLBStacks — living project guide
 
 [Project home](../README.md) · [Feature tracker](FEATURE_TRACKER.md) · [Testing status](TESTING_AND_STATUS.md)
 

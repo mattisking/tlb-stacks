@@ -126,7 +126,7 @@ quint64 Launcher::profileOperation(const QString &action, const QVariantMap &req
     if (profileBusy()) { fail(tr("Another profile operation is in progress.")); return id; }
     const QString python = QStandardPaths::findExecutable(QStringLiteral("python3"));
     const QString helper = QStandardPaths::locate(QStandardPaths::GenericDataLocation,
-        QStringLiteral("plasma/plasmoids/com.mattphilmon.truelaunchbar/contents/code/profile.py"));
+        QStringLiteral("plasma/plasmoids/com.mattphilmon.tlbstacks/contents/code/profile.py"));
     if (python.isEmpty() || helper.isEmpty()) {
         fail(tr("Profile support requires Python 3 and the updated widget package.")); return id;
     }

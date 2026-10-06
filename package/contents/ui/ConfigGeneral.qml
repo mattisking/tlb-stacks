@@ -7,7 +7,7 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.iconthemes as IconThemes
 import org.kde.plasma.components as PlasmaComponents
-import com.mattphilmon.truelaunchbar
+import com.mattphilmon.tlbstacks
 
 ColumnLayout {
     id: root
@@ -128,7 +128,7 @@ ColumnLayout {
         title: i18n("Export this menu")
         fileMode: Dialogs.FileDialog.SaveFile
         defaultSuffix: "zip"
-        nameFilters: [i18n("TrueLaunchBar profile (*.zip)")]
+        nameFilters: [i18n("TLBStacks profile (*.zip)")]
         onAccepted: {
             root.startProfile("export", {
                 file: selectedFile.toString(), settings: root.profileSettings()
@@ -140,7 +140,7 @@ ColumnLayout {
         id: importProfileDialog
         title: i18n("Import a menu into this widget")
         fileMode: Dialogs.FileDialog.OpenFile
-        nameFilters: [i18n("TrueLaunchBar profile (*.zip)")]
+        nameFilters: [i18n("TLBStacks profile (*.zip)")]
         onAccepted: {
             root.startProfile("import", {file: selectedFile.toString()}, "")
         }

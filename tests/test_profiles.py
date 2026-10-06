@@ -102,12 +102,24 @@ class Profiles(unittest.TestCase):
             self.export()
         self.assertEqual(self.archive.read_bytes(), b'existing export')
 
-    def write_manifest(self, settings=None, version=1, extra=None):
+    def write_manifest(self, settings=None, version=1, extra=None, format_name="TLBStacks"):
         with zipfile.ZipFile(self.archive, 'w') as archive:
-            archive.writestr('profile.json', json.dumps(dict(format='TrueLaunchBar', version=version,
+            archive.writestr('profile.json', json.dumps(dict(format=format_name, version=version,
                 settings=settings or dict(self.settings, groupIcon='applications-all', applicationIcons={}))))
             if extra:
                 archive.writestr(*extra)
+
+    def test_legacy_brand_profiles(self):
+        for version in (1, 2, 3):
+            with self.subTest(version=version):
+                self.write_manifest(version=version, format_name="TrueLaunchBar")
+                result = profile.import_profile(dict(file=str(self.archive)))
+                self.assertEqual(result['settings']['groupName'], self.settings['groupName'])
+
+    def test_unknown_brand_rejected(self):
+        self.write_manifest(format_name="OtherApplication")
+        with self.assertRaises(ValueError):
+            profile.import_profile(dict(file=str(self.archive)))
 
     def test_path_traversal_rejected(self):
         self.write_manifest(extra=('../outside.svg', b'bad'))

@@ -8,15 +8,15 @@ import QtQuick.Layouts
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.plasmoid
-import com.mattphilmon.truelaunchbar
+import com.mattphilmon.tlbstacks
 
 PlasmoidItem {
     id: root
 
     Plasmoid.icon: Plasmoid.configuration.groupIcon || "applications-all"
 
-    toolTipMainText: Plasmoid.configuration.groupName || "True Launch Bar"
-    toolTipSubText: "True Launch Bar"
+    toolTipMainText: Plasmoid.configuration.groupName || "TLBStacks"
+    toolTipSubText: "TLBStacks"
 
     Launcher {
         id: launcher

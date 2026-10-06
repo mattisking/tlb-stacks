@@ -3,7 +3,7 @@
 [Project guide](README.md) · [Feature tracker](FEATURE_TRACKER.md)
 
 
-**Original review:** October 3, 2026 · **Updated:** October 5, 2026 · **Scope:** functionality already implemented in individual TrueLaunchBar stacks.
+**Original review:** October 3, 2026 · **Updated:** October 5, 2026 · **Scope:** functionality already implemented in individual TLBStacks stacks.
 
 ## Assessment
 

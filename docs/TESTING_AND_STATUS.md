@@ -103,7 +103,7 @@ review or imply that every environmental edge case has been reproduced.
 
 Follow-up regressions in popup size, dismissal, right-click activation, and keyboard
 handoffs were addressed and exercised with the user as recorded above. The observed
-Klipper clipboard-preview shutdown crash had a separate stack; no TrueLaunchBar
+Klipper clipboard-preview shutdown crash had a separate stack; no TLBStacks
 fix or general Plasma crash resolution is claimed.
 
 ## Still to verify

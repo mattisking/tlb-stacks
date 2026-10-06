@@ -5,7 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.core as PlasmaCore
-import com.mattphilmon.truelaunchbar
+import com.mattphilmon.tlbstacks
 
 ColumnLayout {
     id: root

@@ -1,4 +1,4 @@
-# TrueLaunchBar for KDE Plasma
+# TLBStacks for KDE Plasma
 
 Individual panel stacks for selected applications, application categories, and live
 folders, inspired by the original Windows True Launch Bar.

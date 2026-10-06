@@ -13,7 +13,7 @@ Every native-command failure stops deployment. Use `-NoRestart` only when you
 intend to restart Plasma yourself before testing.
 
 The default module location is
-`~/.local/lib64/qt6/qml/com/mattphilmon/truelaunchbar`, matching this Fedora
+`~/.local/lib64/qt6/qml/com/mattphilmon/tlbstacks`, matching this Fedora
 installation's existing module. `-InstallPrefix` and `-QmlDirectory` can override
 it; a custom QML root must be in the desktop's QML import paths. Installing the
 widget package alone does not install the C++ plugin.
@@ -27,7 +27,7 @@ manual plugin registers Launcher and FolderSource at runtime. Static QML tools m
 not understand these manually registered types; a successful build or syntax check
 is not a substitute for loading the installed module in Plasma.
 
-After deployment, open Configure True Launch Bar and verify that applications
+After deployment, open Configure TLBStacks and verify that applications
 appear, typing filters them, Enter leaves the dialog open, and changing the group
 name still saves. Use Add in the search results and Remove in the selected list, then Apply/OK to save the group. Cancel discards
 unapplied changes. Search only filters the list; it preserves selections. Existing
@@ -46,7 +46,7 @@ by Plasma after opening the widget:
 
 ```powershell
 $plasmaProcessId = (& pgrep -x plasmashell | Select-Object -First 1)
-Get-Content "/proc/$plasmaProcessId/maps" | Select-String 'truelaunchbar'
+Get-Content "/proc/$plasmaProcessId/maps" | Select-String 'tlbstacks'
 ```
 
 The mapped path should match the script's `Verified plugin` path and should not
@@ -54,7 +54,7 @@ say `(deleted)`. A different path indicates another module copy has precedence.
 
 Each widget instance has its own name, menu icon, and ordered application list.
 Use Menu icon → Choose in configuration, then Apply/OK. Reset restores the
-default icon; Cancel discards unapplied changes. Add another True Launch Bar
+default icon; Cancel discards unapplied changes. Add another TLBStacks
 widget to create another independent menu and arrange widgets in panel edit mode.
 
 Menu display offers an Icons only mode for the whole group. Names remain available
@@ -67,7 +67,7 @@ from the selected list, including for an application that is no longer installed
 Click an application icon in the selected list to choose a theme icon, choose an
 image file, or reset it. The menu icon has separate Choose, Image, and Reset controls.
 Overrides are saved per widget and do not change the system application's icon.
-New custom image selections are copied into TrueLaunchBar-managed storage. Older
+New custom image selections are copied into TLBStacks-managed storage. Older
 image selections still reference their original paths until reselected; export
 includes those originals as well.
 Icon choices follow the same Apply/OK and Cancel behavior as other configuration.
@@ -81,14 +81,14 @@ and custom images in a ZIP. Export includes unapplied edits. It exports this one
 menu, not all widget instances or the Plasma panel layout. Built-in icons remain
 theme names, and applications remain desktop IDs; executables are not bundled.
 
-Use **Import menu…** on another True Launch Bar widget to load an archive into the
+Use **Import menu…** on another TLBStacks widget to load an archive into the
 editor. Apply/OK commits the imported settings; Cancel leaves saved settings alone.
 Unavailable applications remain in the selected list with a warning so they can
 be installed later or removed. Icons missing from the destination theme use the
 normal icon-renderer fallback.
 
-Custom images are copied to `$XDG_DATA_HOME/truelaunchbar/icons` (normally
-`~/.local/share/truelaunchbar/icons`) with content-based filenames. Selecting the
+Custom images are copied to `$XDG_DATA_HOME/tlbstacks/icons` (normally
+`~/.local/share/tlbstacks/icons`) with content-based filenames. Selecting the
 same image again reuses the stored copy. Assets are not automatically deleted when
 removing an override or cancelling an import, because other widgets may share them.
 
@@ -213,3 +213,16 @@ native code. `module ... is not installed` instead calls for checking module
 location and the desktop's import paths. Neither is fixed merely by reinstalling
 the widget's QML package. Do not replace this distinction with a generic restart
 recommendation.
+
+## Renaming existing installations
+
+The widget ID is now `com.mattphilmon.tlbstacks`. Plasma treats this as a new
+widget, rather than an upgrade of `com.mattphilmon.truelaunchbar`. Existing panel
+instances retain their old package and settings; installing does not migrate them.
+Export each old menu, install the new package, add a TLBStacks widget, import the
+menu, and Apply. Verify the new stack before removing its old panel instance.
+Both old TrueLaunchBar and new TLBStacks profile archives are accepted.
+
+New image assets use `tlbstacks/icons`. Existing absolute image references remain
+valid; do not delete the old `truelaunchbar/icons` directory while they are in use.
+Historical documentation and the original Windows manual retain the original name.

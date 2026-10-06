@@ -4,7 +4,7 @@
 #include <QQmlExtensionPlugin>
 #include <qqml.h>
 
-class TrueLaunchBarPlugin : public QQmlExtensionPlugin
+class TLBStacksPlugin : public QQmlExtensionPlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID QQmlExtensionInterface_iid)

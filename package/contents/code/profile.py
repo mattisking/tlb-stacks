@@ -1,4 +1,4 @@
-"""TrueLaunchBar profile transport. JSON stdin/stdout; Python standard library only."""
+"""TLBStacks profile transport. JSON stdin/stdout; Python standard library only."""
 import hashlib
 import io
 import json
@@ -33,7 +33,7 @@ def local_path(value):
 
 def storage():
     root = os.environ.get('XDG_DATA_HOME') or str(Path.home() / '.local/share')
-    return Path(root) / 'truelaunchbar/icons'
+    return Path(root) / 'tlbstacks/icons'
 
 
 def atomic_write(path, data):
@@ -147,7 +147,7 @@ def export_profile(request):
             return name
         return theme_icon(value)
     portable = map_icons(settings, pack)
-    manifest = json.dumps(dict(format='TrueLaunchBar', version=3, settings=portable),
+    manifest = json.dumps(dict(format='TLBStacks', version=3, settings=portable),
                           ensure_ascii=False, indent=2).encode('utf-8')
     if len(manifest) > MAX_JSON:
         raise ValueError('Profile settings are too large.')
@@ -184,8 +184,8 @@ def import_profile(request):
             if info.file_size > limit or info.flag_bits & 1:
                 raise ValueError('Oversized or encrypted ZIP entry.')
         manifest = json.loads(archive.read('profile.json'))
-        if not isinstance(manifest, dict) or manifest.get('format') != 'TrueLaunchBar' or type(manifest.get('version')) is not int or manifest['version'] not in (1, 2, 3):
-            raise ValueError('Unsupported TrueLaunchBar profile format or version.')
+        if not isinstance(manifest, dict) or manifest.get('format') not in ('TLBStacks', 'TrueLaunchBar') or type(manifest.get('version')) is not int or manifest['version'] not in (1, 2, 3):
+            raise ValueError('Unsupported TLBStacks profile format or version.')
         settings = validate_settings(manifest.get('settings'))
         assets = {}
         # Validate every reference and checksum before storing any images.

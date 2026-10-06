@@ -1,13 +1,13 @@
-qt_add_qml_module(truelaunchbarplugin
-    URI com.mattphilmon.truelaunchbar
+qt_add_qml_module(tlbstacksplugin
+    URI com.mattphilmon.tlbstacks
     VERSION 1.0
-    PLUGIN_TARGET truelaunchbarplugin
+    PLUGIN_TARGET tlbstacksplugin
     NO_GENERATE_PLUGIN_SOURCE
     NO_PLUGIN_OPTIONAL
-    CLASS_NAME TrueLaunchBarPlugin
+    CLASS_NAME TLBStacksPlugin
 
     OUTPUT_DIRECTORY
-        "${CMAKE_BINARY_DIR}/qml/com/mattphilmon/truelaunchbar"
+        "${CMAKE_BINARY_DIR}/qml/com/mattphilmon/tlbstacks"
 
     SOURCES
         folderreader.cpp
@@ -22,7 +22,7 @@ qt_add_qml_module(truelaunchbarplugin
         plugin.cpp
 )
 
-target_link_libraries(truelaunchbarplugin
+target_link_libraries(tlbstacksplugin
     PRIVATE
         Qt6::Core
         Qt6::Qml
@@ -36,13 +36,13 @@ target_link_libraries(truelaunchbarplugin
 # qt_add_qml_module creates build artifacts, but does not install them.
 set(TLB_QML_INSTALL_DIR "lib64/qt6/qml" CACHE STRING
     "QML import root relative to CMAKE_INSTALL_PREFIX (or an absolute path)")
-set(tlb_module_destination "${TLB_QML_INSTALL_DIR}/com/mattphilmon/truelaunchbar")
-install(TARGETS truelaunchbarplugin
+set(tlb_module_destination "${TLB_QML_INSTALL_DIR}/com/mattphilmon/tlbstacks")
+install(TARGETS tlbstacksplugin
     LIBRARY DESTINATION "${tlb_module_destination}")
 install(FILES
-    "${CMAKE_BINARY_DIR}/qml/com/mattphilmon/truelaunchbar/qmldir"
-    "${CMAKE_BINARY_DIR}/qml/com/mattphilmon/truelaunchbar/truelaunchbarplugin.qmltypes"
+    "${CMAKE_BINARY_DIR}/qml/com/mattphilmon/tlbstacks/qmldir"
+    "${CMAKE_BINARY_DIR}/qml/com/mattphilmon/tlbstacks/tlbstacksplugin.qmltypes"
     DESTINATION "${tlb_module_destination}")
 
 # Keep the verified build and installed binary identical (no install-time RPATH edit).
-set_target_properties(truelaunchbarplugin PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
+set_target_properties(tlbstacksplugin PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)

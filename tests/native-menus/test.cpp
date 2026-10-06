@@ -319,7 +319,7 @@ private slots:
         QTemporaryDir dir;
         const auto previous = qgetenv("XDG_DATA_HOME");
         qputenv("XDG_DATA_HOME", dir.path().toUtf8());
-        const QString relative = "plasma/plasmoids/com.mattphilmon.truelaunchbar/contents/code";
+        const QString relative = "plasma/plasmoids/com.mattphilmon.tlbstacks/contents/code";
         QVERIFY(QDir(dir.path()).mkpath(relative));
         QFile helper(dir.filePath(relative + "/profile.py"));
         QVERIFY(helper.open(QIODevice::WriteOnly));

@@ -30,9 +30,9 @@ $moduleRoot = if ([IO.Path]::IsPathRooted($QmlDirectory)) {
 } else {
     Join-Path $InstallPrefix $QmlDirectory
 }
-$moduleDirectory = Join-Path $moduleRoot 'com/mattphilmon/truelaunchbar'
-$installedPlugin = Join-Path $moduleDirectory 'libtruelaunchbarplugin.so'
-$builtPlugin = Join-Path $BuildDirectory 'qml/com/mattphilmon/truelaunchbar/libtruelaunchbarplugin.so'
+$moduleDirectory = Join-Path $moduleRoot 'com/mattphilmon/tlbstacks'
+$installedPlugin = Join-Path $moduleDirectory 'libtlbstacksplugin.so'
+$builtPlugin = Join-Path $BuildDirectory 'qml/com/mattphilmon/tlbstacks/libtlbstacksplugin.so'
 if ((Get-FileHash $installedPlugin).Hash -ne (Get-FileHash $builtPlugin).Hash) {
     throw "Installed plugin does not match the build: $installedPlugin"
 }

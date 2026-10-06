@@ -1,6 +1,6 @@
 import QtQuick
 import QtTest
-import com.mattphilmon.truelaunchbar
+import com.mattphilmon.tlbstacks
 Item {
     FolderSource {
         id: source
