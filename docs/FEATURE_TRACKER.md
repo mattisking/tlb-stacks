@@ -2,7 +2,7 @@
 
 [Project guide](README.md) · [Current model](STACK_ENTRY_MODEL.md) · [Verification](TESTING_AND_STATUS.md)
 
-**Updated:** October 5, 2026. This is the authoritative list of requested future
+**Updated:** October 6, 2026. This is the authoritative list of requested future
 work. IDs remain stable even when titles or priorities change. Update entries as
 requests are clarified; link to implementation and verification rather than copy them.
 
@@ -17,7 +17,15 @@ recorded, details unresolved), **In progress**, **Implemented — needs verifica
 | [F-003](#f-003) | Drag-sort selected items in the editor | Deferred |
 | [F-004](#f-004) | Future content/plugin extension support | Deferred |
 | [F-005](#f-005) | Possible whole-panel widget | Deferred |
+| [F-006](#f-006) | Application actions and recent documents | Implemented — needs verification (actions); Planned (documents) |
+| [F-007](#f-007) | Recent / Frequent activity source | Implemented — needs verification |
+| [F-008](#f-008) | KIO virtual and remote folders | Needs design |
+| [F-009](#f-009) | Custom launch commands and terminal entries | Needs design |
+| [F-010](#f-010) | Grouped Most frequent / Most recently used activity stacks | Needs design |
+| [F-011](#f-011) | Menu column wrapping (True Launch Bar style) | Needs design |
+| [F-012](#f-012) | Distribution packaging (OBS) and KDE Store listing | Planned |
 | [M-001](#m-001) | Clean source-control checkpoint | Verified |
+| [M-002](#m-002) | CI/release pipeline hardening follow-ups | Planned |
 
 <a id="f-001"></a>
 ## F-001 — Unobtrusive, delayed tooltips
@@ -104,6 +112,7 @@ The [remaining verification list](TESTING_AND_STATUS.md#still-to-verify) owns un
 combinations. Do not duplicate those checklists here. New implementation requests
 receive tracker IDs; additional test evidence belongs in that existing record.
 
+<a id="f-006"></a>
 ## F-006 — Application actions and recent documents
 
 Application-provided desktop actions: **Implemented — needs verification**.
@@ -114,6 +123,7 @@ Actions launch through KDE's application launcher; Live Folder is unchanged.
 Recent documents: **Planned**, separate from desktop actions. Determine the KDE
 history source and respect its privacy settings before implementing this part.
 
+<a id="f-007"></a>
 ## F-007 — Recent / Frequent activity source
 
 Status: **Implemented — needs verification** (applications). Use KDE's Activities Stats API rather than maintaining a
@@ -137,6 +147,7 @@ menus must not inherit Live Folder deletion capabilities by accident.
 Build prerequisite: PlasmaActivities and PlasmaActivitiesStats development
 packages (Fedora: plasma-activities-devel and plasma-activities-stats-devel).
 
+<a id="f-008"></a>
 ## F-008 — KIO virtual and remote folders
 
 Status: **Needs design**. Investigate asynchronous KIO listing for virtual and
@@ -146,6 +157,7 @@ listing, activation, configuration, and profile transport. First scope should be
 browsing/opening, with cancellation, authentication, and offline handling; file
 operations require capability checks rather than assuming Trash is supported.
 
+<a id="f-009"></a>
 ## F-009 — Custom launch commands and terminal entries
 
 Status: **Needs design**. Allow per-entry launch customization, especially command
@@ -160,3 +172,76 @@ Coordinate stable per-entry identity and duplicate app variants with F-002's
 mixed-item model (for example, two VS Code shortcuts opening different projects).
 Include Apply/Cancel and profile migration/export behavior in the design; profiles
 store commands, not arbitrary bundled executables. Importing must not run commands.
+
+<a id="f-010"></a>
+## F-010 — Grouped Most frequent / Most recently used activity stacks
+
+Requested October 6, 2026. Status: **Needs design**.
+
+Split the activity stack into two ordered groups — Most frequently used and Most
+recently used — with a titled separator between them, reusing the labeled-separator
+rendering already used by Selected Applications (separator rendering is
+source-agnostic; any entry with `isSeparator` renders). Today [F-007](#f-007)
+makes one mutually exclusive query (`RecentlyUsedFirst` or `HighScoredFirst`,
+chosen by the order setting) and overwrites the entry list per refresh, so this
+needs a dual-list producer: two queries and a synthetic labeled separator entry
+between the concatenated groups.
+
+Open decisions: duplicate applications across both groups (show twice, or does
+one group win?); which group is first; per-group limits versus splitting
+`activityLimit`; whether grouping becomes a third ordering option or replaces an
+existing one; refresh stability while a menu is open (F-007 constraint).
+Regression coverage should mirror F-007's: filtering, unavailable apps,
+deduplication, and limits.
+
+<a id="f-011"></a>
+## F-011 — Menu column wrapping (True Launch Bar style)
+
+Requested October 6, 2026. Status: **Needs design**.
+
+When a popup menu would grow taller than the screen, wrap entries into a second
+side-by-side column instead of forcing scrolling, keeping the whole menu visible —
+True Launch Bar behavior. The root menu is a ScrollView over a ColumnLayout plus
+Repeater with a height clamp and fixed width (`main.qml`); wrapping requires
+chunking entries across columns, syncing popup width as well as height, and
+updating the manual keyboard navigation and content handling that assumes one
+column. The folder root menu uses a ListView and can chunk similarly. Native
+cascades are C++ QMenu popups; Qt has no built-in multi-column menus, so that path
+needs a custom popup design — decide whether cascades wrap at all in the first
+scope. Separators are entries in the same flat array; a column break must not
+orphan a separator at a column edge. Column count, height budget, and screen-edge
+placement need desktop verification.
+
+<a id="f-012"></a>
+## F-012 — Distribution packaging (OBS) and KDE Store listing
+
+Requested October 6, 2026. Status: **Planned** (direction agreed).
+
+Build distribution packages via the Open Build Service so Fedora, openSUSE,
+Debian, and Ubuntu users install a native build of the compiled plugin through
+their own package managers, built per-distro against each distribution's real
+Qt6/KF6 stack from the tagged source tarballs the release pipeline already
+publishes. A KDE Store listing page is for discovery and ratings only: "Get New
+Widgets" cannot install a compiled C++ plugin, and no store upload API exists
+(October 6 research — store updates are manual web uploads). COPR (Fedora) and
+AUR (Arch) are lighter single-distro alternatives if full OBS proves heavy.
+First scope: one Fedora and one Debian/Ubuntu repository publishing the plugin
+and widget files from release tags.
+
+<a id="m-002"></a>
+## M-002 — CI/release pipeline hardening follow-ups
+
+Requested October 6, 2026 (review follow-up). Status: **Planned**.
+
+Remaining reviewer recommendations after the October 6 pipeline work (PRs
+#3–#9; regression tests are already wired into CI, and runner resolution and
+absolute build directories are done):
+
+- Pin `actions/checkout@v4` and `softprops/action-gh-release@v2` to reviewed
+  commit SHAs, keeping version comments for Dependabot updates.
+- Declare `permissions: contents: read` on `ci.yml` (least-privilege for the
+  build job; `release.yml` already scopes its write).
+- Add a maintainer release checklist to [Deployment](DEPLOYMENT.md): bump
+  `CMakeLists.txt` and `package/metadata.json` versions together, confirm green
+  CI on `main`, tag the merged commit, push the tag, then verify the three
+  release assets.
