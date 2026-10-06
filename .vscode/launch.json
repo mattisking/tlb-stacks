@@ -1,0 +1,89 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "cppdbg",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "externalConsole": false,
+            "setupCommands": [
+                {
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "text": "set breakpoint pending on"
+                }
+            ],
+            "name": "TLBStacks: standalone widget (C++)",
+            "program": "/usr/bin/plasmawindowed",
+            "args": [
+                "com.mattphilmon.tlbstacks"
+            ],
+            "preLaunchTask": "TLBStacks: stage debug widget",
+            "environment": [
+                {
+                    "name": "QML_IMPORT_PATH",
+                    "value": "${workspaceFolder}/build/debug/qml"
+                },
+                {
+                    "name": "XDG_DATA_HOME",
+                    "value": "${workspaceFolder}/build/debug/data"
+                },
+                {
+                    "name": "XDG_CONFIG_HOME",
+                    "value": "${workspaceFolder}/build/debug/config"
+                },
+                {
+                    "name": "XDG_CACHE_HOME",
+                    "value": "${workspaceFolder}/build/debug/cache"
+                },
+                {
+                    "name": "XDG_DATA_DIRS",
+                    "value": "${workspaceFolder}/build/debug/install/share:/usr/local/share:/usr/share"
+                },
+                {
+                    "name": "QML_DISABLE_DISK_CACHE",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "type": "cppdbg",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "externalConsole": false,
+            "setupCommands": [
+                {
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "text": "set breakpoint pending on"
+                }
+            ],
+            "name": "TLBStacks: native menu tests (C++)",
+            "program": "${workspaceFolder}/build-tests/debug/folder-popup-test",
+            "args": [],
+            "preLaunchTask": "TLBStacks: build native tests",
+            "environment": [
+                {
+                    "name": "QT_QPA_PLATFORM",
+                    "value": "offscreen"
+                },
+                {
+                    "name": "QT_QUICK_BACKEND",
+                    "value": "software"
+                },
+                {
+                    "name": "QT_QUICK_CONTROLS_STYLE",
+                    "value": "Basic"
+                }
+            ]
+        }
+    ]
+}

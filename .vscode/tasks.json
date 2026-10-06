@@ -1,0 +1,101 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "TLBStacks: configure debug",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "-S",
+                "${workspaceFolder}",
+                "-B",
+                "${workspaceFolder}/build/debug",
+                "-DCMAKE_BUILD_TYPE=Debug",
+                "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+                "-DCMAKE_INSTALL_PREFIX=${workspaceFolder}/build/debug/install",
+                "-DTLB_QML_INSTALL_DIR=lib/qml",
+                "-DKDE_INSTALL_DATADIR=share",
+                "-DTLB_INSTALL_WIDGET=ON"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "TLBStacks: build debug",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build/debug",
+                "--parallel",
+                "2"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "TLBStacks: configure debug",
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "TLBStacks: stage debug widget",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--install",
+                "${workspaceFolder}/build/debug"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "TLBStacks: build debug",
+            "dependsOrder": "sequence"
+        },
+        {
+            "label": "TLBStacks: configure native tests",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "-S",
+                "${workspaceFolder}/tests/native-menus",
+                "-B",
+                "${workspaceFolder}/build-tests/debug",
+                "-DCMAKE_BUILD_TYPE=Debug"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "TLBStacks: build native tests",
+            "type": "process",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build-tests/debug",
+                "--parallel",
+                "2"
+            ],
+            "problemMatcher": [
+                "$gcc"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "TLBStacks: configure native tests",
+            "dependsOrder": "sequence"
+        }
+    ]
+}

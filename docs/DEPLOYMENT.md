@@ -240,3 +240,33 @@ Both old TrueLaunchBar and new TLBStacks profile archives are accepted.
 New image assets use `tlbstacks/icons`. Existing absolute image references remain
 valid; do not delete the old `truelaunchbar/icons` directory while they are in use.
 Historical documentation and the original Windows manual retain the original name.
+
+## Staging a distribution package
+
+CMake installs both the native QML module and widget by default. KDEInstallDirs6
+selects the standard QML and shared-data locations; `TLB_QML_INSTALL_DIR` remains
+available as an explicit override. Use a fresh build directory to avoid retaining
+the developer installer's cached overrides. The following PowerShell commands
+write only to local build/staging directories (check `$LASTEXITCODE` after each):
+
+```powershell
+cmake -S . -B build/package -DCMAKE_INSTALL_PREFIX=/usr
+cmake --build build/package
+$previousDestDir = $env:DESTDIR
+try {
+    $env:DESTDIR = (Join-Path $PWD 'build/stage')
+    cmake --install build/package
+} finally {
+    $env:DESTDIR = $previousDestDir
+}
+```
+
+The staged tree contains the native plugin, qmldir and type metadata, widget
+contents and metadata, and GPL license. It excludes the historical manual and
+development tests. This is an install tree, not yet an RPM; it does not declare
+package-manager dependencies or restart Plasma. CMake checks that widget metadata
+and project versions agree (currently 0.1.0).
+
+`install.ps1` explicitly disables CMake's widget copy and continues to install it
+with kpackagetool6, preserving its existing user-specific/XDG data behavior. Its
+Fedora-oriented QML override is retained for the existing development environment.

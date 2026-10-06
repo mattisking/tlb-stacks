@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "compileCommands": [
+                "${workspaceFolder}/build/debug/compile_commands.json"
+            ],
+            "cppStandard": "c++20",
+            "includePath": [
+                "${workspaceFolder}/src"
+            ]
+        }
+    ],
+    "version": 4
+}

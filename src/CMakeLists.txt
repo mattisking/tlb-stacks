@@ -34,7 +34,7 @@ target_link_libraries(tlbstacksplugin
 )
 
 # qt_add_qml_module creates build artifacts, but does not install them.
-set(TLB_QML_INSTALL_DIR "lib64/qt6/qml" CACHE STRING
+set(TLB_QML_INSTALL_DIR "${KDE_INSTALL_QMLDIR}" CACHE STRING
     "QML import root relative to CMAKE_INSTALL_PREFIX (or an absolute path)")
 set(tlb_module_destination "${TLB_QML_INSTALL_DIR}/com/mattphilmon/tlbstacks")
 install(TARGETS tlbstacksplugin

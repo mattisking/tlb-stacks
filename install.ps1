@@ -21,7 +21,8 @@ function Invoke-Checked {
 
 # Always configure: the old cache may still use /usr/local or lack install rules.
 Invoke-Checked cmake @('-S', $PSScriptRoot, '-B', $BuildDirectory,
-    "-DCMAKE_INSTALL_PREFIX=$InstallPrefix", "-DTLB_QML_INSTALL_DIR:STRING=$QmlDirectory")
+    "-DCMAKE_INSTALL_PREFIX=$InstallPrefix", "-DTLB_QML_INSTALL_DIR:STRING=$QmlDirectory",
+    "-DTLB_INSTALL_WIDGET:BOOL=OFF")
 Invoke-Checked cmake @('--build', $BuildDirectory)
 Invoke-Checked cmake @('--install', $BuildDirectory)
 
