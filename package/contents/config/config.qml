@@ -4,7 +4,7 @@ import org.kde.plasma.configuration
 ConfigModel {
     ConfigCategory {
         name: "General"
-        icon: "configure"
+        icon: Qt.resolvedUrl("../images/tlbstacks.svg")
         source: "ConfigGeneral.qml"
     }
 }
