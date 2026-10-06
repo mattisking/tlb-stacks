@@ -1,6 +1,4 @@
-<div style="font-size: 2em; font-weight: bold; display: flex; align-items: center;">
-  <img src="docs/images/logo.png" width="64" height="64" alt="TLBStacks logo">&nbsp;TLBStacks
-</div>
+<h1><img src="docs/images/logo.png" width="64" height="64" alt="TLBStacks logo" align="absmiddle">&nbsp;TLBStacks</h1>
 
 **Application groups and live folder menus for KDE Plasma 6.**
 
