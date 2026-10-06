@@ -84,9 +84,13 @@ else
 fi
 
 echo '== T7: an absolute build-dir argument runs the full gate =='
-ABS_BUILD=/tmp/opencode/tlb-abs-build
-if scripts/ci-run.sh "${ABS_BUILD}" >/tmp/opencode/t7-run.log 2>&1 \
-    && grep 'ALL CHECKS PASSED' /tmp/opencode/t7-run.log >/dev/null; then
+# Use a portable temp base: RUNNER_TEMP in CI, TMPDIR or /tmp locally, and
+# create it — it is not guaranteed to exist (e.g. a fresh container).
+T7_BASE="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
+ABS_BUILD="${T7_BASE}/tlb-abs-build"
+mkdir -p "${T7_BASE}"
+if scripts/ci-run.sh "${ABS_BUILD}" >"${T7_BASE}/t7-run.log" 2>&1 \
+    && grep 'ALL CHECKS PASSED' "${T7_BASE}/t7-run.log" >/dev/null; then
     ok 'T7 absolute build-dir argument runs the full gate'
 else
     bad 'T7 absolute build-dir argument runs the full gate'
