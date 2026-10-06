@@ -25,7 +25,7 @@ recorded, details unresolved), **In progress**, **Implemented — needs verifica
 | [F-011](#f-011) | Menu column wrapping (True Launch Bar style) | Needs design |
 | [F-012](#f-012) | Distribution packaging (OBS) and KDE Store listing | Planned |
 | [M-001](#m-001) | Clean source-control checkpoint | Verified |
-| [M-002](#m-002) | CI/release pipeline hardening follow-ups | Planned |
+| [M-002](#m-002) | CI/release pipeline hardening follow-ups | In progress |
 
 <a id="f-001"></a>
 ## F-001 — Unobtrusive, delayed tooltips
@@ -231,17 +231,19 @@ and widget files from release tags.
 <a id="m-002"></a>
 ## M-002 — CI/release pipeline hardening follow-ups
 
-Requested October 6, 2026 (review follow-up). Status: **Planned**.
+Requested October 6, 2026 (review follow-up). Status: **In progress** (pinning
+and permissions done; release checklist planned).
 
 Remaining reviewer recommendations after the October 6 pipeline work (PRs
 #3–#9; regression tests are already wired into CI, and runner resolution and
 absolute build directories are done):
 
-- Pin `actions/checkout@v4` and `softprops/action-gh-release@v2` to reviewed
-  commit SHAs, keeping version comments for Dependabot updates.
-- Declare `permissions: contents: read` on `ci.yml` (least-privilege for the
-  build job; `release.yml` already scopes its write).
+- Pin `actions/checkout` and `softprops/action-gh-release` to reviewed commit
+  SHAs — **done October 6, 2026** (checkout v4.4.0, gh-release v2.6.2; version
+  comments kept for Dependabot updates).
+- Declare `permissions: contents: read` on `ci.yml` — **done October 6, 2026**
+  (least-privilege for the build job; `release.yml` already scopes its write).
 - Add a maintainer release checklist to [Deployment](DEPLOYMENT.md): bump
   `CMakeLists.txt` and `package/metadata.json` versions together, confirm green
   CI on `main`, tag the merged commit, push the tag, then verify the three
-  release assets.
+  release assets. — **Planned**.
