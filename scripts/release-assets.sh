@@ -19,7 +19,21 @@ MODULE_PATH='com/mattphilmon/tlbstacks'   # the import URI as a filesystem path
     exit 1
 }
 
-cmake_ver="$(sed -nE 's/^project\(TLBStacks VERSION ([0-9.]+)\).*/\1/p' CMakeLists.txt | head -n1)"
+head_commit="$(git rev-parse HEAD)"
+ref_commit="$(git rev-parse "${REF}^{commit}")"
+if [[ "${ref_commit}" != "${head_commit}" ]]; then
+    echo "ERROR: SOURCE_REF ${REF} resolves to ${ref_commit}, not the checked-out commit ${head_commit}; archive from a clean checkout of the tag (or HEAD)" >&2
+    exit 1
+fi
+dirty="$(git status --porcelain -- CMakeLists.txt package src | grep -v '__pycache__' || true)"
+if [[ -n "${dirty}" ]]; then
+    echo "ERROR: uncommitted or untracked release inputs (CMakeLists.txt, package/, src/ — __pycache__ ignored):" >&2
+    printf '%s\n' "${dirty}" >&2
+    echo "Commit or remove them so the source tarball, plugin, and widget payload describe the same tree." >&2
+    exit 1
+fi
+
+cmake_ver="$(sed -nE 's/^project\(TLBStacks VERSION ([0-9.]+)\).*/\1/p' CMakeLists.txt)"
 meta_ver="$(python3 -c 'import json; print(json.load(open("package/metadata.json"))["KPlugin"]["Version"])')"
 if [[ "${VERSION}" != "${cmake_ver}" || "${VERSION}" != "${meta_ver}" ]]; then
     echo "ERROR: version mismatch: tag=${VERSION} cmake=${cmake_ver} metadata=${meta_ver}" >&2
@@ -42,10 +56,13 @@ git archive --format=tar.gz --prefix="tlbstacks-${VERSION}/" -o "${src_tarball}"
 echo '== Prebuilt staged tree (/usr prefix, DESTDIR staging) =='
 cmake -S . -B "${BUILD_DIR}" -DCMAKE_INSTALL_PREFIX=/usr >/dev/null
 DESTDIR="${PWD}/build/stage" cmake --install "${BUILD_DIR}"
-[[ "$(find build/stage -name 'libtlbstacksplugin.so' | wc -l)" -eq 1 ]] || {
-    echo "ERROR: expected exactly one staged libtlbstacksplugin.so" >&2; exit 1; }
+[[ "$(find build/stage/usr -name 'libtlbstacksplugin.so' | wc -l)" -eq 1 ]] || {
+    echo "ERROR: expected exactly one staged libtlbstacksplugin.so inside the archived usr/ tree. A cached TLB_QML_INSTALL_DIR override can stage the module elsewhere — package from a build directory configured without install overrides." >&2; exit 1; }
+staged_module_dir="$(dirname "$(find build/stage/usr -name 'libtlbstacksplugin.so')")"
+[[ -f "${staged_module_dir}/qmldir" && -f "${staged_module_dir}/tlbstacksplugin.qmltypes" ]] || {
+    echo "ERROR: staged module metadata (qmldir/qmltypes) missing inside usr/" >&2; exit 1; }
 [[ -f "build/stage/usr/share/plasma/plasmoids/${PLASMOID_ID}/metadata.json" ]] || {
-    echo "ERROR: staged widget metadata.json missing" >&2; exit 1; }
+    echo "ERROR: staged widget metadata.json missing inside usr/" >&2; exit 1; }
 tar -C build/stage -czf "${stage_tarball}" usr
 
 echo '== Store-ready plasmoid payload =='

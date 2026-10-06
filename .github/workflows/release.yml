@@ -30,6 +30,15 @@ jobs:
         run: scripts/ci-run.sh
       - name: Assert versions and build release assets
         run: scripts/release-assets.sh "${GITHUB_REF_NAME#v}"
+      - name: Record build environment versions
+        id: buildenv
+        run: |
+          {
+            echo "fedora=$(sed -nE 's/^VERSION_ID=//p' /etc/os-release)"
+            echo "qt=$(rpm -q --qf '%{version}' qt6-qtbase)"
+            echo "kf6=$(rpm -q --qf '%{version}' kf6-kio)"
+            echo "activities=$(rpm -q --qf '%{version}' plasma-activities)"
+          } >> "$GITHUB_OUTPUT"
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -43,9 +52,10 @@ jobs:
 
             Build from the **source tarball** following
             [docs/DEPLOYMENT.md](https://github.com/mattisking/tlb-stacks/blob/main/docs/DEPLOYMENT.md).
-            The **prebuilt tree** is built in CI on Fedora 44 (Qt 6.11, KF6 6.30,
-            plasma-activities 6.7) and unpacks a `/usr` install tree — only use it on
-            distributions with compatible Qt6/KF6 versions.
+            The **prebuilt tree** is built in CI on Fedora ${{ steps.buildenv.outputs.fedora }}
+            (Qt ${{ steps.buildenv.outputs.qt }}, KF6 ${{ steps.buildenv.outputs.kf6 }},
+            plasma-activities ${{ steps.buildenv.outputs.activities }}) and unpacks a `/usr`
+            install tree — only use it on distributions with compatible Qt6/KF6 versions.
 
             Note: the `.plasmoid` payload alone will not run. TLBStacks includes a
             compiled C++ plugin (`libtlbstacksplugin.so`), so it cannot be installed
