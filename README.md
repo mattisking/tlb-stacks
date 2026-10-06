@@ -48,8 +48,8 @@ a replacement desktop panel.
      ideally icons-only (right). Taken separately, shown side by side. -->
 <table align="center">
   <tr>
-    <td align="center"><img src="docs/images/categories.png" width="380" alt="Application Categories menu"><br><sub>Application Categories</sub></td>
-    <td align="center"><img src="docs/images/recent-frequent.png" width="380" alt="Recent / Frequent menu"><br><sub>Recent / Frequent</sub></td>
+    <td align="center"><img src="docs/images/categories.png" width="210" alt="Application Categories menu"><br><sub>Application Categories</sub></td>
+    <td align="center"><img src="docs/images/recent-frequent.png" width="220" alt="Recent / Frequent menu"><br><sub>Recent / Frequent</sub></td>
   </tr>
 </table>
 
