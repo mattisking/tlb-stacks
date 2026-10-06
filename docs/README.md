@@ -6,6 +6,8 @@
 Individual Plasma stack widgets remain the focus. Selected Applications, Categories,
 and Live Folder share navigation rules, with source-specific content and actions.
 
+[Contribution guidance](../CONTRIBUTING.md) · [Third-party notices](../THIRD_PARTY_NOTICES.md)
+
 ## Find the authoritative topic
 
 | Need | Read |

@@ -6,6 +6,20 @@
 **Updated:** October 5, 2026. Run the commands below from the repository root.
 See [testing and status](TESTING_AND_STATUS.md) for desktop results and outstanding checks.
 
+## Prerequisites
+
+Install a C++20 compiler, CMake 3.24 or newer, Extra CMake Modules 6, Qt 6
+(Core, QML, Quick, Widgets, Concurrent), and KDE Frameworks 6 development packages
+for KIO and KService. Runtime QML imports also require Kirigami, KDE icon themes,
+and Plasma components. The installer needs PowerShell (`pwsh`), Python 3,
+`kpackagetool6`, and a running Plasma user session managed by systemd.
+
+Package names vary by distribution; this repository does not yet provide a
+validated cross-distribution dependency installation command. Qt/Plasma versions
+must be compatible with the desktop loading the native module.
+
+## Install from source
+
 From PowerShell, run `./install.ps1`. The script resolves source paths relative
 to itself, configures and builds C++, installs the QML module, verifies the
 installed binary, updates (or first installs) the widget, and restarts Plasma.
