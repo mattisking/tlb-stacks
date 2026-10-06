@@ -24,6 +24,7 @@ inline QVariantMap applicationData(const QString &id, const QString &source, con
         : service && !service->icon().isEmpty() ? service->icon() : QStringLiteral("application-x-executable");
     auto entry = make(id, service ? service->name() : id, icon, source,
                 "launchApplication", id, bool(service), false, source == "applications");
+    entry["defaultIcon"] = service ? service->icon() : QString();
     QString description = service ? service->comment().trimmed() : QString();
     if (description.isEmpty() && service) description = service->genericName().trimmed();
     if (description == entry.value("name").toString()) description.clear();

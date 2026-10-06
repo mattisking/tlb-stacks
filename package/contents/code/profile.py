@@ -138,6 +138,50 @@ def theme_icon(value):
     return value
 
 
+# These locations come from Qt on the running machine, never from the ZIP.
+STANDARD_LOCATIONS = ('documents', 'downloads', 'desktop', 'music', 'pictures', 'videos', 'home')
+
+
+def standard_locations(request):
+    locations = request.get('standardLocations', {})
+    return {key: local_path(locations[key]) for key in STANDARD_LOCATIONS
+            if locations.get(key)}
+
+
+def portable_folder(folder, request):
+    if not folder:
+        return None
+    path = local_path(folder)
+    locations = standard_locations(request)
+    # Prefer the most specific directory; Home is the last tie-breaker.
+    for key, base in sorted(locations.items(), key=lambda item: -len(item[1].parts)):
+        if key != 'home' and base == locations.get('home'):
+            continue  # XDG folders disabled by mapping them to Home.
+        try:
+            relative = path.relative_to(base)
+        except ValueError:
+            continue
+        if '..' not in relative.parts:
+            return dict(base=key, path=relative.as_posix())
+    return None
+
+
+def restore_folder(reference, request):
+    if not isinstance(reference, dict) or set(reference) != {'base', 'path'}:
+        raise ValueError('Invalid portable folder reference.')
+    base = reference['base']
+    if not isinstance(base, str) or base not in STANDARD_LOCATIONS:
+        raise ValueError('Unknown standard folder.')
+    relative = text(reference['path'], 'relative folder path', 4096)
+    path = Path(relative)
+    if not relative or path.is_absolute() or '..' in path.parts:
+        raise ValueError('Invalid relative folder path.')
+    locations = standard_locations(request)
+    if base not in locations:
+        raise ValueError('The destination standard folder is unavailable: ' + base)
+    return (locations[base] / path).as_uri()
+
+
 def export_profile(request):
     settings = validate_settings(request.get('settings'))
     # Unselected applications' retained overrides need not travel with this menu.
@@ -156,7 +200,12 @@ def export_profile(request):
             return name
         return theme_icon(value)
     portable = map_icons(settings, pack)
-    manifest = json.dumps(dict(format='TLBStacks', version=4, settings=portable),
+    folder_reference = portable_folder(portable['folderUrl'], request)
+    manifest_data = dict(format='TLBStacks', version=5, settings=portable)
+    if folder_reference is not None:
+        portable['folderUrl'] = ''
+        manifest_data['folderLocation'] = folder_reference
+    manifest = json.dumps(manifest_data,
                           ensure_ascii=False, indent=2).encode('utf-8')
     if len(manifest) > MAX_JSON:
         raise ValueError('Profile settings are too large.')
@@ -193,9 +242,13 @@ def import_profile(request):
             if info.file_size > limit or info.flag_bits & 1:
                 raise ValueError('Oversized or encrypted ZIP entry.')
         manifest = json.loads(archive.read('profile.json'))
-        if not isinstance(manifest, dict) or manifest.get('format') not in ('TLBStacks', 'TrueLaunchBar') or type(manifest.get('version')) is not int or manifest['version'] not in (1, 2, 3, 4):
+        if not isinstance(manifest, dict) or manifest.get('format') not in ('TLBStacks', 'TrueLaunchBar') or type(manifest.get('version')) is not int or manifest['version'] not in (1, 2, 3, 4, 5):
             raise ValueError('Unsupported TLBStacks profile format or version.')
         settings = validate_settings(manifest.get('settings'))
+        if 'folderLocation' in manifest:
+            if manifest['version'] != 5 or settings['folderUrl']:
+                raise ValueError('Conflicting portable folder settings.')
+            settings['folderUrl'] = restore_folder(manifest['folderLocation'], request)
         assets = {}
         # Validate every reference and checksum before storing any images.
         def check(value):
@@ -213,7 +266,8 @@ def import_profile(request):
         if value in assets:
             return store_image(assets[value], Path(value).suffix)
         return value
-    return dict(ok=True, settings=map_icons(settings, restore))
+    return dict(ok=True, settings=map_icons(settings, restore),
+                folderMissing=bool(settings['folderUrl'] and not local_path(settings['folderUrl']).is_dir()))
 
 
 def handle(request):

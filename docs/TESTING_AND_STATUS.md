@@ -178,3 +178,18 @@ widget initialization, coalesce identical in-flight requests, and limit the quer
 to twice the requested count for the two possible desktop-ID aliases. Extend the
 actual Plasma popup-height correction to this async source. User reported clipped
 first rows and repeated-click loading before this correction; desktop retest needed.
+
+
+### Application icon fallback rendering
+
+With the Plasma/Kirigami runtime installed, run:
+
+```sh
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software qmltestrunner-qt6 -input tests/icons -o -,txt
+```
+
+This focused renderer suite supplies theme availability as input and checks missing
+custom theme/file icons, valid overrides, and generic fallback when both icons are
+unavailable. It is separate from the minimal CI suites because it imports Kirigami.
+The native caller checks theme availability with `QIcon::hasThemeIcon`; verify the
+complete lookup and rendering together in the installed widget.

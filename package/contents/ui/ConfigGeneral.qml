@@ -190,6 +190,8 @@ ColumnLayout {
             root.cfg_folderUrl = settings.folderUrl
             root.cfg_folderFilters = settings.folderFilters
             root.profileMessage = i18n("Menu imported into the editor. Apply to save, or Cancel to keep your previous menu.")
+            if (result.folderMissing)
+                root.profileMessage += "\n" + i18n("The imported folder is unavailable on this machine. Choose its location before applying.")
         }
     }
 
@@ -651,6 +653,11 @@ ColumnLayout {
                             contentItem: RowLayout {
                                 ApplicationIcon {
                                     source: appIconButton.effectiveIcon
+                                    sourceAvailable: fromFile || launcher.themeIconAvailable(source)
+                                    fallbackSource: {
+                                        const revision = root.catalogRevision
+                                        return selectedRow.isSeparator ? "" : launcher.icon(selectedRow.modelData)
+                                    }
                                     visible: !selectedRow.isSeparator
                                     Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
                                     Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium

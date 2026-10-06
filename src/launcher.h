@@ -38,6 +38,7 @@ public:
     Q_INVOKABLE bool exists(const QString &desktopId) const;
     Q_INVOKABLE QString name(const QString &desktopId) const;
     Q_INVOKABLE QString icon(const QString &desktopId) const;
+    Q_INVOKABLE bool themeIconAvailable(const QString &name) const;
     Q_INVOKABLE bool launch(const QString &desktopId);
 
     Q_INVOKABLE QVariantList applications() const;

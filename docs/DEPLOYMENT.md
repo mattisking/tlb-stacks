@@ -99,7 +99,10 @@ Use **Import menu…** on another TLBStacks widget to load an archive into the
 editor. Apply/OK commits the imported settings; Cancel leaves saved settings alone.
 Unavailable applications remain in the selected list with a warning so they can
 be installed later or removed. Icons missing from the destination theme use the
-normal icon-renderer fallback.
+application’s default icon first, then a generic application icon if that is also
+unavailable. This also applies to missing custom image files in the shared QML
+icon renderer. Desktop IDs
+are preserved; native and Flatpak installations are not silently substituted.
 
 Custom images are copied to `$XDG_DATA_HOME/tlbstacks/icons` (normally
 `~/.local/share/tlbstacks/icons`) with content-based filenames. Selecting the
@@ -114,7 +117,8 @@ extracted directly. Limits: 10 MiB per image, 256 images, and 64 MiB of image da
 
 Run the profile checks with `python3 -m unittest discover -s tests -v`.
 
-Exports use format version 3; versions 1 and 2 are also accepted. The archive
+Exports use format version 5; versions 1–4 are also accepted. Older TLBStacks
+versions cannot import version 5 archives. The archive
 contains one stack. Combined export of all widget instances remains a separate feature.
 
 Profile operations run asynchronously. The editor shows a working message and
@@ -143,7 +147,14 @@ should be represented by `.desktop` launchers. The first version does not offer
 terminal/argument editing or special System Settings/Network sources.
 
 Profile ZIPs contain the folder location and patterns, never the folder's contents.
-When moving a profile to another machine, use Choose to remap the folder. Missing
+Version 5 exports encode folders beneath Home, Documents, Downloads, Desktop,
+Music, Pictures, or Videos as a standard-location key and relative path. Qt resolves
+these against the destination's XDG directory settings, including translated names
+and locations outside Home. The most specific configured location wins. No shell
+variables or commands are evaluated. This relocates paths, not folder contents.
+Other absolute paths (for example `/mnt/tools`) and older archives retain their
+exact locations; use Choose to remap those when necessary. Import reports a missing
+folder in the editor without creating it. Missing
 or unreadable folders show a message and are checked again while the popup is open.
 Switching back to Selected applications preserves the existing application list.
 
@@ -286,8 +297,8 @@ The source reads KDE's recorded usage; it does not enable tracking or create a
 separate history database. Empty history, tracking disabled, or an unavailable
 Activities service can leave the stack empty. Membership refreshes on opening;
 normal usage updates do not reorder a menu while it is open. Activity/service
-changes can invalidate a pending query. Query settings travel in version 4 profile
-exports, but usage history does not. Older profiles retain default query settings.
+changes can invalidate a pending query. Query settings travel in profile
+exports (introduced in version 4), but usage history does not. Older profiles retain default query settings.
 Documents are not part of this first implementation.
 
 New widgets start with an empty name and no selected applications. The source

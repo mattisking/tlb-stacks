@@ -24,6 +24,7 @@ recorded, details unresolved), **In progress**, **Implemented — needs verifica
 | [F-010](#f-010) | Grouped Most frequent / Most recently used activity stacks | Needs design |
 | [F-011](#f-011) | Menu column wrapping (True Launch Bar style) | Needs design |
 | [F-012](#f-012) | Distribution packaging (OBS) and KDE Store listing | Planned |
+| [F-013](#f-013) | Cross-machine profile portability | Implemented — needs verification |
 | [M-001](#m-001) | Clean source-control checkpoint | Verified |
 | [M-002](#m-002) | CI/release pipeline hardening follow-ups | In progress |
 
@@ -247,3 +248,23 @@ absolute build directories are done):
   `CMakeLists.txt` and `package/metadata.json` versions together, confirm green
   CI on `main`, tag the merged commit, push the tag, then verify the three
   release assets. — **Planned**.
+
+
+<a id="f-013"></a>
+## F-013 — Cross-machine profile portability
+
+Status: **Implemented — needs verification** (October 6, 2026).
+
+Standard user folders relocate through Qt's configured locations in version 5
+archives; other absolute locations remain explicit. Missing folders are reported
+on import. Custom images remain bundled, desktop IDs and separator order are
+preserved, and the shared QML icon renderer falls back from unavailable custom artwork to
+the app’s default icon, then to a generic application icon.
+See [profile format and import behavior](DEPLOYMENT.md#portable-menu-profiles).
+
+Import/export desktop testing was reported successful by the user.
+Cross-machine checks remaining: export a Documents subfolder and import under another
+user with a different Documents location; inspect the resolved path before Apply.
+Check an unavailable theme icon in both panel and menu. Native/Flatpak application
+ID mapping remains manual; no guessed substitutions are made. Existing Qt6/KF6/
+Plasma6 builds and Fedora CI do not establish a cross-distribution minimum version.

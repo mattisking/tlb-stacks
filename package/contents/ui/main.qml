@@ -369,6 +369,8 @@ PlasmoidItem {
                             ApplicationIcon {
                                 visible: launcherItem.modelData.isSeparator !== true
                                 source: launcherItem.applicationIcon
+                                sourceAvailable: fromFile || launcher.themeIconAvailable(source)
+                                fallbackSource: launcherItem.modelData.defaultIcon || ""
                                 Layout.preferredWidth: root.menuIconSize
                                 Layout.preferredHeight: root.menuIconSize
                                 Layout.alignment: Qt.AlignCenter

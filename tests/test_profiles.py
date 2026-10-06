@@ -23,6 +23,65 @@ class Profiles(unittest.TestCase):
             iconsOnly=True, menuIconSize=32, menuSource='applications', folderUrl='', folderFilters='*', applicationCategories=[], hoverDelay=250)
         self.archive = self.root / 'menu.zip'
 
+    def test_portable_standard_folder_roundtrip(self):
+        locations = {'home': str(self.root / 'alice'),
+                     'documents': str(self.root / 'alice/Documents')}
+        folder = Path(locations['documents']) / 'Tools #1/日本語'
+        self.settings.update(menuSource='folder', folderUrl=folder.as_uri())
+        profile.export_profile(dict(file=str(self.archive), settings=self.settings,
+                                    standardLocations=locations))
+        with zipfile.ZipFile(self.archive) as archive:
+            manifest = json.loads(archive.read('profile.json'))
+        self.assertEqual(manifest['version'], 5)
+        self.assertEqual(manifest['folderLocation'], {'base': 'documents', 'path': 'Tools #1/日本語'})
+        self.assertEqual(manifest['settings']['folderUrl'], '')
+        destination = self.root / 'bob/Dokumente'
+        result = profile.import_profile(dict(file=str(self.archive), standardLocations={'documents': str(destination)}))
+        self.assertEqual(result['settings']['folderUrl'], (destination / 'Tools #1/日本語').as_uri())
+        self.assertTrue(result['folderMissing'])
+        (destination / 'Tools #1/日本語').mkdir(parents=True)
+        result = profile.import_profile(dict(file=str(self.archive), standardLocations={'documents': str(destination)}))
+        self.assertFalse(result['folderMissing'])
+
+    def test_portable_folder_matching_boundaries(self):
+        request = dict(standardLocations={'home': '/home/alice', 'documents': '/home/alice/Documents'})
+        self.assertEqual(profile.portable_folder('/home/alice', request), {'base': 'home', 'path': '.'})
+        self.assertEqual(profile.portable_folder('/home/alice/Projects', request), {'base': 'home', 'path': 'Projects'})
+        self.assertIsNone(profile.portable_folder('/home/alice-other', request))
+        self.assertIsNone(profile.portable_folder('/mnt/tools', request))
+        request['standardLocations']['documents'] = '/home/alice'
+        self.assertEqual(profile.portable_folder('/home/alice', request)['base'], 'home')
+
+    def test_invalid_portable_folder_rejected_before_assets_written(self):
+        self.export()
+        with zipfile.ZipFile(self.archive) as archive:
+            original = {name: archive.read(name) for name in archive.namelist()}
+        for reference in [None, {'base': 'unknown', 'path': '.'},
+                          {'base': 'home', 'path': '../outside'},
+                          {'base': 'home', 'path': '/outside'},
+                          {'base': 'home', 'path': ''},
+                          {'base': 'home', 'path': 'ok', 'extra': 'no'}]:
+            with self.subTest(reference=reference):
+                manifest = json.loads(original['profile.json'])
+                manifest['folderLocation'] = reference
+                with zipfile.ZipFile(self.archive, 'w') as archive:
+                    for name, data in original.items():
+                        archive.writestr(name, json.dumps(manifest) if name == 'profile.json' else data)
+                with self.assertRaises(ValueError):
+                    profile.import_profile(dict(file=str(self.archive), standardLocations={'home': '/home/bob'}))
+                self.assertFalse(profile.storage().exists())
+
+    def test_missing_destination_standard_location_rejected(self):
+        with self.assertRaises(ValueError):
+            profile.restore_folder({'base': 'documents', 'path': '.'}, {})
+
+    def test_absolute_folder_v4_stays_absolute(self):
+        settings = dict(self.settings, groupIcon='folder', applicationIcons={},
+                        menuSource='folder', folderUrl='file:///mnt/tools')
+        self.write_manifest(settings=settings, version=4)
+        result = profile.import_profile(dict(file=str(self.archive), standardLocations={'home': '/home/bob'}))
+        self.assertEqual(result['settings']['folderUrl'], 'file:///mnt/tools')
+
     def test_activity_roundtrip_and_defaults(self):
         self.settings.update(groupIcon='applications-all', applicationIcons={},
                              menuSource='activity', activityOrder='frequent',

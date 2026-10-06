@@ -6,6 +6,7 @@
 #include <QQuickWindow>
 #include <QMouseEvent>
 #include <QCursor>
+#include <QIcon>
 #include <QKeyEvent>
 
 #include <KIO/ApplicationLauncherJob>
@@ -47,6 +48,11 @@ QString Launcher::name(const QString &desktopId) const
     }
 
     return service->name();
+}
+
+bool Launcher::themeIconAvailable(const QString &name) const
+{
+    return QIcon::hasThemeIcon(name);
 }
 
 QString Launcher::icon(const QString &desktopId) const
@@ -133,6 +139,16 @@ quint64 Launcher::profileOperation(const QString &action, const QVariantMap &req
     }
     QVariantMap payload = request;
     payload.insert("action", action);
+    // Resolve XDG user directories through Qt; profiles only carry symbolic keys.
+    payload.insert("standardLocations", QVariantMap{
+        {"home", QStandardPaths::writableLocation(QStandardPaths::HomeLocation)},
+        {"documents", QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)},
+        {"downloads", QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)},
+        {"desktop", QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)},
+        {"music", QStandardPaths::writableLocation(QStandardPaths::MusicLocation)},
+        {"pictures", QStandardPaths::writableLocation(QStandardPaths::PicturesLocation)},
+        {"videos", QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)}
+    });
     const auto input = QJsonDocument::fromVariant(payload).toJson(QJsonDocument::Compact);
     if (input.size() > 1024 * 1024) { fail(tr("Profile settings are too large.")); return id; }
     // The process outlives a dismissed editor until it has been reaped. Destruction
