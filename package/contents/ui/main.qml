@@ -338,7 +338,7 @@ PlasmoidItem {
                         // Consume only right-clicks; normal activation stays with the delegate.
                         MouseArea {
                             anchors.fill: parent
-                            enabled: launcherItem.modelData.actions.indexOf("removeFromStack") !== -1
+                            enabled: launcherItem.modelData.actions.length > 0
                             acceptedButtons: Qt.RightButton
                             onClicked: {
                                 applicationToolTip.hideToolTip()
@@ -346,7 +346,7 @@ PlasmoidItem {
                             }
                         }
                         Keys.onMenuPressed: event => {
-                            if (launcherItem.modelData.actions.indexOf("removeFromStack") !== -1) {
+                            if (launcherItem.modelData.actions.length > 0) {
                                 applicationToolTip.hideToolTip()
                                 launcher.showEntryContextMenu(launcherItem, launcherItem.modelData)
                                 event.accepted = true

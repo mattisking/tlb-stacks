@@ -27,7 +27,7 @@ public:
     Q_INVOKABLE void closeFolderMenu();
     Q_INVOKABLE QPoint pointerPosition() const;
 
-    Q_INVOKABLE void showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId);
+    Q_INVOKABLE void showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool removable = true, bool desktopActions = true);
     Q_INVOKABLE void closeApplicationContextMenu();
 
     Q_INVOKABLE QVariantList applicationEntries(const QStringList &ids, const QVariantMap &icons, const QString &source) const;

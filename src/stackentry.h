@@ -4,6 +4,7 @@
 #include <QFileInfo>
 #include <QMimeDatabase>
 #include <KService>
+#include <KServiceAction>
 
 namespace StackEntry {
 // Source-owned capabilities: renderers must not infer actions from an icon/name.
@@ -27,6 +28,16 @@ inline QVariantMap applicationData(const QString &id, const QString &source, con
     if (description.isEmpty() && service) description = service->genericName().trimmed();
     if (description == entry.value("name").toString()) description.clear();
     entry["description"] = description;
+    if (service) {
+        for (const auto &action : service->actions()) {
+            if (!action.noDisplay() && !action.isSeparator()) {
+                auto capabilities = entry.value("actions").toStringList();
+                capabilities.append("desktopActions");
+                entry["actions"] = capabilities;
+                break;
+            }
+        }
+    }
     return entry;
 }
 inline QVariantMap application(const QString &id, const QString &source, const QString &overrideIcon)

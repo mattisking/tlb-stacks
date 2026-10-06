@@ -103,3 +103,13 @@ own the completed navigation, dismissal, sizing, and Trash verification record.
 The [remaining verification list](TESTING_AND_STATUS.md#still-to-verify) owns untested
 combinations. Do not duplicate those checklists here. New implementation requests
 receive tracker IDs; additional test evidence belongs in that existing record.
+
+## F-006 — Application actions and recent documents
+
+Application-provided desktop actions: **Implemented — needs verification**.
+Selected Applications and category stacks expose visible desktop-entry actions
+in their right-click/keyboard context menus. Only selected shortcuts offer Remove.
+Actions launch through KDE's application launcher; Live Folder is unchanged.
+
+Recent documents: **Planned**, separate from desktop actions. Determine the KDE
+history source and respect its privacy settings before implementing this part.

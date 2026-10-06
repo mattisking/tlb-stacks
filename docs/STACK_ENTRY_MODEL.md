@@ -108,3 +108,11 @@ Folder previews suppress their parent root tooltip while open.
 Live Folder always shows filenames. Its Icons only control is disabled; the saved
 preference is preserved for switching back to an application source. Tooltip timing
 is independent of menu opening. See [F-001](FEATURE_TRACKER.md#f-001).
+
+### Application-provided actions
+
+Application entries advertise `desktopActions` when their desktop file supplies
+visible actions. The context menu resolves those actions from KService and invokes
+them using KIO::ApplicationLauncherJob. Category entries never offer removal;
+selected entries retain Remove from this stack below the application actions.
+No command strings are constructed by QML. Recent documents are not yet included.

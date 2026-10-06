@@ -9,6 +9,7 @@
 #include <QKeyEvent>
 
 #include <KIO/ApplicationLauncherJob>
+#include <KServiceAction>
 #include <KService>
 #include <KSycoca>
 #include <KIO/OpenUrlJob>
@@ -291,20 +292,41 @@ void Launcher::closeApplicationContextMenu()
     if (m_applicationContextMenu) m_applicationContextMenu->close();
 }
 
-void Launcher::showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId)
+void Launcher::showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool removable, bool desktopActions)
 {
     if (!anchor || !anchor->window() || desktopId.isEmpty() ||
         !qobject_cast<QApplication *>(QCoreApplication::instance())) return;
     closeApplicationContextMenu();
     QObject::disconnect(m_contextAnchorDestroyed);
     m_applicationContextMenu = std::make_unique<QMenu>();
-    auto *remove = m_applicationContextMenu->addAction(tr("Remove from this stack"));
-    connect(remove, &QAction::triggered, this, [this, desktopId]() {
-        // Defer the model change until the native action has finished dispatching.
-        QMetaObject::invokeMethod(this, [this, desktopId]() {
-            Q_EMIT removeApplicationRequested(desktopId);
-        }, Qt::QueuedConnection);
-    });
+    const auto service = desktopActions ? KService::serviceByDesktopName(desktopId) : KService::Ptr();
+    if (service) {
+        for (const auto &serviceAction : service->actions()) {
+            if (serviceAction.noDisplay() || serviceAction.isSeparator()) continue;
+            auto *action = m_applicationContextMenu->addAction(QIcon::fromTheme(serviceAction.icon()),
+                QString(serviceAction.text()).replace('&', QStringLiteral("&&")));
+            connect(action, &QAction::triggered, this, [this, serviceAction] {
+                const auto generation = ++m_activationGeneration;
+                auto *job = new KIO::ApplicationLauncherJob(serviceAction, this);
+                connect(job, &KJob::result, this, [this, job, generation] {
+                    if (generation == m_activationGeneration && job->error())
+                        Q_EMIT activationFailed(job->errorString());
+                });
+                job->start();
+            });
+        }
+    }
+    if (removable) {
+        if (!m_applicationContextMenu->isEmpty()) m_applicationContextMenu->addSeparator();
+        auto *remove = m_applicationContextMenu->addAction(tr("Remove from this stack"));
+        connect(remove, &QAction::triggered, this, [this, desktopId]() {
+            // Defer the model change until the native action has finished dispatching.
+            QMetaObject::invokeMethod(this, [this, desktopId]() {
+                Q_EMIT removeApplicationRequested(desktopId);
+            }, Qt::QueuedConnection);
+        });
+    }
+    if (m_applicationContextMenu->isEmpty()) return;
     m_contextAnchorDestroyed = connect(anchor, &QObject::destroyed,
                                       this, &Launcher::closeApplicationContextMenu);
     m_applicationContextMenu->winId();
@@ -423,7 +445,9 @@ void Launcher::showEntryContextMenu(QQuickItem *anchor, const QVariantMap &entry
         m_applicationContextMenu->popup(anchor->mapToGlobal(QPointF(anchor->width(), 0)).toPoint());
         return;
     }
-    if (entry.value("source").toString() == "applications" &&
-        entry.value("actions").toStringList().contains("removeFromStack"))
-        showApplicationContextMenu(anchor, entry.value("id").toString());
+    const auto source = entry.value("source").toString();
+    if (source == "applications" || source == "categories")
+        showApplicationContextMenu(anchor, entry.value("id").toString(),
+            source == "applications" && entry.value("actions").toStringList().contains("removeFromStack"),
+            entry.value("actions").toStringList().contains("desktopActions"));
 }
