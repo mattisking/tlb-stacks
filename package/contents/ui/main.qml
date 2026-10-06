@@ -7,6 +7,7 @@ import QtQuick.Controls as QQC2
 import "IconOverrides.js" as IconOverrides
 import "ApplicationCategories.js" as Categories
 import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.plasmoid
@@ -44,6 +45,14 @@ PlasmoidItem {
     readonly property int menuIconSize: Math.max(16, Math.min(64,
         Plasmoid.configuration.menuIconSize || 22))
     readonly property int menuRowHeight: Math.max(40, menuIconSize + 16)
+    readonly property int separatorRowHeight: 10
+    readonly property int labeledSeparatorRowHeight: 28
+    function entryHeight(entry) {
+        if (entry.isSeparator !== true) return menuRowHeight
+        return !iconsOnly && entry.name ? labeledSeparatorRowHeight : separatorRowHeight
+    }
+    readonly property real applicationMenuHeight: visibleEntries.reduce(
+        (height, entry) => height + entryHeight(entry), 0)
     readonly property int menuWidth: iconsOnly ? menuRowHeight : 220 + Math.max(0, menuIconSize - 22)
 
     ActivitySource { id: activitySource }
@@ -126,7 +135,8 @@ PlasmoidItem {
         function moveApplicationSelection(step) {
             if (root.menuSource === "folder") return
             const index = Navigation.nextIndex(applicationRepeater.count, selectedApplication,
-                                               hoveredApplication, keyboardNavigation, step)
+                hoveredApplication, keyboardNavigation, step,
+                root.visibleEntries.map(entry => entry.isSeparator !== true))
             if (index < 0) return
             selectedApplication = index
             keyboardNavigation = true
@@ -181,10 +191,11 @@ PlasmoidItem {
         readonly property real folderMenuHeight: folderLoader.item
             ? folderLoader.item.preferredMenuHeight : rememberedFolderHeight
         readonly property real activityMenuHeight: root.visibleEntries.length > 0
-            ? Math.min(root.visibleEntries.length * root.menuRowHeight, 480)
+            ? Math.min(applicationColumn.implicitHeight, 480)
             : Math.max(root.menuRowHeight, activityNotice.implicitHeight)
         readonly property real dynamicMenuHeight: folderLoader.active ? folderMenuHeight : activityMenuHeight
         readonly property bool dynamicMenu: folderLoader.active || root.menuSource === "activity"
+            || root.visibleEntries.length > 0
         implicitHeight: dynamicMenu ? dynamicMenuHeight : childrenRect.height
         Layout.minimumHeight: dynamicMenu ? dynamicMenuHeight : 0
         Layout.preferredHeight: dynamicMenu ? dynamicMenuHeight : implicitHeight
@@ -278,8 +289,9 @@ PlasmoidItem {
             QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
             visible: root.menuSource !== "folder" && root.visibleEntries.length > 0
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(root.visibleEntries.length * root.menuRowHeight, 480)
+            Layout.preferredHeight: Math.min(applicationColumn.implicitHeight, 480)
             ColumnLayout {
+                id: applicationColumn
                 width: applicationScroll.availableWidth
                 spacing: 0
                 Repeater {
@@ -294,10 +306,10 @@ PlasmoidItem {
                         required property var modelData
 
                         readonly property string applicationName:
-                            modelData.name
+                            modelData.isSeparator === true ? "" : modelData.name
 
                         readonly property string applicationIcon:
-                            modelData.icon
+                            modelData.isSeparator === true ? "" : modelData.icon
 
                         visible: modelData.available
 
@@ -305,10 +317,12 @@ PlasmoidItem {
                         Layout.minimumWidth: 0
                         Layout.maximumWidth: applicationScroll.availableWidth
 
-                        implicitHeight: root.menuRowHeight
-                        Layout.minimumHeight: root.menuRowHeight
-                        Layout.preferredHeight: root.menuRowHeight
-                        Layout.maximumHeight: root.menuRowHeight
+                        implicitHeight: root.entryHeight(modelData)
+                        Layout.minimumHeight: root.entryHeight(modelData)
+                        Layout.preferredHeight: root.entryHeight(modelData)
+                        Layout.maximumHeight: root.entryHeight(modelData)
+                        enabled: modelData.isSeparator !== true
+                        hoverEnabled: modelData.isSeparator !== true
 
                         text: applicationName
                         icon.name: IconOverrides.isFile(applicationIcon) ? "" : applicationIcon
@@ -319,7 +333,30 @@ PlasmoidItem {
                                                 : QQC2.AbstractButton.TextBesideIcon
                         contentItem: RowLayout {
                             spacing: launcherItem.spacing
+                            Rectangle {
+                                visible: launcherItem.modelData.isSeparator === true
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 1
+                                color: Kirigami.Theme.disabledTextColor
+                            }
+                            PlasmaComponents.Label {
+                                visible: launcherItem.modelData.isSeparator === true &&
+                                         !root.iconsOnly && text.length > 0
+                                text: launcherItem.modelData.name
+                                elide: Text.ElideRight
+                                opacity: 0.7
+                                font.bold: true
+                                Layout.maximumWidth: Math.max(0, launcherItem.width * 0.6)
+                            }
+                            Rectangle {
+                                visible: launcherItem.modelData.isSeparator === true &&
+                                         !root.iconsOnly && launcherItem.modelData.name.length > 0
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 1
+                                color: Kirigami.Theme.disabledTextColor
+                            }
                             ApplicationIcon {
+                                visible: launcherItem.modelData.isSeparator !== true
                                 source: launcherItem.applicationIcon
                                 Layout.preferredWidth: root.menuIconSize
                                 Layout.preferredHeight: root.menuIconSize
@@ -327,7 +364,7 @@ PlasmoidItem {
                                 Layout.fillWidth: root.iconsOnly
                             }
                             PlasmaComponents.Label {
-                                visible: !root.iconsOnly
+                                visible: !root.iconsOnly && launcherItem.modelData.isSeparator !== true
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
                                 text: launcherItem.applicationName
@@ -345,8 +382,8 @@ PlasmoidItem {
                                 launcherColumn.keyboardNavigation = false
                             } else if (launcherColumn.hoveredApplication === index) launcherColumn.hoveredApplication = -1
                         }
-                        hoverEnabled: true
-                        Accessible.name: applicationName || modelData.id
+                        Accessible.name: modelData.isSeparator === true
+                            ? i18n("Separator") : applicationName || modelData.id
 
                         StackToolTip {
                             id: applicationToolTip
@@ -362,7 +399,8 @@ PlasmoidItem {
                         // Consume only right-clicks; normal activation stays with the delegate.
                         MouseArea {
                             anchors.fill: parent
-                            enabled: launcherItem.modelData.actions.length > 0
+                            enabled: launcherItem.modelData.isSeparator !== true
+                                && launcherItem.modelData.actions.length > 0
                             acceptedButtons: Qt.RightButton
                             onClicked: {
                                 applicationToolTip.hideToolTip()
@@ -378,6 +416,7 @@ PlasmoidItem {
                         }
 
                         onClicked: {
+                            if (modelData.isSeparator === true) return
                             root.activationError = ""
                             if (launcher.activateEntry(modelData)) {
                                 root.expanded = false

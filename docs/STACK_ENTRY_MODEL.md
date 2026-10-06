@@ -126,3 +126,12 @@ nonmatching categories afterward. IDs are deduplicated in ranking order.
 Entries support desktop actions but never Remove from this stack. No document
 resources are queried. Each instance permits one in-flight query and rejects stale
 results when new options or Activity changes arrive.
+
+### Selected-application separators
+
+Separators are reserved `tlbstacks-separator:<number>[:<label>]` entries in the selected
+application order. They render as non-activatable dividers and are excluded from
+keyboard navigation. They are only interpreted as separators for the Selected
+Applications source; other sources do not expose this marker. An optional label
+(up to 64 characters, may contain colons) is drawn between two lines, like
+`--- Office ---`; it is hidden in icons-only mode.

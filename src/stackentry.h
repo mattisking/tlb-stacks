@@ -14,7 +14,7 @@ inline QVariantMap make(const QString &id, const QString &name, const QString &i
 {
     return {{"id", id}, {"name", name}, {"icon", icon}, {"source", source},
             {"action", action}, {"target", target}, {"available", available},
-            {"hasChildren", children},
+            {"hasChildren", children}, {"isSeparator", false},
             {"actions", removable ? QStringList{"removeFromStack"} : QStringList{}}};
 }
 inline QVariantMap applicationData(const QString &id, const QString &source, const QString &overrideIcon,

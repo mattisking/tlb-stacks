@@ -56,6 +56,15 @@ class Profiles(unittest.TestCase):
         self.assertEqual(result['applicationCategories'], ['Development', 'IDE'])
         self.assertIn('dynamic.app', result['applicationIcons'])
 
+    def test_selected_application_separators_roundtrip(self):
+        self.settings['applications'] = [
+            'test.editor', 'tlbstacks-separator:1', 'test.missing',
+            'tlbstacks-separator:2:Office: Suite', 'tlbstacks-separator:3:Büro — 办公 ✓',
+        ]
+        self.export()
+        result = profile.import_profile(dict(file=str(self.archive)))['settings']
+        self.assertEqual(result['applications'], self.settings['applications'])
+
     def test_invalid_categories(self):
         for value in ['Development', [''], ['IDE', 'IDE'], [42]]:
             with self.subTest(value=value), self.assertRaises(ValueError):

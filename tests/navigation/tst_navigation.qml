@@ -20,4 +20,11 @@ TestCase {
         compare(Navigation.nextIndex(0, 2, 2, true, 1), -1)
         compare(Navigation.nextIndex(2, 7, -1, true, -1), 1)
     }
+    function test_skipsUnselectableRows() {
+        const selectable = [true, false, true, false]
+        compare(Navigation.nextIndex(4, -1, -1, false, 1, selectable), 0)
+        compare(Navigation.nextIndex(4, 0, -1, true, 1, selectable), 2)
+        compare(Navigation.nextIndex(4, 2, -1, true, 1, selectable), 0)
+        compare(Navigation.nextIndex(4, -1, -1, false, 1, [false, false, false, false]), -1)
+    }
 }

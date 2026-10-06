@@ -351,6 +351,7 @@ private slots:
         QCOMPARE(selected.value("id").toString(), category.value("id").toString());
         QCOMPARE(selected.value("icon").toString(), QString("custom-icon"));
         QVERIFY(!selected.value("available").toBool());
+        QVERIFY(!selected.value("isSeparator").toBool());
         QVERIFY(selected.value("actions").toStringList().contains("removeFromStack"));
         QVERIFY(category.value("actions").toStringList().isEmpty());
         QTemporaryDir dir;

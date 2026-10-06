@@ -393,7 +393,21 @@ QVariantList Launcher::applicationEntries(const QStringList &ids, const QVariant
 {
     QVariantList entries;
     if (source != "applications" && source != "categories") return entries;
-    for (const auto &id : ids) entries.append(StackEntry::application(id, source, icons.value(id).toString()));
+    for (const auto &id : ids) {
+        const auto separatorPrefix = QStringLiteral("tlbstacks-separator:");
+        if (source == "applications" && id.startsWith(separatorPrefix)) {
+            // Format: tlbstacks-separator:<number>[:<label>]
+            const auto rest = id.mid(separatorPrefix.size());
+            const auto labelStart = rest.indexOf(':');
+            const auto label = labelStart < 0 ? QString() : rest.mid(labelStart + 1).trimmed();
+            auto entry = StackEntry::make(id, label, QString(), source, QString(), QString(),
+                                          true, false, false);
+            entry["isSeparator"] = true;
+            entries.append(entry);
+        } else {
+            entries.append(StackEntry::application(id, source, icons.value(id).toString()));
+        }
+    }
     return entries;
 }
 

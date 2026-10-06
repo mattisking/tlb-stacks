@@ -60,6 +60,7 @@ ColumnLayout {
     // Plasma supplies these from main.xml and commits edits on Apply/OK.
     property var cfg_applications: []
     property var cfg_applicationsDefault: []
+    readonly property string separatorPrefix: "tlbstacks-separator:"
 
     Launcher {
         id: launcher
@@ -193,10 +194,39 @@ ColumnLayout {
     }
 
     function refreshMissingApplications() {
-        root.missingApplications = Array.from(root.cfg_applications || []).filter(id => !launcher.exists(id))
+        root.missingApplications = Array.from(root.cfg_applications || [])
+            .filter(id => !root.isSeparator(id) && !launcher.exists(id))
     }
 
     onCfg_applicationsChanged: refreshMissingApplications()
+
+    function isSeparator(id) {
+        return typeof id === "string" && id.startsWith(root.separatorPrefix)
+    }
+
+    // Separator IDs are "tlbstacks-separator:<number>[:<label>]".
+    function separatorNumber(id) {
+        const rest = id.slice(root.separatorPrefix.length)
+        const colon = rest.indexOf(":")
+        return colon < 0 ? rest : rest.slice(0, colon)
+    }
+
+    function separatorLabel(id) {
+        const rest = id.slice(root.separatorPrefix.length)
+        const colon = rest.indexOf(":")
+        return colon < 0 ? "" : rest.slice(colon + 1)
+    }
+
+    function setSeparatorLabel(index, label) {
+        const next = Array.from(root.cfg_applications || [])
+        if (index < 0 || index >= next.length || !root.isSeparator(next[index])) return
+        const clean = label.trim().slice(0, 64)
+        const updated = root.separatorPrefix + root.separatorNumber(next[index]) +
+            (clean ? ":" + clean : "")
+        if (updated === next[index]) return
+        next[index] = updated
+        root.cfg_applications = next
+    }
 
     function chooseIcon(desktopId, fromFile) {
         root.iconTarget = desktopId
@@ -240,6 +270,19 @@ ColumnLayout {
         root.cfg_applications = next
         selectedApplications.currentIndex = destination
         selectedApplications.positionViewAtIndex(destination, ListView.Contain)
+    }
+
+    function insertSeparator() {
+        const next = Array.from(root.cfg_applications || [])
+        const used = new Set(next.filter(id => root.isSeparator(id)).map(id => root.separatorNumber(id)))
+        let number = 1
+        while (used.has(String(number))) number++
+        const index = selectedApplications.currentIndex >= 0
+            ? selectedApplications.currentIndex + 1 : next.length
+        next.splice(index, 0, root.separatorPrefix + number)
+        root.cfg_applications = next
+        selectedApplications.currentIndex = index
+        selectedApplications.positionViewAtIndex(index, ListView.Contain)
     }
 
     function loadApplications() {
@@ -552,20 +595,25 @@ ColumnLayout {
                         elide: Text.ElideRight
                     }
                     PlasmaComponents.ToolButton {
+                        icon.name: "insert-horizontal-rule"
+                        Accessible.name: i18n("Insert separator")
+                        onClicked: root.insertSeparator()
+                    }
+                    PlasmaComponents.ToolButton {
                         icon.name: "go-up"
-                        Accessible.name: i18n("Move selected application up")
+                        Accessible.name: i18n("Move selected item up")
                         enabled: selectedApplications.currentIndex > 0
                         onClicked: root.moveApplication(selectedApplications.currentIndex, -1)
                     }
                     PlasmaComponents.ToolButton {
                         icon.name: "go-down"
-                        Accessible.name: i18n("Move selected application down")
+                        Accessible.name: i18n("Move selected item down")
                         enabled: selectedApplications.currentIndex >= 0 && selectedApplications.currentIndex < selectedApplications.count - 1
                         onClicked: root.moveApplication(selectedApplications.currentIndex, 1)
                     }
                     PlasmaComponents.ToolButton {
                         icon.name: "list-remove"
-                        Accessible.name: i18n("Remove selected application")
+                        Accessible.name: i18n("Remove selected item")
                         enabled: selectedApplications.currentIndex >= 0 && selectedApplications.currentIndex < selectedApplications.count
                         onClicked: {
                             const index = selectedApplications.currentIndex
@@ -589,29 +637,60 @@ ColumnLayout {
                             id: selectedRow
                             required property int index
                             required property string modelData
+                            readonly property bool isSeparator: root.isSeparator(modelData)
                             width: ListView.view.width
                             highlighted: ListView.isCurrentItem
                             readonly property string applicationName: {
+                                if (isSeparator) return ""
                                 const revision = root.catalogRevision
                                 return launcher.name(modelData)
                             }
-                            Accessible.name: applicationName || modelData
+                            Accessible.name: isSeparator ? i18n("Separator")
+                                : applicationName || modelData
                             onClicked: { selectedApplications.currentIndex = index; forceActiveFocus() }
                             contentItem: RowLayout {
                                 ApplicationIcon {
                                     source: appIconButton.effectiveIcon
+                                    visible: !selectedRow.isSeparator
                                     Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
                                     Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
                                 }
                                 PlasmaComponents.Label {
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
+                                    visible: !selectedRow.isSeparator
                                     text: selectedRow.applicationName || selectedRow.modelData
                                     elide: Text.ElideRight
                                 }
+                                Rectangle {
+                                    visible: selectedRow.isSeparator
+                                    Layout.preferredWidth: Kirigami.Units.gridUnit * 2
+                                    Layout.preferredHeight: 1
+                                    color: Kirigami.Theme.disabledTextColor
+                                }
+                                QQC2.TextField {
+                                    visible: selectedRow.isSeparator
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    text: selectedRow.isSeparator ? root.separatorLabel(selectedRow.modelData) : ""
+                                    placeholderText: i18n("Separator label (optional)")
+                                    maximumLength: 64
+                                    horizontalAlignment: Text.AlignHCenter
+                                    Accessible.name: i18n("Separator label")
+                                    onActiveFocusChanged: if (activeFocus) selectedApplications.currentIndex = selectedRow.index
+                                    onEditingFinished: root.setSeparatorLabel(selectedRow.index, text)
+                                }
+                                Rectangle {
+                                    visible: selectedRow.isSeparator
+                                    Layout.preferredWidth: Kirigami.Units.gridUnit * 2
+                                    Layout.preferredHeight: 1
+                                    color: Kirigami.Theme.disabledTextColor
+                                }
                                 PlasmaComponents.Button {
                                     id: appIconButton
+                                    visible: !selectedRow.isSeparator
                                     readonly property string effectiveIcon: {
+                                        if (selectedRow.isSeparator) return ""
                                         const revision = root.catalogRevision
                                         return IconOverrides.get(root.applicationIcons, selectedRow.modelData) ||
                                             launcher.icon(selectedRow.modelData) || "application-x-executable"

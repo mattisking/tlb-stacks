@@ -3,11 +3,11 @@
 [Project guide](README.md) · [Feature tracker](FEATURE_TRACKER.md)
 
 
-**Original review:** October 3, 2026 · **Updated:** October 5, 2026 · **Scope:** functionality already implemented in individual TLBStacks stacks.
+**Original review:** October 3, 2026 · **Updated:** October 6, 2026 · **Scope:** functionality already implemented in individual TLBStacks stacks.
 
 ## Assessment
 
-We are on course for the original product's core purpose: a compact launcher that opens a personally arranged or dynamically populated menu. The current implementation captures that purpose with selected applications, live folders, application-category menus, custom icons, hover opening, cascades, and portable menu configuration.
+We are on course for the original product's core purpose: a compact launcher that opens a personally arranged or dynamically populated menu. The current implementation captures that purpose with selected applications (with titled separators), live folders, application-category menus, KDE Activity recent/frequent menus, custom icons, hover opening, cascades, and portable menu configuration.
 
 The meaningful differences are deliberate simplifications or consistency issues within existing behavior. They do not call for rebuilding the Windows application. Our most consequential decision is using different menu implementations at different depths: Plasma/QML at the root, native QMenu for folder cascades. That solved the pop-out problem, but it leaves presentation and update behavior uneven.
 
@@ -15,7 +15,7 @@ This review does not inventory unimplemented historical features or propose a pl
 
 ## Evidence and limits
 
-The original review used the working tree, including uncommitted changes. This update incorporates the asynchronous-source refactor, context actions, keyboard fixes, and user-reported Plasma testing through October 5. Source inspection, automated tests, and desktop confirmation are different evidence; see [testing and status](TESTING_AND_STATUS.md) for what has and has not been checked.
+The original review used the working tree, including uncommitted changes. This update incorporates the asynchronous-source refactor, context actions, keyboard fixes, and Activity-history source, Selected Applications separators, and user-reported Plasma testing through October 6. Source inspection, automated tests, and desktop confirmation are different evidence; see [testing and status](TESTING_AND_STATUS.md) for what has and has not been checked.
 
 Historical references point to [our historical inventory](TRUE_LAUNCH_BAR_WINDOWS_FEATURE_REFERENCE.md). **M** refers to the supplied manual's printed pages, as defined there. Its pictured build is v3.2.13 RC1; later historical features retain their separate release citations.
 
@@ -25,6 +25,8 @@ Historical references point to [our historical inventory](TRUE_LAUNCH_BAR_WINDOW
 |---|---|---|
 | One named, configurable panel button | ORG-01–03; M pp. 6–11 | Each Plasma widget owns its name, icon, settings, and popup. Several instances give separate menu buttons; Plasma manages their placement. This is a sound translation of individual TLB menu buttons into Plasma widgets, not a complete TLB toolbar. |
 | Selected-application stack | ORG-02, ORG-06; M pp. 7–9 | Stores ordered desktop application IDs. Search adds installed apps; the selected list removes and reorders them with Up/Down. This covers deliberate launcher organization. Using a settings editor instead of filesystem shortcuts is an intentional interaction/storage difference. |
+| Selected-application separators, optional titles | ORG-08; M pp. 51, 59–61 | Selected Applications can hold separator rows, each with an optional label drawn as a titled rule (`--- Office ---`). They are stored in the application order, so reorder, export and import work unchanged, and they are skipped by keyboard navigation. Icons-only mode shows the rule only. Collapsible groups, group Run All, group-aware sorting, column breaks and spacers (ORG-09–13) are not implemented; separators are visual dividers only. Categories, folders and Activity menus do not offer them. |
+| Recent/frequent stack (KDE Activity) | Section 12.1; M pp. 22, 62 | Ranks installed applications from KActivities::Stats for the current Activity by recency or frequency, with an item limit. This differs from TLB's Recently Accessed menu, which only tracks items launched through TLB; ours reflects KDE-wide usage and applications only (no documents). Removing entries from the history is not offered. |
 | Application activation | ORG-01; M p. 7 | KDE resolves application IDs and launches through ApplicationLauncherJob. The application remains responsible for its desktop metadata. This is the Linux equivalent of launching the represented shortcut, without copying Windows shortcut files. |
 | Live-folder stack | VF-01, VF-03–06; M pp. 10–11, 21 | Select a local directory, show files and subfolders, open files through KDE, and traverse folders as menus. Mounted locations can qualify as local paths; arbitrary remote URLs do not. This directly covers the core virtual-folder use case. |
 | Dynamic category stack | Historical dynamic-menu purpose; VF-10 is an analogy, not the same feature | Reads installed applications' real categories, includes matches from any selected category, removes duplicates, and sorts by name. Refreshes on KDE application-database changes and popup opening. This is a Linux-specific way to obtain a live menu; we should not label it an exact recreation of Windows shell search. |
@@ -77,7 +79,7 @@ identity, name, icon, action/target, availability, children, and context capabil
 Selected apps preserve order; categories compute membership; folders enumerate.
 See [the entry model](STACK_ENTRY_MODEL.md).
 
-Root selection/wrapping uses `MenuNavigation.js` across all three sources. Renderers
+Root selection/wrapping uses `MenuNavigation.js` across all four sources. Renderers
 retain focus and presentation responsibilities; native descendants still use QMenu.
 Keyboard previews open without taking selection, Right enters, and Left restores
 the parent. Mouse-to-keyboard and return-to-parent cases received desktop testing.

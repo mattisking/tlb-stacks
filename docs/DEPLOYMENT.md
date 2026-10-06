@@ -292,3 +292,8 @@ New widgets start with an empty name and no selected applications. The source
 default remains Selected Applications; choose a source and configure its content.
 Explicitly saved names and application lists are retained. Old widgets relying
 solely on the former implicit defaults also inherit the new empty defaults.
+
+Selected Applications supports separators inserted from the configuration
+editor. They share the ordered application list, can be moved or removed like
+other rows, can carry an optional label, and are included in profile exports. Live Folder, Application
+Categories, and Recent / frequent applications are unchanged.
