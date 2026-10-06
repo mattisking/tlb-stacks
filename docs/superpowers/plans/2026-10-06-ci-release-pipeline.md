@@ -373,6 +373,8 @@ jobs:
             python3 zip tar
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Mark workspace safe for git
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Build and run all test suites
         run: scripts/ci-run.sh
       - name: Assert versions and build release assets
