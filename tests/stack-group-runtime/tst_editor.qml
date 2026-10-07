@@ -5,6 +5,39 @@ import "../../package-group/contents/ui/GroupItems.js" as Items
 TestCase {
     name: "GroupStackEditor"
     Group.ConfigGeneral { id: editor; width: 800; height: 650 }
+    function test_member_selection_and_icon_edits_are_scoped() {
+        let items = Items.addStack(Items.addStack([]))
+        items = Items.updateStack(items, items[0].id, {applications: ["same.desktop", "tlbstacks-separator:1"]})
+        items = Items.updateStack(items, items[1].id, {applications: ["same.desktop"]})
+        editor.cfg_items = Items.encode(items)
+        editor.selectMember(0, "same.desktop")
+        verify(editor.memberSelected)
+        const stackId = editor.selectedStack.id
+        editor.pendingProfile = {id: 92, action: "manageIcon", targetId: stackId, memberId: "same.desktop"}
+        editor.selectMember(1, "same.desktop")
+        editor.finishProfile(92, {ok: true, icon: "folder"})
+        compare(editor.decoded.items[0].settings.applicationIcons["same.desktop"], "folder")
+        verify(!editor.decoded.items[1].settings.applicationIcons["same.desktop"])
+        editor.applyMemberIcon(stackId, "same.desktop", "")
+        verify(!editor.decoded.items[0].settings.applicationIcons["same.desktop"])
+        editor.selectedMemberId = ""
+        editor.selectMember(0, "tlbstacks-separator:1")
+        verify(!editor.memberSelected)
+        editor.selectMember(0, "same.desktop")
+        editor.expandedIds = ({[stackId]: true})
+        editor.toggleExpanded(stackId)
+        verify(!editor.memberSelected)
+        editor.selectMember(0, "same.desktop")
+        editor.updateStack({applications: []})
+        verify(!editor.memberSelected)
+        const before = editor.cfg_items
+        editor.applyMemberIcon(stackId, "same.desktop", "late-result")
+        compare(editor.cfg_items, before)
+        editor.updateStack({menuSource: "categories", applications: ["same.desktop"]})
+        editor.selectedMemberId = ""
+        editor.selectMember(0, "same.desktop")
+        verify(!editor.memberSelected)
+    }
     function test_launcher_appearance_is_staged_and_targets_identity() {
         editor.cfg_items = Items.encode(Items.add(Items.add([], "first.desktop"), "second.desktop"))
         editor.selectedIndex = 0

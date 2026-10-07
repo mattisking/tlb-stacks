@@ -382,3 +382,27 @@ navigation/schema checks and 7 icon fallback checks passed. The user accepted
 the feature and explicitly confirmed Reset on October 7, 2026. Individual archive
 and Cancel checks were not separately reported. Related-icon search is not planned;
 the user prefers the current Choose / Image / Reset controls.
+
+## Application rows in the editor tree
+
+Expand a Selected Applications stack and select an application row. Its right pane
+offers Choose icon, Image, Reset, and Back to stack contents. The breadcrumb also
+returns to the owning stack. Edits use the existing per-stack applicationIcons map
+and managed image storage; no schema or archive changes are required. Group-level
+move/remove buttons are disabled during child selection to avoid accidentally
+removing the whole stack. Existing Contents row controls remain available.
+
+Category/activity/folder summaries and separators remain non-editable tree rows.
+Collapsing the parent or selecting another top-level item leaves child editing.
+Icon results target both stack ID and desktop ID, and are ignored if that member
+no longer belongs to the selected-applications source.
+
+Test: select an application in an expanded stack, change and reset its icon, and
+verify another stack containing the same app stays unchanged. Check Back, clicking
+the parent, switching stacks, collapse, Apply/Cancel and export/import using the
+existing profile controls. These checks remain a regression checklist.
+
+The user accepted this increment on October 7, 2026, explicitly confirming icon
+change and Reset. The group runtime suite passed all 27 tests, including scoped
+member edits and delayed icon results. Other desktop checklist cases were not
+separately reported.

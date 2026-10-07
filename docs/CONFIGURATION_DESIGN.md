@@ -62,5 +62,5 @@ Stack Groups.
 
 Direct-launcher label/icon appearance is implemented and desktop-accepted; see
 [Stack Groups](STACK_GROUPS.md#direct-launcher-appearance).
-Selectable tree child editing, inherited group defaults, and drag reordering remain
-separate future increments.
+Selectable application rows in the group tree were accepted on October 7, 2026;
+the user confirmed icon changes and Reset. Inherited group defaults and drag reordering remain future increments.

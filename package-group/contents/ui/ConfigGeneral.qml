@@ -16,19 +16,21 @@ ColumnLayout {
     enabled: !launcher.profileBusy
     property var pendingProfile: null
     property string profileMessage: ""
-    function startProfile(action, request, targetId) {
+    function startProfile(action, request, targetId, memberId) {
         if (launcher.profileBusy) return
-        pendingProfile = {id: launcher.profileOperation(action, request), action: action, targetId: targetId || ""}
+        pendingProfile = {id: launcher.profileOperation(action, request), action: action, targetId: targetId || "", memberId: memberId || ""}
         profileMessage = i18n("Working… Please wait before applying changes.")
     }
     function finishProfile(requestId, result) {
         if (!pendingProfile || pendingProfile.id !== requestId) return
         const action = pendingProfile.action
         const targetId = pendingProfile.targetId
+        const memberId = pendingProfile.memberId || ""
         pendingProfile = null
         if (!result.ok) { profileMessage = result.error; return }
         if (action === "manageIcon") {
-            updateLauncherAppearance(targetId, {icon: result.icon})
+            if (memberId) applyMemberIcon(targetId, memberId, result.icon)
+            else updateLauncherAppearance(targetId, {icon: result.icon})
             profileMessage = ""
             return
         }
@@ -36,6 +38,7 @@ ColumnLayout {
             profileMessage = i18n("Exported with custom images and portable folder references.")
             return
         }
+        selectedMemberId = ""
         if (result.kind === "group") {
             const encoded = GroupItems.encode(result.group.items)
             if (GroupItems.decode(encoded).error) {
@@ -91,6 +94,35 @@ ColumnLayout {
     // Selection: -1 shows the group page; >= 0 shows that item's page. Adds
     // route through the add menu's dialogs, so -1 never means "adding".
     property int selectedIndex: -1
+    property string selectedMemberId: ""
+    property string selectedMemberStackId: ""
+    onSelectedIndexChanged: selectedMemberId = ""
+    readonly property bool memberSelected: !!selectedStack && selectedStack.id === selectedMemberStackId
+        && selectedStack.settings.menuSource === "applications" && selectedMemberId.length > 0
+        && !StackMembers.isSeparator(selectedMemberId) && selectedStack.settings.applications.includes(selectedMemberId)
+    function selectMember(index, desktopId) {
+        const item = decoded.items[index]
+        if (!item || item.type !== "stack" || item.settings.menuSource !== "applications"
+            || StackMembers.isSeparator(desktopId) || !item.settings.applications.includes(desktopId)) return
+        selectedIndex = index
+        selectedMemberStackId = item.id
+        selectedMemberId = desktopId
+    }
+    function applyMemberIcon(stackId, desktopId, icon) {
+        const item = decoded.items.find(entry => entry.id === stackId && entry.type === "stack")
+        if (!item || item.settings.menuSource !== "applications" || !item.settings.applications.includes(desktopId)) return
+        const icons = Object.assign({}, item.settings.applicationIcons || {})
+        if (icon) icons[desktopId] = icon
+        else delete icons[desktopId]
+        cfg_items = GroupItems.encode(GroupItems.updateStack(decoded.items, stackId, {applicationIcons: icons}))
+    }
+    function chooseMemberIcon(fromFile) {
+        if (!memberSelected) return
+        launcherIconTarget = selectedStack.id
+        iconTargetMember = selectedMemberId
+        if (fromFile) launcherImageDialog.open()
+        else { launcherIconDialog.title = i18n("Choose an application icon"); launcherIconDialog.open() }
+    }
     readonly property var selectedItem: decoded.items[selectedIndex] || null
     readonly property var selectedStack: selectedItem && selectedItem.type === "stack" ? selectedItem : null
     readonly property string selectedSource: selectedStack ? selectedStack.settings.menuSource : ""
@@ -126,9 +158,11 @@ ColumnLayout {
         return item.icon || (catalog.find(app => app.desktopId === item.desktopId) || {}).icon || "application-x-executable"
     }
     property string launcherIconTarget: ""
+    property string iconTargetMember: ""
     function chooseLauncherIcon(fromFile) {
         if (!selectedItem || selectedItem.type !== "application") return
         launcherIconTarget = selectedItem.id
+        iconTargetMember = ""
         if (fromFile) launcherImageDialog.open()
         else {
             launcherIconDialog.title = i18n("Choose a launcher icon")
@@ -137,14 +171,14 @@ ColumnLayout {
     }
     IconThemes.IconDialog {
         id: launcherIconDialog
-        onIconNameChanged: if (iconName.length) root.startProfile("manageIcon", {icon: iconName}, root.launcherIconTarget)
+        onIconNameChanged: if (iconName.length) root.startProfile("manageIcon", {icon: iconName}, root.launcherIconTarget, root.iconTargetMember)
     }
     Dialogs.FileDialog {
         id: launcherImageDialog
         title: i18n("Choose a launcher image")
         fileMode: Dialogs.FileDialog.OpenFile
         nameFilters: [i18n("Icon images (*.png *.svg *.svgz *.jpg *.jpeg *.webp *.ico)")]
-        onAccepted: root.startProfile("manageIcon", {icon: selectedFile.toString()}, root.launcherIconTarget)
+        onAccepted: root.startProfile("manageIcon", {icon: selectedFile.toString()}, root.launcherIconTarget, root.iconTargetMember)
     }
     function moveSelected(step) {
         const index = selectedIndex
@@ -156,7 +190,12 @@ ColumnLayout {
         if (!selectedItem || selectedItem.type !== "application" || decoded.error) return
         cfg_items = GroupItems.encode(GroupItems.replaceLauncher(decoded.items, selectedItem.id, desktopId))
     }
-    function toggleExpanded(id) { const next = Object.assign({}, expandedIds); next[id] = !next[id]; expandedIds = next }
+    function toggleExpanded(id) {
+        const next = Object.assign({}, expandedIds)
+        next[id] = !next[id]
+        expandedIds = next
+        if (!next[id] && selectedMemberStackId === id) selectedMemberId = ""
+    }
     function summaryOf(item) {
         if (item.type !== "stack") return []
         const s = item.settings
@@ -267,7 +306,7 @@ ColumnLayout {
             text: modelData.type === "stack"
                 ? (modelData.settings.groupName || i18n("Stack")) : root.launcherLabel(modelData)
             highlighted: root.selectedIndex === stripCell.index
-            onClicked: root.selectedIndex = stripCell.index
+            onClicked: { root.selectedMemberId = ""; root.selectedIndex = stripCell.index }
             Accessible.name: stripCell.text
             PlasmaComponents.ToolTip {
                 text: stripCell.text
@@ -330,9 +369,9 @@ ColumnLayout {
                             icon.name: IconOverrides.isFile(itemIcon) ? "" : itemIcon
                             icon.source: IconOverrides.isFile(itemIcon) ? itemIcon : ""
                             icon.color: "transparent"
-                            highlighted: root.selectedIndex === treeRow.index
+                            highlighted: root.selectedIndex === treeRow.index && !root.memberSelected
                             rightPadding: expandChevron.implicitWidth + Kirigami.Units.smallSpacing * 2
-                            onClicked: { root.selectedIndex = treeRow.index; itemTree.forceActiveFocus() }
+                            onClicked: { root.selectedMemberId = ""; root.selectedIndex = treeRow.index; itemTree.forceActiveFocus() }
 
                             PlasmaComponents.ToolButton {
                                 id: expandChevron
@@ -346,18 +385,25 @@ ColumnLayout {
                             }
                         }
 
-                        // Summary rows are plain labels (selectable child rows
-                        // are a deferred increment); no click handlers here.
                         Repeater {
                             model: itemRow.isStack && root.expandedIds[treeRow.modelData.id]
                                 ? root.summaryOf(treeRow.modelData) : []
-                            PlasmaComponents.Label {
+                            PlasmaComponents.ItemDelegate {
+                                id: memberRow
+                                objectName: "member-" + treeRow.modelData.id + "-" + desktopId
                                 required property string modelData
-                                Layout.leftMargin: Kirigami.Units.gridUnit * 2
+                                required property int index
+                                readonly property string desktopId: treeRow.modelData.settings.menuSource === "applications"
+                                    ? treeRow.modelData.settings.applications[index] : ""
+                                readonly property bool selectable: desktopId.length > 0 && !StackMembers.isSeparator(desktopId)
                                 Layout.fillWidth: true
-                                opacity: 0.7
-                                elide: Text.ElideRight
+                                leftPadding: Kirigami.Units.gridUnit * 2
                                 text: modelData
+                                enabled: selectable
+                                highlighted: root.memberSelected && root.selectedMemberStackId === treeRow.modelData.id
+                                    && root.selectedMemberId === desktopId
+                                onClicked: root.selectMember(treeRow.index, desktopId)
+                                Accessible.name: modelData
                             }
                         }
                     }
@@ -384,19 +430,19 @@ ColumnLayout {
                 PlasmaComponents.ToolButton {
                     icon.name: "go-up"
                     Accessible.name: i18n("Move up")
-                    enabled: root.selectedIndex > 0
+                    enabled: !root.memberSelected && root.selectedIndex > 0
                     onClicked: root.moveSelected(-1)
                 }
                 PlasmaComponents.ToolButton {
                     icon.name: "go-down"
                     Accessible.name: i18n("Move down")
-                    enabled: root.selectedIndex >= 0 && root.selectedIndex < root.decoded.items.length - 1
+                    enabled: !root.memberSelected && root.selectedIndex >= 0 && root.selectedIndex < root.decoded.items.length - 1
                     onClicked: root.moveSelected(1)
                 }
                 PlasmaComponents.ToolButton {
                     icon.name: "list-remove"
                     Accessible.name: i18n("Remove selected item")
-                    enabled: root.selectedIndex >= 0 && root.selectedIndex < root.decoded.items.length
+                    enabled: !root.memberSelected && root.selectedIndex >= 0 && root.selectedIndex < root.decoded.items.length
                     onClicked: {
                         const index = root.selectedIndex
                         root.cfg_items = GroupItems.encode(GroupItems.remove(root.decoded.items, index))
@@ -467,10 +513,12 @@ ColumnLayout {
                 text: {
                     const groupName = root.escapeHtml(root.cfg_groupName || i18n("Group"))
                     return root.selectedIndex >= 0 && root.selectedItem
-                        ? "<a href='group'>" + groupName + "</a>  ›  " + root.escapeHtml(root.selectedItemName)
+                        ? "<a href='group'>" + groupName + "</a>  ›  " + (root.memberSelected
+                            ? "<a href='stack'>" + root.escapeHtml(root.selectedItemName) + "</a>  ›  " + root.escapeHtml(root.nameFor(root.selectedMemberId))
+                            : root.escapeHtml(root.selectedItemName))
                         : groupName
                 }
-                onLinkActivated: root.selectedIndex = -1
+                onLinkActivated: link => { root.selectedMemberId = ""; if (link !== "stack") root.selectedIndex = -1 }
             }
 
             // Group page / launcher page / stack page. The stack page embeds
@@ -480,7 +528,7 @@ ColumnLayout {
                 Layout.fillHeight: true
                 Layout.leftMargin: Kirigami.Units.largeSpacing
                 Layout.rightMargin: Kirigami.Units.largeSpacing
-                currentIndex: root.selectedIndex < 0 ? 0
+                currentIndex: root.memberSelected ? 3 : root.selectedIndex < 0 ? 0
                     : root.selectedItem && root.selectedItem.type === "application" ? 1
                     : root.selectedItem && root.selectedItem.type === "stack" ? 2 : 0
 
@@ -550,6 +598,44 @@ ColumnLayout {
                     launcher: launcher
                     stackIconDefault: "applications-all"
                     onSettingsEdited: changes => root.updateStack(changes)
+                }
+                ColumnLayout {
+                    Layout.alignment: Qt.AlignTop
+                    spacing: Kirigami.Units.largeSpacing
+                    PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        text: root.memberSelected ? root.nameFor(root.selectedMemberId) : ""
+                        textFormat: Text.PlainText
+                        font.bold: true
+                        wrapMode: Text.WordWrap
+                    }
+                    RowLayout {
+                        ApplicationIcon {
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                            source: root.memberSelected ? IconOverrides.get(root.selectedStack.settings.applicationIcons || {}, root.selectedMemberId)
+                                || launcher.icon(root.selectedMemberId) || "application-x-executable" : ""
+                            fallbackSource: root.memberSelected ? launcher.icon(root.selectedMemberId) || "application-x-executable" : ""
+                            sourceAvailable: launcher.themeIconAvailable(source)
+                        }
+                        PlasmaComponents.Button { text: i18n("Choose icon…"); onClicked: root.chooseMemberIcon(false) }
+                        PlasmaComponents.Button { text: i18n("Image…"); onClicked: root.chooseMemberIcon(true) }
+                        PlasmaComponents.Button {
+                            text: i18n("Reset")
+                            enabled: root.memberSelected && !!IconOverrides.get(root.selectedStack.settings.applicationIcons || {}, root.selectedMemberId)
+                            onClicked: root.applyMemberIcon(root.selectedStack.id, root.selectedMemberId, "")
+                        }
+                    }
+                    PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: i18n("This icon applies only to this application in this stack.")
+                    }
+                    PlasmaComponents.Button {
+                        text: i18n("Back to stack contents")
+                        onClicked: root.selectedMemberId = ""
+                    }
+                    Item { Layout.fillHeight: true }
                 }
             }
         }
