@@ -90,4 +90,19 @@ TestCase {
             verify(GroupItems.decode(raw).error)
         }
     }
+    function test_replace_launcher_keeps_id_and_position_and_blocks_duplicates() {
+        let items = GroupItems.add([], "one.desktop")
+        items = GroupItems.add(items, "two.desktop")
+        const replaced = GroupItems.replaceLauncher(items, "item-1", "three.desktop")
+        compare(replaced.length, 2)
+        compare(replaced[0].id, "item-1")
+        compare(replaced[0].desktopId, "three.desktop")
+        // Same app stays valid and unchanged.
+        compare(GroupItems.replaceLauncher(replaced, "item-1", "three.desktop"), replaced)
+        // Duplicate rejection: item-2 already owns two.desktop.
+        compare(GroupItems.replaceLauncher(replaced, "item-1", "two.desktop"), replaced)
+        // Unknown ids pass through.
+        compare(GroupItems.replaceLauncher(replaced, "missing", "x.desktop"), replaced)
+        verify(!GroupItems.decode(GroupItems.encode(replaced)).error)
+    }
 }

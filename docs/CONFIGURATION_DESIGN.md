@@ -3,8 +3,12 @@
 [Project guide](README.md) · [Stack Groups](STACK_GROUPS.md) · [Feature tracker](FEATURE_TRACKER.md#f-015)
 
 Recorded October 7, 2026 after reviewing the user's prototype QML and sampled
-frames from their recording. This is a design reference, not implemented behavior.
-The user is also developing this design separately; coordinate before replacing it.
+frames from their recording. The user is also developing this design separately;
+coordinate before replacing it. Step 2 of the delivery order (the shared editor
+structure over existing settings) is now implemented on the `shared-stack-editor`
+branch — see [Stack Groups](STACK_GROUPS.md#shared-stack-editor-rebuild-branch-shared-stack-editor)
+for what shipped and what is deferred. The remaining sections stay a design
+reference for the deferred increments.
 
 ## Reference material
 
@@ -47,8 +51,26 @@ not the project's current storage contract and should not replace it wholesale.
 
 1. Fix the group-button right-click versus hover-open conflict first. The user
    confirmed selection handoff works but needs repeated attempts to open its menu.
+   **Still pending:** this fix is uncommitted work in the main checkout awaiting
+   desktop verification. It was not ported to the `shared-stack-editor` branch;
+   its groupSelection per-item handoff consumption block and test must be
+   re-wired into the rebuilt group host layout when it lands (expect textual
+   overlap in `package-group/contents/ui/ConfigGeneral.qml` and
+   `src/CMakeLists.txt`).
 2. Introduce the editor structure over existing settings without losing features.
-3. Add selectable child editing and inherited defaults as separate testable changes.
+   **Delivered** on the `shared-stack-editor` branch (October 7, 2026): a shared
+   `StackSettingsEditor` (kind segments, Contents/Appearance tabs, all four
+   source pages, icon chooser via `manageIcon`), a search-on-add
+   `AppPickerDialog`, `CategoryChipBar` chips, shared separator helpers, the
+   group host rebuilt around a preview strip, item tree, breadcrumb and
+   resizable split view, and the standalone host rebuilt around the same editor.
+   Schemas, both hosts' `cfg_*` contracts, Apply/Cancel staging and import/export
+   are unchanged. Desktop verification is pending; nothing is merged yet.
+3. Add selectable child editing and inherited defaults as separate testable
+   changes. **Still planned.** Selectable tree child rows, inherited group
+   defaults (`-1` values), a group-level panel icon config key, launcher
+   label/icon overrides and drag reordering were explicitly deferred from the
+   step-2 delivery.
 
 At this checkpoint the configuration shortcut and hover fix are uncommitted pending
 retest. Do not report step 6 fully accepted or start replacing the configuration

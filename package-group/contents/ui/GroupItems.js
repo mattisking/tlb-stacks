@@ -106,3 +106,8 @@ function appendImportedStack(items, settings) {
     if (next.length === items.length) return items
     return updateStack(next, next[next.length - 1].id, sourceDefaults(settings))
 }
+function replaceLauncher(items, id, desktopId) {
+    if (!desktopId || !items.some(item => item.id === id && item.type === "application")) return items
+    if (items.some(item => item.type === "application" && item.desktopId === desktopId && item.id !== id)) return items
+    return items.map(item => item.id === id ? Object.assign({}, item, {desktopId: desktopId}) : item)
+}
