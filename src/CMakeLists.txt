@@ -8,6 +8,8 @@ set_source_files_properties("../package/contents/ui/CategoryChipBar.qml" PROPERT
     QT_RESOURCE_ALIAS "CategoryChipBar.qml" QT_QML_SKIP_CACHEGEN TRUE)
 set_source_files_properties("../package/contents/ui/AppPickerDialog.qml" PROPERTIES
     QT_RESOURCE_ALIAS "AppPickerDialog.qml" QT_QML_SKIP_CACHEGEN TRUE)
+set_source_files_properties("../package/contents/ui/StackSettingsEditor.qml" PROPERTIES
+    QT_RESOURCE_ALIAS "StackSettingsEditor.qml" QT_QML_SKIP_CACHEGEN TRUE)
 # One source of application-menu behavior, available to both widget packages.
 set_source_files_properties("../package/contents/ui/ApplicationMenu.qml" PROPERTIES
     QT_RESOURCE_ALIAS "ApplicationMenu.qml" QT_QML_SKIP_CACHEGEN TRUE)
@@ -36,6 +38,7 @@ qt_add_qml_module(tlbstacksplugin
         ../package/contents/ui/StackMembers.js
         ../package/contents/ui/CategoryChipBar.qml
         ../package/contents/ui/AppPickerDialog.qml
+        ../package/contents/ui/StackSettingsEditor.qml
         ../package/contents/ui/ApplicationMenu.qml
         ../package/contents/ui/ApplicationIcon.qml
         ../package/contents/ui/StackToolTip.qml
