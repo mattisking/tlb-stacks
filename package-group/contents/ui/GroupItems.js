@@ -5,7 +5,7 @@
 function decode(value) {
     try {
         const data = JSON.parse(value)
-        if (!data || ![1, 2].includes(data.version) || !Array.isArray(data.items) || data.items.length > 500)
+        if (!data || ![1, 2, 3].includes(data.version) || !Array.isArray(data.items) || data.items.length > 500)
             throw new Error("Unsupported group format")
         const ids = new Set()
         for (const item of data.items) {
@@ -13,9 +13,9 @@ function decode(value) {
                 throw new Error("Invalid entry identity")
             if (item.type === "application") {
                 if (typeof item.desktopId !== "string" || !item.desktopId) throw new Error("Invalid application")
-            } else if (item.type === "stack" && data.version === 2) {
+            } else if (item.type === "stack" && data.version >= 2) {
                 const cfg = item.settings
-                if (!cfg || cfg.menuSource !== "applications" || typeof cfg.groupName !== "string"
+                if (!cfg || !(data.version === 2 ? ["applications"] : ["applications", "categories", "activity", "folder"]).includes(cfg.menuSource) || typeof cfg.groupName !== "string"
                     || typeof cfg.groupIcon !== "string" || !Array.isArray(cfg.applications)
                     || cfg.applications.some(id => typeof id !== "string" || !id)
                     || new Set(cfg.applications).size !== cfg.applications.length
@@ -23,15 +23,34 @@ function decode(value) {
                     || !Number.isInteger(cfg.menuIconSize) || cfg.menuIconSize < 16 || cfg.menuIconSize > 64
                     || !Number.isInteger(cfg.hoverDelay) || cfg.hoverDelay < 0 || cfg.hoverDelay > 2000)
                     throw new Error("Invalid stack")
+                const settings = sourceDefaults(cfg)
+                if (!Array.isArray(settings.applicationCategories)
+                    || settings.applicationCategories.some(value => typeof value !== "string" || !value)
+                    || new Set(settings.applicationCategories).size !== settings.applicationCategories.length
+                    || !["recent", "frequent"].includes(settings.activityOrder)
+                    || !Number.isInteger(settings.activityLimit) || settings.activityLimit < 1 || settings.activityLimit > 50
+                    || typeof settings.activityCurrent !== "boolean"
+                    || typeof settings.folderUrl !== "string" || typeof settings.folderFilters !== "string"
+                    || (settings.folderUrl && !settings.folderUrl.startsWith("file:///") && !settings.folderUrl.startsWith("/")))
+                    throw new Error("Invalid source settings")
             } else throw new Error("Unsupported entry type")
             ids.add(item.id)
         }
-        return {items: data.items, error: false}
+        return {items: data.items.map(item => item.type === "stack"
+            ? Object.assign({}, item, {settings: sourceDefaults(item.settings)}) : item), error: false}
     } catch (error) {
         return {items: [], error: true}
     }
 }
-function encode(items) { return JSON.stringify({version: items.some(item => item.type === "stack") ? 2 : 1, items: items}) }
+function sourceDefaults(settings) {
+    return Object.assign({applicationCategories: [], activityOrder: "recent", activityLimit: 10,
+        activityCurrent: false, folderUrl: "", folderFilters: "*"}, settings)
+}
+function encode(items) {
+    const version = items.some(item => item.type === "stack" && item.settings.menuSource !== "applications") ? 3
+        : items.some(item => item.type === "stack") ? 2 : 1
+    return JSON.stringify({version: version, items: items})
+}
 function add(items, desktopId) {
     if (!desktopId || items.length >= 500 || items.some(item => item.desktopId === desktopId)) return items
     let number = 1

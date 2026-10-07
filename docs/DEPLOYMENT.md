@@ -315,19 +315,20 @@ Categories, and Recent / frequent applications are unchanged.
 ## Experimental Stack Group
 
 [Stack Groups](STACK_GROUPS.md) is a separately identified experimental widget.
-Step 3 supports direct application launchers and Selected Applications stacks.
+Step 4 supports direct launchers and all four stack sources: Selected Applications,
+Categories, Recent/Frequent Applications, and local Live Folder.
 Install it alongside the existing widget from PowerShell:
 
 ```powershell
 ./install.ps1 -WithGroup
 ```
 
-Then add **TLBStacks Group** through Plasma's widget chooser. Name it and add launchers or Selected Applications stacks through its
+Then add **TLBStacks Group** through Plasma's widget chooser. Name it and add launchers or stacks through its
 configuration window. The switch can be combined with `-NoRestart`; restart Plasma
 before testing updated code. Subsequent group updates also require `-WithGroup`.
 Omitting the switch does not remove an already installed group.
 
 The group is not included in normal release binaries yet. Explicit CMake staging
 can include it with `-DTLB_INSTALL_GROUP=ON`; its metadata version must match the
-project version. Follow the [step-3 desktop checklist](STACK_GROUPS.md#step-3-desktop-test)
-before proceeding to additional stack sources.
+project version. Follow the [step-4 desktop checklist](STACK_GROUPS.md#step-4-desktop-test)
+before proceeding to group import/export.

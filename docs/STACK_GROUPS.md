@@ -29,7 +29,7 @@ a completed checkpoint after acceptance. No automatic migration of existing widg
 
 ## Current checkpoint and resume notes
 
-**Step 3 accepted after popup-height correction; separator editor added for follow-up testing.**
+**Step 4 checkpointed; step 5 import/export is next.**
 
 The user reported “looks good. Works. icons all work.” after installing step 2.
 This confirms the reported launcher/icon behavior; it does not independently
@@ -38,8 +38,9 @@ certify every optional orientation and keyboard check below.
 - Package: `package-group`, ID `com.mattphilmon.tlbstacks.group`.
 - Settings: `General/groupName` and `General/items`. Each instance has independent
   Plasma configuration. `items` is JSON `{version, items: [...]}`. Launcher-only groups retain version 1;
-  groups containing stacks write version 2. Both read here; older group widgets
-  reject version 2 rather than dropping stacks. Application entries have `id`,
+  Selected Applications stacks use version 2, and groups with Categories, Activity
+  or Live Folder use version 3. Versions 1–3 read here; older widgets reject
+  newer formats rather than dropping unsupported stacks. Application entries have `id`,
   `type: "application"`, and `desktopId`; stacks have `id`, `type: "stack"`, and
   a `settings` object. IDs survive reordering.
 - The editor stages all edits in cfg properties. The panel only reads saved
@@ -58,8 +59,15 @@ certify every optional orientation and keyboard check below.
 - The list/detail editor adds stacks, names/icons, icons-only mode, size, hover delay,
   application membership and ordering. Separators can be appended, labeled, reordered and removed with stack members.
   Per-application custom icon editing is not yet exposed in this group editor.
-- Other sources, custom commands and group import/export are not implemented.
-  Next: address step-3 desktop issues before step 4's additional sources.
+- Categories, Recent/Frequent and local Live Folder are now selectable. Category
+  matching reuses the shared helper; each activity button owns its own ActivitySource
+  cache and refreshes on opening. Folder rendering reuses FolderMenu, including its
+  native cascades, filtering, Trash actions and keyboard behavior.
+- Switching sources preserves inactive settings. Live Folder always displays labels.
+  Folder heights are remembered in memory per stack/path/filter/size; a new session
+  can show a loading size until its first listing completes.
+- Custom commands and group import/export remain future work. Next: address step-4
+  desktop feedback before step 5's group transport.
 - Developer installation stays opt-in via `-WithGroup`; normal releases exclude it.
 
 Validation: group entry tests run in the existing CI navigation suite. Static QML
@@ -73,7 +81,41 @@ The group dialog main item had a width but no explicit height. `GroupStackConten
 now supplies actual content-driven height (capped at 480 px for the scrolling list),
 computed from entries before delegates settle. Runtime tests cover long-to-short
 switching and icons-only sizing. The user confirmed the sizing fix and expected Selected Applications behavior.
-Separator controls were subsequently added; their desktop check remains outstanding.
+The user subsequently confirmed that the separator controls work.
+
+Step-4 feedback: category search was restored in the group editor, preserving
+hidden selections. Recent hover lag was traced to refresh work occurring before
+the popup was shown. The group now displays cached results first and schedules a
+refresh afterward; ActivitySource caches application eligibility until categories
+or the installed catalog change and only notifies entry bindings when results
+actually change. Each activity stack retains its independent query/results.
+The user reports that Recent responsiveness now works well. Grouped Live Folder
+cascades/dismissal have not been explicitly confirmed; keep those checks pending.
+
+## Step 4 desktop test
+
+Install with `./install.ps1 -WithGroup`, then select a stack in group configuration.
+The type selector now offers Selected Applications, Application Categories,
+Recent / Frequent Applications, and Live Folder.
+
+1. Categories: select one or more categories, Apply, and compare membership with a
+   standalone category stack. Desktop actions should appear where applications
+   provide them; computed entries must not offer Remove from stack.
+2. Activity: create Recent and Frequent stacks with different limits/category
+   filters. Switch between them; each should keep its own query/results. Check
+   current/all Activities and empty/unavailable history messages.
+3. Folder: choose a local test folder, set patterns, and open nested subfolders.
+   Check root sizing, Right/Left, Escape, pointer return and outside-click dismissal.
+   Only use disposable files to verify root/submenu Move to Trash; confirm in Trash.
+4. Change a stack's source and change it back. Its applications, categories, query
+   settings and folder selection should survive. Check Cancel versus Apply.
+5. Restart Plasma and check all source settings. Verify direct launchers and
+   existing Selected Applications stacks still work alongside the new types.
+
+Automated checks passed: native build, 15 navigation/schema checks and 15 offscreen
+runtime checks including source-setting retention and real local-folder enumeration.
+These do not establish desktop placement, native popup grab behavior, or Activities
+service results; the checks above remain pending.
 
 ## Step 3 desktop test
 

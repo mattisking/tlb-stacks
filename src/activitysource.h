@@ -2,12 +2,14 @@
 #include <QObject>
 #include <QVariantList>
 #include <QStringList>
+#include <QHash>
+#include <QVariantMap>
 #include <PlasmaActivities/Consumer>
 
 // Read-only, on-demand snapshot. Never records usage or changes privacy settings.
 class ActivitySource : public QObject {
     Q_OBJECT
-    Q_PROPERTY(QVariantList entries READ entries NOTIFY changed)
+    Q_PROPERTY(QVariantList entries READ entries NOTIFY entriesChanged)
     Q_PROPERTY(bool loading READ loading NOTIFY changed)
     Q_PROPERTY(QString message READ message NOTIFY changed)
 public:
@@ -18,8 +20,12 @@ public:
     Q_INVOKABLE void refresh(bool frequent, int limit, const QStringList &categories, bool currentActivity);
 Q_SIGNALS:
     void changed();
+    void entriesChanged();
 private:
     void start();
+    void setEntries(const QVariantList &entries);
+    QHash<QString, QVariantMap> m_eligible;
+    bool m_eligibleDirty = true;
     KActivities::Consumer m_consumer;
     QVariantList m_entries;
     QString m_message;

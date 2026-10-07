@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import QtQuick.Dialogs as Dialogs
 import org.kde.kirigami as Kirigami
 import org.kde.iconthemes as IconThemes
 import org.kde.plasma.components as PlasmaComponents
@@ -21,6 +22,24 @@ ColumnLayout {
     property int selectedIndex: -1
     readonly property var selectedItem: decoded.items[selectedIndex] || null
     readonly property var selectedStack: selectedItem && selectedItem.type === "stack" ? selectedItem : null
+    readonly property string selectedSource: selectedStack ? selectedStack.settings.menuSource : ""
+    readonly property var categoryNames: ApplicationCategories.available(catalog,
+        selectedStack ? selectedStack.settings.applicationCategories : [])
+    property string folderError: ""
+    Dialogs.FolderDialog {
+        id: folderPicker
+        property string targetId: ""
+        title: i18n("Choose a local folder")
+        onAccepted: {
+            const url = selectedFolder.toString()
+            if (!url.startsWith("file:///")) {
+                root.folderError = i18n("Live Folder currently supports local folders only.")
+                return
+            }
+            root.folderError = ""
+            root.cfg_items = GroupItems.encode(GroupItems.updateStack(root.decoded.items, targetId, {folderUrl: url}))
+        }
+    }
     function updateStack(changes) {
         if (selectedStack) cfg_items = GroupItems.encode(GroupItems.updateStack(decoded.items, selectedStack.id, changes))
     }
@@ -92,6 +111,7 @@ ColumnLayout {
             Layout.minimumWidth: 0
             PlasmaComponents.Label { text: i18n("Items in panel order"); font.bold: true }
             PlasmaComponents.ScrollView {
+                visible: !root.selectedStack || root.selectedSource === "applications"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.minimumHeight: 220
@@ -168,8 +188,18 @@ ColumnLayout {
             PlasmaComponents.Label {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                text: root.selectedStack ? i18n("Selected Applications stack") : i18n("Add a direct application launcher")
+                text: root.selectedStack ? i18n("Stack settings") : i18n("Add a direct application launcher")
                 font.bold: true
+            }
+            PlasmaComponents.ComboBox {
+                Layout.fillWidth: true
+                visible: root.selectedStack !== null
+                Accessible.name: i18n("Stack type")
+                readonly property var sources: ["applications", "categories", "activity", "folder"]
+                model: [i18n("Selected Applications"), i18n("Application Categories"),
+                    i18n("Recent / Frequent Applications"), i18n("Live Folder")]
+                currentIndex: Math.max(0, sources.indexOf(root.selectedSource))
+                onActivated: root.updateStack({menuSource: sources[currentIndex]})
             }
             PlasmaComponents.TextField {
                 Layout.fillWidth: true
@@ -187,7 +217,8 @@ ColumnLayout {
                 }
                 PlasmaComponents.CheckBox {
                     text: i18n("Icons only")
-                    checked: root.selectedStack ? root.selectedStack.settings.iconsOnly : false
+                    enabled: root.selectedSource !== "folder"
+                    checked: root.selectedStack && root.selectedSource !== "folder" ? root.selectedStack.settings.iconsOnly : false
                     onToggled: root.updateStack({iconsOnly: checked})
                 }
             }
@@ -206,15 +237,112 @@ ColumnLayout {
                     onValueModified: root.updateStack({hoverDelay: value})
                 }
             }
+            RowLayout {
+                visible: root.selectedSource === "activity"
+                PlasmaComponents.ComboBox {
+                    Accessible.name: i18n("Activity order")
+                    model: [i18n("Most recent"), i18n("Most frequent")]
+                    currentIndex: root.selectedStack && root.selectedStack.settings.activityOrder === "frequent" ? 1 : 0
+                    onActivated: root.updateStack({activityOrder: currentIndex === 1 ? "frequent" : "recent"})
+                }
+                PlasmaComponents.Label { text: i18n("Limit:") }
+                QQC2.SpinBox {
+                    from: 1; to: 50
+                    value: root.selectedStack ? root.selectedStack.settings.activityLimit : 10
+                    onValueModified: root.updateStack({activityLimit: value})
+                }
+            }
+            PlasmaComponents.CheckBox {
+                visible: root.selectedSource === "activity"
+                text: i18n("Current Activity only")
+                checked: root.selectedStack ? root.selectedStack.settings.activityCurrent : false
+                onToggled: root.updateStack({activityCurrent: checked})
+            }
+            PlasmaComponents.Label {
+                visible: root.selectedSource === "categories" || root.selectedSource === "activity"
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: root.selectedSource === "activity" ? i18n("Optional categories (none means all applications):")
+                    : i18n("Match any selected category:")
+            }
+            PlasmaComponents.TextField {
+                id: categorySearch
+                objectName: "categorySearch"
+                visible: root.selectedSource === "categories" || root.selectedSource === "activity"
+                Layout.fillWidth: true
+                placeholderText: i18n("Filter categories…")
+                Accessible.name: i18n("Filter categories")
+                clearButtonShown: true
+                Keys.onReturnPressed: event => { event.accepted = true }
+                Keys.onEnterPressed: event => { event.accepted = true }
+            }
+            PlasmaComponents.ScrollView {
+                visible: root.selectedSource === "categories" || root.selectedSource === "activity"
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.minimumHeight: 180
+                contentWidth: availableWidth
+                QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+                ListView {
+                    clip: true
+                    objectName: "categoryList"
+                    model: root.categoryNames.filter(value => value.toLowerCase().includes(categorySearch.text.toLowerCase()))
+                    delegate: PlasmaComponents.CheckDelegate {
+                        required property string modelData
+                        width: ListView.view.width
+                        text: modelData
+                        checked: root.selectedStack ? root.selectedStack.settings.applicationCategories.includes(modelData) : false
+                        onToggled: {
+                            if (!root.selectedStack) return
+                            const next = root.selectedStack.settings.applicationCategories.filter(value => value !== modelData)
+                            if (checked) next.push(modelData)
+                            root.updateStack({applicationCategories: next})
+                        }
+                    }
+                }
+            }
+            ColumnLayout {
+                visible: root.selectedSource === "folder"
+                Layout.fillWidth: true
+                RowLayout {
+                    Layout.fillWidth: true
+                    PlasmaComponents.Button {
+                        text: i18n("Choose folder…")
+                        onClicked: { folderPicker.targetId = root.selectedStack.id; folderPicker.open() }
+                    }
+                    PlasmaComponents.TextField {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        implicitWidth: 0
+                        readOnly: true
+                        text: root.selectedStack ? root.selectedStack.settings.folderUrl : ""
+                        placeholderText: i18n("No folder selected")
+                    }
+                }
+                PlasmaComponents.TextField {
+                    Layout.fillWidth: true
+                    Accessible.name: i18n("File patterns")
+                    placeholderText: i18n("File patterns, for example *.pdf;*.docx")
+                    text: root.selectedStack ? root.selectedStack.settings.folderFilters : "*"
+                    onTextEdited: root.updateStack({folderFilters: text})
+                    Keys.onReturnPressed: event => { event.accepted = true }
+                    Keys.onEnterPressed: event => { event.accepted = true }
+                }
+                PlasmaComponents.Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: root.folderError || i18n("Separate patterns with semicolons. Subfolders are always shown. Live Folder uses icons and text.")
+                }
+            }
             PlasmaComponents.Button {
-                visible: root.selectedStack !== null
+                visible: root.selectedSource === "applications"
                 text: i18n("Add separator")
                 icon.name: "list-add"
                 enabled: root.selectedStack && root.selectedStack.settings.applications.length < 2000
                 onClicked: root.updateStack({applications: GroupItems.appendSeparator(root.selectedStack.settings.applications)})
             }
             PlasmaComponents.ScrollView {
-                visible: root.selectedStack !== null
+                visible: root.selectedSource === "applications"
                 Layout.fillWidth: true
                 Layout.preferredHeight: 140
                 contentWidth: availableWidth
@@ -272,6 +400,7 @@ ColumnLayout {
             }
             PlasmaComponents.TextField {
                 id: search
+                visible: !root.selectedStack || root.selectedSource === "applications"
                 Layout.fillWidth: true
                 placeholderText: i18n("Search applications…")
                 clearButtonShown: true
@@ -279,6 +408,7 @@ ColumnLayout {
                 Keys.onEnterPressed: event => { event.accepted = true }
             }
             PlasmaComponents.ScrollView {
+                visible: !root.selectedStack || root.selectedSource === "applications"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.minimumHeight: 220

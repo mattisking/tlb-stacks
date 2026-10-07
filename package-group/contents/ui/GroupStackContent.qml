@@ -12,6 +12,14 @@ ColumnLayout {
     property int iconSize: 22
     property bool popupOpen: false
     property string errorText: ""
+    property string menuSource: "applications"
+    property string folderUrl: ""
+    property string folderFilters: "*"
+    property int hoverDelay: 250
+    property string emptyText: i18n("Add applications in group configuration.")
+    property real initialFolderHeight: 80
+    signal folderHeightReady(real height)
+    readonly property bool isFolder: menuSource === "folder"
     signal dismissRequested()
     signal activating()
     signal activated()
@@ -20,21 +28,47 @@ ColumnLayout {
     // only a layout's implicit size. Compute from entries before delegates settle.
     readonly property real rowsHeight: entries.reduce((total, entry) => total + menu.entryHeight(entry), 0)
     readonly property real requestedHeight: Math.max(40,
-        (entries.length ? Math.min(rowsHeight, 480) : emptyNotice.implicitHeight)
+        (isFolder ? (folderLoader.item ? folderLoader.item.preferredMenuHeight : initialFolderHeight)
+            : entries.length ? Math.min(rowsHeight, 480) : emptyNotice.implicitHeight)
         + (errorText.length ? errorNotice.implicitHeight : 0))
-    width: iconsOnly ? Math.max(40, iconSize + 16) : 260
+    width: iconsOnly && !isFolder ? Math.max(40, iconSize + 16) : 260
     height: requestedHeight
     Layout.minimumHeight: requestedHeight
     Layout.maximumHeight: requestedHeight
     spacing: 0
-    function resetSelection() { menu.resetSelection() }
+    function resetSelection() {
+        if (isFolder) {
+            if (folderLoader.item && popupOpen) folderLoader.item.forceActiveFocus()
+        } else menu.resetSelection()
+    }
     Keys.onEscapePressed: dismissRequested()
     Keys.onLeftPressed: dismissRequested()
+    Loader {
+        id: folderLoader
+        active: content.isFolder
+        visible: active
+        Layout.fillWidth: true
+        Layout.minimumHeight: item ? item.preferredMenuHeight : content.initialFolderHeight
+        Layout.maximumHeight: Layout.minimumHeight
+        sourceComponent: FolderMenu {
+            folderUrl: content.folderUrl
+            filters: content.folderFilters
+            iconsOnly: false
+            iconSize: content.iconSize
+            rowHeight: Math.max(40, content.iconSize + 16)
+            menuWidth: content.width
+            hoverDelay: content.hoverDelay
+            popupOpen: content.popupOpen
+            initialMenuHeight: content.initialFolderHeight
+            onListingHeightReady: height => content.folderHeightReady(height)
+            onDismissRequested: content.dismissRequested()
+        }
+    }
     PlasmaComponents.Label {
         id: emptyNotice
         Layout.fillWidth: true
-        visible: content.entries.length === 0
-        text: i18n("Add applications in group configuration.")
+        visible: !content.isFolder && content.entries.length === 0
+        text: content.emptyText
         wrapMode: Text.WordWrap
     }
     PlasmaComponents.Label {
@@ -51,7 +85,7 @@ ColumnLayout {
         iconsOnly: content.iconsOnly
         iconSize: content.iconSize
         popupOpen: content.popupOpen
-        visible: content.entries.length > 0
+        visible: !content.isFolder && content.entries.length > 0
         Layout.minimumHeight: Math.min(content.rowsHeight, 480)
         Layout.maximumHeight: Math.min(content.rowsHeight, 480)
         onActivating: content.activating()

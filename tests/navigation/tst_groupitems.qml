@@ -36,8 +36,31 @@ TestCase {
         verify(!restored.error)
         compare(restored.items[1].settings.groupName, "Tools")
         compare(restored.items[1].settings.applications[0], "editor.desktop")
-        const invalid = GroupItems.updateStack(changed, changed[1].id, {menuSource: "folder"})
+        const invalid = GroupItems.updateStack(changed, changed[1].id, {menuSource: "unsupported"})
         verify(GroupItems.decode(GroupItems.encode(invalid)).error)
+    }
+    function test_sources_roundtrip_and_old_defaults() {
+        let items = GroupItems.addStack([])
+        const id = items[0].id
+        compare(GroupItems.decode(GroupItems.encode(items)).items[0].settings.activityLimit, 10)
+        for (const source of ["categories", "activity", "folder"]) {
+            items = GroupItems.updateStack(items, id, {menuSource: source,
+                applicationCategories: ["Development"], activityOrder: "frequent", activityLimit: 7,
+                activityCurrent: true, folderUrl: "file:///tmp/tools", folderFilters: "*.pdf;*.txt"})
+            const encoded = GroupItems.encode(items)
+            compare(JSON.parse(encoded).version, 3)
+            const decoded = GroupItems.decode(encoded)
+            verify(!decoded.error)
+            compare(decoded.items[0].settings.menuSource, source)
+            compare(decoded.items[0].settings.activityLimit, 7)
+            compare(decoded.items[0].settings.folderFilters, "*.pdf;*.txt")
+        }
+        for (const change of [{activityLimit: 0}, {activityLimit: 51}, {activityCurrent: "yes"},
+                              {applicationCategories: ["IDE", "IDE"]}, {folderUrl: "smb://server/share"}]) {
+            verify(GroupItems.decode(GroupItems.encode(GroupItems.updateStack(items, id, change))).error)
+        }
+        items = GroupItems.updateStack(items, id, {menuSource: "applications"})
+        compare(GroupItems.decode(GroupItems.encode(items)).items[0].settings.folderUrl, "file:///tmp/tools")
     }
     function test_separator_labels_identity_and_roundtrip() {
         let apps = GroupItems.appendSeparator(["editor.desktop"])
@@ -52,7 +75,7 @@ TestCase {
         compare(GroupItems.renameSeparator(apps, apps[1], "")[1], id)
     }
     function test_future_and_malformed_settings_preserved_as_error() {
-        for (const raw of ["bad", '{"version":3,"items":[]}',
+        for (const raw of ["bad", '{"version":4,"items":[]}',
                            '{"version":1,"items":[{"id":"a","type":"stack"}]}',
                            '{"version":1,"items":[{"id":"a","type":"application","desktopId":"x"},{"id":"a","type":"application","desktopId":"y"}]}']) {
             verify(GroupItems.decode(raw).error)

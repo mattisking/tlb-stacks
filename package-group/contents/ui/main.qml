@@ -18,15 +18,36 @@ PlasmoidItem {
     readonly property string displayName: Plasmoid.configuration.groupName || i18n("TLBStacks Group")
     readonly property var decoded: GroupItems.decode(Plasmoid.configuration.items)
     property int catalogRevision: 0
+    property var catalog: []
+    property var folderHeights: ({})
+    Component.onCompleted: catalog = launcher.applications()
+    readonly property string folderHeightKey: activeStack ? JSON.stringify([activeStack.id,
+        activeStack.settings.folderUrl, activeStack.settings.folderFilters, activeStack.settings.menuIconSize]) : ""
     property string launchError: ""
     property string activeStackId: ""
     property var activeButton: null
     readonly property var activeStack: decoded.items.find(item => item.id === activeStackId && item.type === "stack") || null
     readonly property var stackEntries: {
         const revision = catalogRevision
-        return activeStack ? launcher.applicationEntries(activeStack.settings.applications, {}, "applications")
-            .filter(entry => entry.available) : []
+        if (!activeStack) return []
+        const cfg = activeStack.settings
+        if (cfg.menuSource === "folder") return []
+        if (cfg.menuSource === "activity") return activeButton ? activeButton.activityEntries : []
+        const ids = cfg.menuSource === "categories"
+            ? ApplicationCategories.matching(catalog, cfg.applicationCategories).map(app => app.desktopId)
+            : cfg.applications
+        return launcher.applicationEntries(ids, {}, cfg.menuSource).filter(entry => entry.available)
     }
+    readonly property string stackNotice: {
+        if (!activeStack) return ""
+        const cfg = activeStack.settings
+        if (cfg.menuSource === "activity") return activeButton && activeButton.activityLoading
+            ? i18n("Loading usage history…") : activeButton ? activeButton.activityMessage : ""
+        if (cfg.menuSource === "categories") return cfg.applicationCategories.length
+            ? i18n("No matching applications.") : i18n("Choose categories in configuration.")
+        return i18n("Add applications in group configuration.")
+    }
+
     onDecodedChanged: {
         if (stackPopup) stackPopup.visible = false
     }
@@ -35,13 +56,23 @@ PlasmoidItem {
             stackPopup.visible = false
             return
         }
+        if (stackPopup.visible && activeStackId === button.modelData.id) return
+        stackPopup.visible = false
         launcher.closeApplicationContextMenu()
         launcher.invalidateActivations()
         launchError = ""
         activeButton = button
         activeStackId = button.modelData.id
         stackPopup.visible = true
+        activityRefresh.restart()
         Qt.callLater(() => { if (stackPopup.visible) stackMenu.resetSelection() })
+    }
+    Timer {
+        id: activityRefresh
+        interval: 50
+        onTriggered: {
+            if (stackPopup.visible && root.activeButton) root.activeButton.refreshActivity()
+        }
     }
     PlasmaCore.Dialog {
         id: stackPopup
@@ -52,6 +83,7 @@ PlasmoidItem {
         hideOnWindowDeactivate: true
         onVisibleChanged: {
             if (!visible) {
+                activityRefresh.stop()
                 launcher.closeApplicationContextMenu()
                 if (root.activeButton) root.activeButton.forceActiveFocus()
                 root.activeStackId = ""
@@ -65,6 +97,15 @@ PlasmoidItem {
             iconSize: root.activeStack ? root.activeStack.settings.menuIconSize : 22
             popupOpen: stackPopup.visible
             errorText: root.launchError
+            menuSource: root.activeStack ? root.activeStack.settings.menuSource : "applications"
+            folderUrl: root.activeStack ? root.activeStack.settings.folderUrl : ""
+            folderFilters: root.activeStack ? root.activeStack.settings.folderFilters : "*"
+            hoverDelay: root.activeStack ? root.activeStack.settings.hoverDelay : 250
+            emptyText: root.stackNotice
+            initialFolderHeight: root.folderHeights[root.folderHeightKey] || Math.max(40, iconSize + 16) * 2
+            onFolderHeightReady: height => {
+                root.folderHeights = Object.assign({}, root.folderHeights, {[root.folderHeightKey]: height})
+            }
             onDismissRequested: stackPopup.visible = false
             onActivating: root.launchError = ""
             onActivated: stackPopup.visible = false
@@ -79,10 +120,10 @@ PlasmoidItem {
 
     Launcher {
         id: launcher
-        onApplicationsChanged: root.catalogRevision++
+        onApplicationsChanged: { root.catalogRevision++; root.catalog = launcher.applications() }
         onActivationFailed: message => { root.launchError = message }
         onRemoveApplicationRequested: desktopId => {
-            if (!root.activeStack) return
+            if (!root.activeStack || root.activeStack.settings.menuSource !== "applications") return
             const items = GroupItems.updateStack(root.decoded.items, root.activeStackId, {
                 applications: root.activeStack.settings.applications.filter(id => id !== desktopId)
             })
@@ -126,6 +167,24 @@ PlasmoidItem {
                     id: button
                     required property var modelData
                     required property int index
+                    readonly property bool activityStack: modelData.type === "stack" && modelData.settings.menuSource === "activity"
+                    readonly property var activityEntries: activityLoader.item ? activityLoader.item.entries : []
+                    readonly property bool activityLoading: activityLoader.item ? activityLoader.item.loading : false
+                    readonly property string activityMessage: activityLoader.item ? activityLoader.item.message : ""
+                    readonly property string activityKey: activityStack ? JSON.stringify(modelData.settings) : ""
+                    onActivityKeyChanged: refreshActivity()
+                    function refreshActivity() {
+                        if (!activityStack || !activityLoader.item) return
+                        const cfg = modelData.settings
+                        activityLoader.item.refresh(cfg.activityOrder === "frequent", cfg.activityLimit,
+                            cfg.applicationCategories, cfg.activityCurrent)
+                    }
+                    Loader {
+                        id: activityLoader
+                        active: button.activityStack
+                        sourceComponent: ActivitySource {}
+                        onLoaded: button.refreshActivity()
+                    }
                     readonly property string appName: {
                         const revision = root.catalogRevision
                         return modelData.type === "stack" ? modelData.settings.groupName || i18n("Stack")
