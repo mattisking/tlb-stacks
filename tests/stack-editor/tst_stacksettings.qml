@@ -20,8 +20,9 @@ Rectangle {
         // below need that loop to observe prior operations' state.
         onSettingsEdited: changes => settings = Object.assign({}, settings, changes)
         catalog: [
-            {desktopId: "code.desktop", name: "Visual Studio Code", icon: "code"},
-            {desktopId: "dolphin.desktop", name: "Dolphin", icon: "system-file-manager"},
+            {desktopId: "code.desktop", name: "Visual Studio Code", icon: "code", categories: ["Development"]},
+            {desktopId: "dolphin.desktop", name: "Dolphin", icon: "system-file-manager", categories: ["FileManager"]},
+            {desktopId: "konversation.desktop", name: "Konversation", icon: "konversation", categories: ["Network"]},
             {desktopId: "gone.desktop", name: "Gone", icon: "gone"}
         ]
     }
@@ -169,6 +170,21 @@ Rectangle {
             compare(spy2.signalArguments[3][0].activityLimit, 20)
             editor.setField("activityCurrent", true)
             compare(spy2.signalArguments[4][0].activityCurrent, true)
+        }
+        // User feedback: the categories selection's effect was invisible —
+        // "It doesn't show me the applications I chose based on the
+        // categories I selected". The page must carry a read-only
+        // matching-applications preview (objectName "matchingList") whose
+        // count tracks the selection. test_05 left ["Network"] selected and
+        // the categories page current.
+        function test_07_matching_preview_tracks_selection() {
+            editor.toggleCategory("Development", true)
+            const list = findChild(editor, "matchingList")
+            verify(list !== null)
+            compare(list.count, 2)   // Visual Studio Code (Development) + Konversation (Network)
+            editor.toggleCategory("Network", false)
+            editor.toggleCategory("Development", false)
+            compare(list.count, 0)
         }
     }
 }

@@ -90,6 +90,10 @@ ColumnLayout {
     function matchesCount() {
         return ApplicationCategories.matching(catalog, settings.applicationCategories || []).length
     }
+    // Preview model for the category-filter pages: what the selection would
+    // actually pull in. The panel renders the real results; this is the
+    // editor's read-only preview of them.
+    readonly property var categoryMatches: ApplicationCategories.matching(catalog, settings.applicationCategories || [])
 
     // ---- icon flow (Choose… / Image… / Reset, per existing single-host behavior)
     property string iconTarget: ""   // "" = the stack icon; otherwise a desktopId
@@ -164,6 +168,61 @@ ColumnLayout {
             } else {
                 root.folderError = ""
                 root.setField("folderUrl", url)
+            }
+        }
+    }
+
+    // ---- matching-applications preview (shared by the category-filter pages)
+    // Read-only preview of the applications the selected categories match —
+    // user feedback: the selection's effect was invisible. Plain
+    // ItemDelegates with icon + name and NO add/remove affordances: the
+    // panel renders results, this preview must look read-only. Data comes in
+    // through properties (same in/data-out pattern as CategoryChipBar) so
+    // the component stays presentational. `activityMode` swaps the
+    // zero-selection hint to the all-applications-eligible wording.
+    component MatchingPreview: ColumnLayout {
+        id: preview
+        property bool activityMode: false
+        property var matches: []
+        property var selectedCategories: []
+        spacing: Kirigami.Units.smallSpacing
+
+        PlasmaComponents.Label {
+            Layout.fillWidth: true
+            text: preview.matches.length > 0
+                ? i18nc("%1 is a number of applications", "Matching applications (%1)", preview.matches.length)
+                : i18n("Matching applications")
+            font.bold: true
+            elide: Text.ElideRight
+        }
+        PlasmaComponents.Label {
+            Layout.fillWidth: true
+            visible: preview.matches.length === 0
+            wrapMode: Text.WordWrap
+            opacity: 0.7
+            text: preview.selectedCategories.length === 0
+                ? (preview.activityMode
+                    ? i18n("All applications are eligible. Open the stack to see usage-ranked results.")
+                    : i18n("Select at least one category."))
+                : i18n("No installed applications match these categories.")
+        }
+        PlasmaComponents.ScrollView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.minimumHeight: Kirigami.Units.gridUnit * 6
+            contentWidth: availableWidth
+            QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+            ListView {
+                id: matchingList
+                objectName: "matchingList"
+                clip: true
+                model: preview.matches
+                delegate: PlasmaComponents.ItemDelegate {
+                    required property var modelData
+                    width: ListView.view.width
+                    text: modelData.name
+                    icon.name: modelData.icon || "application-x-executable"
+                }
             }
         }
     }
@@ -383,8 +442,10 @@ ColumnLayout {
                 }
             }
 
-            // Categories: filterable chip cloud; matches are a read-only count
-            // (results render in the panel, never edited here).
+            // Categories: filterable chips (selected ones lead and are never
+            // filtered out) with the read-only matching-applications preview
+            // stacked below — both stay visible together in the tabbed
+            // inspector, no interaction needed to see the selection's effect.
             ColumnLayout {
                 spacing: Kirigami.Units.smallSpacing
                 PlasmaComponents.Label {
@@ -394,18 +455,18 @@ ColumnLayout {
                 }
                 CategoryChipBar {
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
                     categories: ApplicationCategories.available(root.catalog, root.settings.applicationCategories)
                     // `|| []`: settings may be the editor's own empty default
                     // ({}), whose applicationCategories is undefined.
                     selected: root.settings.applicationCategories || []
-                    // Zero selected is this page's empty state: the actionable
-                    // old-host hint, not a bare "Matches 0 applications"
-                    // (ApplicationCategories.matching yields [] for no filter).
-                    caption: (root.settings.applicationCategories || []).length === 0
-                        ? i18n("Select at least one category.")
-                        : i18nc("%1 is a number of applications", "Matches %1 applications. Results are shown in the panel, not editable here.", root.matchesCount())
                     onCategoryToggled: (name, on) => root.toggleCategory(name, on)
+                }
+                MatchingPreview {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    matches: root.categoryMatches
+                    // `|| []` per the bar's note above.
+                    selectedCategories: root.settings.applicationCategories || []
                 }
             }
 
@@ -445,18 +506,19 @@ ColumnLayout {
                 }
                 CategoryChipBar {
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
                     categories: ApplicationCategories.available(root.catalog, root.settings.applicationCategories)
                     // `|| []`: settings may be the editor's own empty default
                     // ({}), whose applicationCategories is undefined.
                     selected: root.settings.applicationCategories || []
-                    // With no category filter every application is eligible,
-                    // so a "Matches 0" caption would be wrong here; this
-                    // mirrors the old single host's zero-selected wording.
-                    caption: (root.settings.applicationCategories || []).length === 0
-                        ? i18n("All applications are eligible. Results are shown in the panel, not editable here.")
-                        : i18nc("%1 is a number of applications", "Matches %1 applications. Results are shown in the panel, not editable here.", root.matchesCount())
                     onCategoryToggled: (name, on) => root.toggleCategory(name, on)
+                }
+                MatchingPreview {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    activityMode: true
+                    matches: root.categoryMatches
+                    // `|| []` per the bar's note above.
+                    selectedCategories: root.settings.applicationCategories || []
                 }
                 PlasmaComponents.Label {
                     Layout.fillWidth: true
