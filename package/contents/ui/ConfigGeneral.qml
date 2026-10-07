@@ -60,7 +60,6 @@ ColumnLayout {
     // Plasma supplies these from main.xml and commits edits on Apply/OK.
     property var cfg_applications: []
     property var cfg_applicationsDefault: []
-    readonly property string separatorPrefix: "tlbstacks-separator:"
 
     Launcher {
         id: launcher
@@ -197,34 +196,15 @@ ColumnLayout {
 
     function refreshMissingApplications() {
         root.missingApplications = Array.from(root.cfg_applications || [])
-            .filter(id => !root.isSeparator(id) && !launcher.exists(id))
+            .filter(id => !StackMembers.isSeparator(id) && !launcher.exists(id))
     }
 
     onCfg_applicationsChanged: refreshMissingApplications()
 
-    function isSeparator(id) {
-        return typeof id === "string" && id.startsWith(root.separatorPrefix)
-    }
-
-    // Separator IDs are "tlbstacks-separator:<number>[:<label>]".
-    function separatorNumber(id) {
-        const rest = id.slice(root.separatorPrefix.length)
-        const colon = rest.indexOf(":")
-        return colon < 0 ? rest : rest.slice(0, colon)
-    }
-
-    function separatorLabel(id) {
-        const rest = id.slice(root.separatorPrefix.length)
-        const colon = rest.indexOf(":")
-        return colon < 0 ? "" : rest.slice(colon + 1)
-    }
-
     function setSeparatorLabel(index, label) {
         const next = Array.from(root.cfg_applications || [])
-        if (index < 0 || index >= next.length || !root.isSeparator(next[index])) return
-        const clean = label.trim().slice(0, 64)
-        const updated = root.separatorPrefix + root.separatorNumber(next[index]) +
-            (clean ? ":" + clean : "")
+        if (index < 0 || index >= next.length || !StackMembers.isSeparator(next[index])) return
+        const updated = StackMembers.renameSeparator([next[index]], next[index], label)[0]
         if (updated === next[index]) return
         next[index] = updated
         root.cfg_applications = next
@@ -276,12 +256,11 @@ ColumnLayout {
 
     function insertSeparator() {
         const next = Array.from(root.cfg_applications || [])
-        const used = new Set(next.filter(id => root.isSeparator(id)).map(id => root.separatorNumber(id)))
-        let number = 1
-        while (used.has(String(number))) number++
+        const appended = StackMembers.appendSeparator(next)
+        if (appended.length === next.length) return
         const index = selectedApplications.currentIndex >= 0
             ? selectedApplications.currentIndex + 1 : next.length
-        next.splice(index, 0, root.separatorPrefix + number)
+        next.splice(index, 0, appended[appended.length - 1])
         root.cfg_applications = next
         selectedApplications.currentIndex = index
         selectedApplications.positionViewAtIndex(index, ListView.Contain)
@@ -639,7 +618,7 @@ ColumnLayout {
                             id: selectedRow
                             required property int index
                             required property string modelData
-                            readonly property bool isSeparator: root.isSeparator(modelData)
+                            readonly property bool isSeparator: StackMembers.isSeparator(modelData)
                             width: ListView.view.width
                             highlighted: ListView.isCurrentItem
                             readonly property string applicationName: {
@@ -679,7 +658,7 @@ ColumnLayout {
                                     visible: selectedRow.isSeparator
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
-                                    text: selectedRow.isSeparator ? root.separatorLabel(selectedRow.modelData) : ""
+                                    text: selectedRow.isSeparator ? StackMembers.separatorLabel(selectedRow.modelData) : ""
                                     placeholderText: i18n("Separator label (optional)")
                                     maximumLength: 64
                                     horizontalAlignment: Text.AlignHCenter

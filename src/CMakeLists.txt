@@ -2,6 +2,8 @@ set_source_files_properties("../package/contents/ui/FolderMenu.qml" PROPERTIES
     QT_RESOURCE_ALIAS "FolderMenu.qml" QT_QML_SKIP_CACHEGEN TRUE)
 set_source_files_properties("../package/contents/ui/ApplicationCategories.js" PROPERTIES
     QT_RESOURCE_ALIAS "ApplicationCategories.js" QT_QML_SKIP_CACHEGEN TRUE)
+set_source_files_properties("../package/contents/ui/StackMembers.js" PROPERTIES
+    QT_RESOURCE_ALIAS "StackMembers.js" QT_QML_SKIP_CACHEGEN TRUE)
 # One source of application-menu behavior, available to both widget packages.
 set_source_files_properties("../package/contents/ui/ApplicationMenu.qml" PROPERTIES
     QT_RESOURCE_ALIAS "ApplicationMenu.qml" QT_QML_SKIP_CACHEGEN TRUE)
@@ -27,6 +29,7 @@ qt_add_qml_module(tlbstacksplugin
     QML_FILES
         ../package/contents/ui/FolderMenu.qml
         ../package/contents/ui/ApplicationCategories.js
+        ../package/contents/ui/StackMembers.js
         ../package/contents/ui/ApplicationMenu.qml
         ../package/contents/ui/ApplicationIcon.qml
         ../package/contents/ui/StackToolTip.qml
