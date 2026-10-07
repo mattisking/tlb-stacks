@@ -3,6 +3,7 @@ import QtTest
 import com.mattphilmon.tlbstacks
 
 Rectangle {
+    id: scene
     width: 760; height: 560
     StackSettingsEditor {
         id: editor
@@ -185,6 +186,82 @@ Rectangle {
             editor.toggleCategory("Network", false)
             editor.toggleCategory("Development", false)
             compare(list.count, 0)
+        }
+        // Regression (user desktop report): the wrapped chip area and the
+        // matching preview rendered on top of each other — the preview
+        // covered roughly half the chips. Geometry guard: at fixed sizes,
+        // with enough categories to force multi-row wrapping, the chip
+        // area's reserved cell must fit the wrapped content and the preview
+        // must start below that content — on the categories page (tight
+        // squeeze regime and comfortable width) and on the activity page.
+        function test_08_geometry_chips_and_preview_do_not_overlap() {
+            editor.setKind("categories")
+            editor.catalog = Array.from({length: 16}, (unused, i) => ({
+                desktopId: "geom" + i + ".desktop", name: "Geometry app " + i,
+                icon: "x", categories: ["Category " + (i + 1)]}))
+            // Narrow and short: label + wrapped chips + preview minimum
+            // cannot all fit — the squeeze regime that produced the
+            // reported overlap.
+            scene.width = 320; scene.height = 420
+            wait(80)
+            verifyNoChipPreviewOverlap()
+            // Comfortable width: same invariants must hold.
+            scene.width = 760; scene.height = 560
+            wait(80)
+            verifyNoChipPreviewOverlap()
+            // Activity page: the same components under the options form.
+            editor.setKind("activity")
+            scene.width = 760; scene.height = 700
+            wait(80)
+            verifyNoChipPreviewOverlap()
+            // Restore the shared scene and the page for later test cases.
+            scene.width = 760; scene.height = 560
+            editor.setKind("categories")
+            wait(80)
+        }
+        function verifyNoChipPreviewOverlap() {
+            const flow = findVisibleNamed(editor, "chipFlow")
+            verify(flow !== null)
+            // Multi-row wrap actually happened — a single-row pass could
+            // hide the bug.
+            const aChip = findVisibleNamed(editor, "chip-Category 1")
+            verify(aChip !== null)
+            verify(flow.implicitHeight > aChip.height * 1.5)
+            // The reserved cell fits the wrapped chips…
+            verify(flow.height + 0.5 >= flow.implicitHeight)
+            // …and the preview starts below the chip content, not over it.
+            const preview = findVisibleNamed(editor, "matchingPreview")
+            verify(preview !== null)
+            const flowTop = flow.mapToItem(editor, 0, 0).y
+            verify(preview.mapToItem(editor, 0, 0).y + 0.5 >= flowTop + flow.implicitHeight)
+            verify(flow.height > 0)
+            verify(preview.height > 0)
+        }
+        // Both category-filter pages instantiate the shared chip bar and
+        // preview, so their objectNames exist twice; StackLayout hides the
+        // non-current page, and only the current page's instance is
+        // effectively visible. (Dead delegates from model resets are
+        // unparented and never collected.)
+        function findVisibleNamed(parentItem, name) {
+            const found = []
+            collectNamed(parentItem, name, found)
+            for (let i = 0; i < found.length; i++) {
+                if (isEffectivelyVisible(found[i], parentItem)) return found[i]
+            }
+            return null
+        }
+        function collectNamed(item, name, acc) {
+            if (item.objectName === name) acc.push(item)
+            const kids = item.children
+            for (let i = 0; i < kids.length; i++) collectNamed(kids[i], name, acc)
+        }
+        function isEffectivelyVisible(item, stopAt) {
+            let current = item
+            while (current && current !== stopAt) {
+                if (!current.visible) return false
+                current = current.parent
+            }
+            return true
         }
     }
 }

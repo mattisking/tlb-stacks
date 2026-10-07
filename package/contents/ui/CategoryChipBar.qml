@@ -54,8 +54,17 @@ ColumnLayout {
     }
 
     Flow {
+        objectName: "chipFlow"
         Layout.fillWidth: true
-        Layout.fillHeight: true
+        // The wrapped chips are content the bar must actually reserve: a
+        // Flow's default Layout minimum is 0, so in a natural-height bar it
+        // was the only compressible item — whenever the page could not fit
+        // framing + chips + the preview's minimums, the layout squeezed the
+        // Flow's cell below its wrapped content and the chips rendered past
+        // it, under/over the preview (the reported overlap). Minimum =
+        // implicit height makes the bar unsqueezeable; a too-short page now
+        // overflows at the page level instead of overlapping siblings.
+        Layout.minimumHeight: implicitHeight
         spacing: Kirigami.Units.smallSpacing
 
         Repeater {

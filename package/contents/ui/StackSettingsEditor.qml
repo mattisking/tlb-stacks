@@ -182,6 +182,7 @@ ColumnLayout {
     // zero-selection hint to the all-applications-eligible wording.
     component MatchingPreview: ColumnLayout {
         id: preview
+        objectName: "matchingPreview"
         property bool activityMode: false
         property var matches: []
         property var selectedCategories: []
