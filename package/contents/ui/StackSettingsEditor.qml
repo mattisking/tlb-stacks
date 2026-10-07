@@ -137,7 +137,7 @@ ColumnLayout {
         target: root.launcher
         function onProfileFinished(requestId, result) { root.handleIconResult(requestId, result) }
     }
-    IconThemes.IconDialog { id: stackIconDialog; onIconNameChanged: if (iconName.length > 0) root.applyIconResult(root.iconTarget, iconName) }
+    IconThemes.IconDialog { id: stackIconDialog; onIconNameChanged: if (iconName.length > 0) root.setCustomIcon(root.iconTarget, iconName) }
     Dialogs.FileDialog {
         id: iconFileDialog
         objectName: "iconFileDialog"
@@ -228,6 +228,16 @@ ColumnLayout {
         }
     }
 
+    PlasmaComponents.Label {
+        objectName: "iconErrorLabel"
+        Layout.fillWidth: true
+        visible: root.iconError.length > 0
+        text: root.iconError
+        textFormat: Text.PlainText
+        wrapMode: Text.WordWrap
+        color: Kirigami.Theme.negativeTextColor
+    }
+
     // ---- kind segments (mockup: icon over label, highlighted active)
     RowLayout {
         Layout.fillWidth: true
@@ -314,6 +324,8 @@ ColumnLayout {
                             ApplicationIcon {
                                 visible: !memberRow.isSeparator
                                 source: root.memberIcon(memberRow.modelData)
+                                fallbackSource: (root.catalog.find(app => app.desktopId === memberRow.modelData) || {}).icon || "application-x-executable"
+                                sourceAvailable: root.launcher ? root.launcher.themeIconAvailable(source) : true
                                 Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
                                 Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
                             }
@@ -349,11 +361,13 @@ ColumnLayout {
                             }
                             PlasmaComponents.ToolButton {
                                 icon.name: "go-up"
+                                enabled: memberRow.index > 0
                                 Accessible.name: i18n("Move up")
                                 onClicked: root.moveMember(memberRow.index, -1)
                             }
                             PlasmaComponents.ToolButton {
                                 icon.name: "go-down"
+                                enabled: memberRow.index < (root.settings.applications || []).length - 1
                                 Accessible.name: i18n("Move down")
                                 onClicked: root.moveMember(memberRow.index, 1)
                             }
@@ -365,7 +379,7 @@ ColumnLayout {
                             }
                             PlasmaComponents.ToolButton {
                                 visible: !memberRow.isSeparator
-                                icon.name: "document-edit"
+                                icon.name: "preferences-desktop-icons"
                                 Accessible.name: i18n("Change icon for %1", root.memberName(memberRow.modelData))
                                 onClicked: iconMenu.open()
 
@@ -424,129 +438,177 @@ ColumnLayout {
 
             // Live folder: folder picker + read-only path + include patterns,
             // mirroring the group host's folder column.
-            Kirigami.FormLayout {
-                RowLayout {
-                    Kirigami.FormData.label: i18n("Folder:")
-                    Layout.fillWidth: true
-                    PlasmaComponents.Button {
-                        text: i18n("Choose folder…")
-                        onClicked: folderPicker.open()
+            QQC2.ScrollView {
+                id: folderScroll
+                objectName: "folderScroll"
+                contentWidth: availableWidth
+                clip: true
+                QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+                Kirigami.FormLayout {
+                    width: Math.min(folderScroll.availableWidth, Kirigami.Units.gridUnit * 36)
+                    wideMode: false
+
+                    RowLayout {
+                        Kirigami.FormData.label: i18n("Folder:")
+                        Layout.fillWidth: true
+                        PlasmaComponents.Button {
+                            text: i18n("Choose folder…")
+                            onClicked: folderPicker.open()
+                        }
+                        PlasmaComponents.TextField {
+                            objectName: "folderUrlField"
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            implicitWidth: 0
+                            readOnly: true
+                            text: {
+                                const url = root.settings.folderUrl || ""
+                                try { return url.startsWith("file:///") ? decodeURIComponent(url.substring(7)) : url }
+                                catch (error) { return url }
+                            }
+                            placeholderText: i18n("No folder selected")
+                            Accessible.name: i18n("Selected folder")
+                        }
                     }
                     PlasmaComponents.TextField {
-                        objectName: "folderUrlField"
+                        objectName: "folderFiltersField"
+                        Kirigami.FormData.label: i18n("File patterns:")
                         Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        implicitWidth: 0
-                        readOnly: true
-                        text: root.settings.folderUrl || ""
-                        placeholderText: i18n("No folder selected")
-                        Accessible.name: i18n("Selected folder")
+                        Accessible.name: i18n("File patterns")
+                        placeholderText: i18n("File patterns, for example *.pdf;*.docx")
+                        // `??`: a cleared field is real stored input (the old host
+                        // displayed storage verbatim); "*" is only for "missing".
+                        text: root.settings.folderFilters ?? "*"
+                        onTextEdited: root.setField("folderFilters", text)
+                        Keys.onReturnPressed: event => { event.accepted = true }
+                        Keys.onEnterPressed: event => { event.accepted = true }
+                    }
+                    PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        text: root.folderError || i18n("Separate patterns with semicolons, for example *.pdf;*.docx. Subfolders are always shown.")
+                        wrapMode: Text.WordWrap
                     }
                 }
-                PlasmaComponents.TextField {
-                    objectName: "folderFiltersField"
-                    Kirigami.FormData.label: i18n("File patterns:")
-                    Layout.fillWidth: true
-                    Accessible.name: i18n("File patterns")
-                    placeholderText: i18n("File patterns, for example *.pdf;*.docx")
-                    // `??`: a cleared field is real stored input (the old host
-                    // displayed storage verbatim); "*" is only for "missing".
-                    text: root.settings.folderFilters ?? "*"
-                    onTextEdited: root.setField("folderFilters", text)
-                    Keys.onReturnPressed: event => { event.accepted = true }
-                    Keys.onEnterPressed: event => { event.accepted = true }
-                }
-                PlasmaComponents.Label {
-                    Layout.fillWidth: true
-                    text: root.folderError || i18n("Separate patterns with semicolons. Subfolders are always shown. Live Folder uses icons and text. Choose a new folder here when importing onto another computer.")
-                    wrapMode: Text.WordWrap
-                }
+
             }
 
             // Categories: filterable chips (selected ones lead and are never
             // filtered out) with the read-only matching-applications preview
             // stacked below — both stay visible together in the tabbed
             // inspector, no interaction needed to see the selection's effect.
-            ColumnLayout {
-                spacing: Kirigami.Units.smallSpacing
-                PlasmaComponents.Label {
-                    Layout.fillWidth: true
-                    text: i18n("Match any selected category:")
-                    wrapMode: Text.WordWrap
+            QQC2.ScrollView {
+                id: categoryScroll
+                objectName: "categoryScroll"
+                contentWidth: availableWidth
+                clip: true
+                QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+                ColumnLayout {
+                    width: categoryScroll.availableWidth
+
+                    spacing: Kirigami.Units.smallSpacing
+                    PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        text: i18n("Match any selected category:")
+                        wrapMode: Text.WordWrap
+                    }
+                    CategoryChipBar {
+                        Layout.fillWidth: true
+                        categories: ApplicationCategories.available(root.catalog, root.settings.applicationCategories)
+                        // `|| []`: settings may be the editor's own empty default
+                        // ({}), whose applicationCategories is undefined.
+                        selected: root.settings.applicationCategories || []
+                        onCategoryToggled: (name, on) => root.toggleCategory(name, on)
+                    }
+                    MatchingPreview {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Kirigami.Units.gridUnit * 12
+                        matches: root.categoryMatches
+                        // `|| []` per the bar's note above.
+                        selectedCategories: root.settings.applicationCategories || []
+                    }
                 }
-                CategoryChipBar {
-                    Layout.fillWidth: true
-                    categories: ApplicationCategories.available(root.catalog, root.settings.applicationCategories)
-                    // `|| []`: settings may be the editor's own empty default
-                    // ({}), whose applicationCategories is undefined.
-                    selected: root.settings.applicationCategories || []
-                    onCategoryToggled: (name, on) => root.toggleCategory(name, on)
-                }
-                MatchingPreview {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    matches: root.categoryMatches
-                    // `|| []` per the bar's note above.
-                    selectedCategories: root.settings.applicationCategories || []
-                }
+
             }
 
             // Recent/frequent: usage options plus the same optional category
             // filter; ranking stays dynamic (no editable result list).
-            ColumnLayout {
-                spacing: Kirigami.Units.smallSpacing
-                Kirigami.FormLayout {
-                    Layout.fillWidth: true
-                    PlasmaComponents.ComboBox {
-                        Kirigami.FormData.label: i18n("Order:")
-                        Accessible.name: i18n("Activity order")
-                        model: [i18n("Most recent"), i18n("Most frequent")]
-                        currentIndex: root.settings.activityOrder === "frequent" ? 1 : 0
-                        onActivated: root.setField("activityOrder", currentIndex === 1 ? "frequent" : "recent")
+            QQC2.ScrollView {
+                id: activityScroll
+                objectName: "activityScroll"
+                contentWidth: availableWidth
+                clip: true
+                QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+                ColumnLayout {
+                    width: activityScroll.availableWidth
+
+                    spacing: Kirigami.Units.smallSpacing
+                    GridLayout {
+                        id: activityOptions
+                        objectName: "activityOptions"
+                        Layout.fillWidth: true
+                        columns: activityScroll.availableWidth >= Kirigami.Units.gridUnit * 16 ? 2 : 1
+                        columnSpacing: Kirigami.Units.largeSpacing
+                        rowSpacing: Kirigami.Units.smallSpacing
+                        PlasmaComponents.Label {
+                            text: i18n("Order:")
+                        }
+                        PlasmaComponents.ComboBox {
+                            Layout.fillWidth: true
+                            Layout.maximumWidth: Kirigami.Units.gridUnit * 16
+                            Layout.alignment: Qt.AlignLeft
+                            Accessible.name: i18n("Activity order")
+                            model: [i18n("Most recent"), i18n("Most frequent")]
+                            currentIndex: root.settings.activityOrder === "frequent" ? 1 : 0
+                            onActivated: root.setField("activityOrder", currentIndex === 1 ? "frequent" : "recent")
+                        }
+                        PlasmaComponents.Label {
+                            text: i18n("Limit:")
+                        }
+                        QQC2.SpinBox {
+                            objectName: "activityLimitField"
+                            Accessible.name: i18n("Maximum applications")
+                            Layout.alignment: Qt.AlignLeft
+                            from: 1; to: 50
+                            value: root.settings.activityLimit ?? 10
+                            onValueModified: root.setField("activityLimit", value)
+                        }
+                        PlasmaComponents.CheckBox {
+                            Layout.columnSpan: activityOptions.columns
+                            Layout.alignment: Qt.AlignLeft
+                            text: i18n("Current Activity only")
+                            checked: root.settings.activityCurrent ?? false
+                            onToggled: root.setField("activityCurrent", checked)
+                        }
                     }
-                    QQC2.SpinBox {
-                        objectName: "activityLimitField"
-                        Kirigami.FormData.label: i18n("Limit:")
-                        from: 1; to: 50
-                        // `??` for policy consistency; the schema floor is 1,
-                        // so 0 is not a stored value today.
-                        value: root.settings.activityLimit ?? 10
-                        onValueModified: root.setField("activityLimit", value)
+                    PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        text: i18n("Optional categories (none means all applications):")
+                        wrapMode: Text.WordWrap
                     }
-                    PlasmaComponents.CheckBox {
-                        Kirigami.FormData.label: i18n("Activity scope:")
-                        text: i18n("Current Activity only")
-                        checked: root.settings.activityCurrent ?? false
-                        onToggled: root.setField("activityCurrent", checked)
+                    CategoryChipBar {
+                        Layout.fillWidth: true
+                        categories: ApplicationCategories.available(root.catalog, root.settings.applicationCategories)
+                        // `|| []`: settings may be the editor's own empty default
+                        // ({}), whose applicationCategories is undefined.
+                        selected: root.settings.applicationCategories || []
+                        onCategoryToggled: (name, on) => root.toggleCategory(name, on)
                     }
-                }
-                PlasmaComponents.Label {
-                    Layout.fillWidth: true
-                    text: i18n("Optional categories (none means all applications):")
-                    wrapMode: Text.WordWrap
-                }
-                CategoryChipBar {
-                    Layout.fillWidth: true
-                    categories: ApplicationCategories.available(root.catalog, root.settings.applicationCategories)
-                    // `|| []`: settings may be the editor's own empty default
-                    // ({}), whose applicationCategories is undefined.
-                    selected: root.settings.applicationCategories || []
-                    onCategoryToggled: (name, on) => root.toggleCategory(name, on)
-                }
-                MatchingPreview {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    activityMode: true
-                    matches: root.categoryMatches
-                    // `|| []` per the bar's note above.
-                    selectedCategories: root.settings.applicationCategories || []
-                }
-                PlasmaComponents.Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    text: i18n("KDE Activities tracking must be enabled; TLBStacks does not change tracking settings.")
-                }
-            }
+                    MatchingPreview {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Kirigami.Units.gridUnit * 12
+                        activityMode: true
+                        matches: root.categoryMatches
+                        // `|| []` per the bar's note above.
+                        selectedCategories: root.settings.applicationCategories || []
+                    }
+                    PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: i18n("KDE Activities tracking must be enabled; TLBStacks does not change tracking settings.")
+                    }
+                }            }
+
+
         }
 
         // ---- Appearance (Flickable so it scrolls independently of the tree)
@@ -555,9 +617,11 @@ ColumnLayout {
             contentWidth: width
             contentHeight: appearanceForm.implicitHeight
             clip: true
+            QQC2.ScrollBar.vertical: QQC2.ScrollBar {}
             Kirigami.FormLayout {
                 id: appearanceForm
-                width: parent.width
+                width: Math.min(parent.width, Kirigami.Units.gridUnit * 36)
+                wideMode: false
                 PlasmaComponents.TextField {
                     Kirigami.FormData.label: i18n("Name:")
                     text: root.settings.groupName || ""
@@ -580,18 +644,6 @@ ColumnLayout {
                         onClicked: root.applyIconResult("", "")
                     }
                 }
-                // Failed icon operations (bad or oversized images) surface
-                // here, in the shared editor — no host change needed to see
-                // them. PlainText: the message may echo a file name.
-                PlasmaComponents.Label {
-                    objectName: "iconErrorLabel"
-                    Layout.fillWidth: true
-                    visible: root.iconError.length > 0
-                    text: root.iconError
-                    textFormat: Text.PlainText
-                    wrapMode: Text.WordWrap
-                    color: Kirigami.Theme.negativeTextColor
-                }
                 PlasmaComponents.CheckBox {
                     objectName: "iconsOnlyBox"
                     Kirigami.FormData.label: i18n("Display:")
@@ -607,19 +659,21 @@ ColumnLayout {
                     Kirigami.FormData.label: i18n("Icon size (px):")
                     from: 16; to: 64
                     editable: true
+                    live: true
                     // `??` per policy; the schema range is 16–64.
                     value: root.settings.menuIconSize ?? 22
-                    onValueModified: root.setField("menuIconSize", value)
+                    onValueChanged: if (value !== (root.settings.menuIconSize ?? 22)) root.setField("menuIconSize", value)
                 }
                 QQC2.SpinBox {
                     objectName: "hoverDelayField"
                     Kirigami.FormData.label: i18n("Hover delay (ms):")
                     from: 0; to: 2000; stepSize: 50
                     editable: true
+                    live: true
                     // 0 is a legitimate stored value (immediate opening) —
                     // `??`, never `||` (which showed 250 for a stored 0).
                     value: root.settings.hoverDelay ?? 250
-                    onValueModified: root.setField("hoverDelay", value)
+                    onValueChanged: if (value !== (root.settings.hoverDelay ?? 250)) root.setField("hoverDelay", value)
                 }
                 PlasmaComponents.Label {
                     Layout.fillWidth: true

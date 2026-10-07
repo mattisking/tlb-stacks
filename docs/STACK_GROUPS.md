@@ -333,3 +333,26 @@ Install using the [opt-in command](DEPLOYMENT.md#experimental-stack-group), then
 7. Remove a test group; existing stacks and the other group should remain intact.
 
 This was the step-1 baseline; step 2 adds applications as described above.
+
+## Current editor polish checkpoint — October 7, 2026
+
+The shared editor is merged on main. Panel right-click editing is dropped for now;
+leave its stash untouched. The accepted editor polish supersedes earlier
+resume instructions to restore the right-click handoff. See
+[Configuration design](CONFIGURATION_DESIGN.md#current-status--october-7-2026).
+
+Desktop checks: shrink the window on Categories/Recent/Live Folder and scroll to
+the last controls; type 50 into hover delay and check Apply immediately; choose a
+custom image through both Choose/Browse and Image; verify errors appear on Contents;
+check tree icons, chip contrast, and both Export menu choices. Regression checks
+cover live typing, scroll reachability and member-icon error visibility.
+
+Desktop feedback confirmed that category scrolling reaches the final chips and
+matching applications, with tabs and dialog actions remaining visible. The user
+reports the editor is working well. The remaining Recent-options polish now uses
+a compact left-aligned grid (stacked labels only at narrow widths), replacing the
+centered form. The user confirmed this last visual adjustment looks good. The editor-polish
+checkpoint is accepted; individual optional checks above were not all separately
+reported. Validation: native build, 46 editor checks, 25 group runtime checks, and
+38 profile tests passed. Direct-launcher Appearance remains the next separate
+feature; panel right-click editing remains dropped.

@@ -84,7 +84,7 @@ Rectangle {
             compare(findChild(editor, "iconsOnlyBox").checked, true)
             compare(findChild(editor, "activityLimitField").value, 25)
             compare(findChild(editor, "folderFiltersField").text, "*.txt;*.md")
-            compare(findChild(editor, "folderUrlField").text, "file:///tmp/reflect")
+            compare(findChild(editor, "folderUrlField").text, "/tmp/reflect")
         }
         // Final-review I-2: a failed manageIcon (bad/oversized image) must be
         // visible in the editor, cleared by the next success and by the next

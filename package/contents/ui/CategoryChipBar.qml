@@ -84,7 +84,34 @@ ColumnLayout {
                 font.weight: isSelected ? Font.Bold : Font.Normal
                 // Unselected chips sit back (flat, muted) so the selected
                 // ones read as a leading group at a glance.
-                opacity: isSelected ? 1.0 : 0.7
+                opacity: 1.0
+                leftPadding: Kirigami.Units.smallSpacing * 2
+                rightPadding: Kirigami.Units.smallSpacing * 2
+                topPadding: Kirigami.Units.smallSpacing
+                bottomPadding: Kirigami.Units.smallSpacing
+                contentItem: RowLayout {
+                    spacing: Kirigami.Units.smallSpacing
+                    Kirigami.Icon {
+                        visible: chip.isSelected
+                        source: "checkmark"
+                        implicitWidth: Kirigami.Units.iconSizes.small
+                        implicitHeight: implicitWidth
+                        color: Kirigami.Theme.highlightedTextColor
+                    }
+                    PlasmaComponents.Label {
+                        text: chip.text
+                        font: chip.font
+                        color: chip.isSelected ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
+                        textFormat: Text.PlainText
+                    }
+                }
+                background: Rectangle {
+                    radius: Kirigami.Units.smallSpacing
+                    color: chip.isSelected ? Kirigami.Theme.highlightColor : Kirigami.Theme.alternateBackgroundColor
+                    border.color: chip.isSelected ? Kirigami.Theme.highlightColor : Kirigami.Theme.disabledTextColor
+                    border.width: 1
+                }
+                palette.buttonText: isSelected ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
                 Accessible.role: Accessible.Button
                 Accessible.name: isSelected
                     ? i18n("Category %1, selected", modelData)

@@ -291,6 +291,11 @@ ColumnLayout {
                             text: itemRow.isStack
                                 ? (treeRow.modelData.settings.groupName || i18n("Stack"))
                                 : root.nameFor(treeRow.modelData.desktopId)
+                            readonly property string itemIcon: itemRow.isStack ? treeRow.modelData.settings.groupIcon || "applications-all"
+                                : (root.catalog.find(app => app.desktopId === treeRow.modelData.desktopId) || {}).icon || "application-x-executable"
+                            icon.name: IconOverrides.isFile(itemIcon) ? "" : itemIcon
+                            icon.source: IconOverrides.isFile(itemIcon) ? itemIcon : ""
+                            icon.color: "transparent"
                             highlighted: root.selectedIndex === treeRow.index
                             rightPadding: expandChevron.implicitWidth + Kirigami.Units.smallSpacing * 2
                             onClicked: { root.selectedIndex = treeRow.index; itemTree.forceActiveFocus() }
@@ -377,26 +382,34 @@ ColumnLayout {
                     onClicked: importDialog.open()
                 }
                 PlasmaComponents.Button {
+                    id: exportButton
                     Layout.fillWidth: true
-                    text: i18n("Export group…")
+                    text: i18n("Export…")
                     enabled: !root.decoded.error
-                    onClicked: { exportDialog.wholeGroup = true; exportDialog.open() }
-                }
-                PlasmaComponents.Button {
-                    Layout.fillWidth: true
-                    text: i18n("Export selected stack…")
-                    enabled: root.selectedStack !== null
-                    onClicked: {
-                        exportDialog.wholeGroup = false
-                        exportDialog.exportSettings = root.selectedStack.settings
-                        exportDialog.open()
+                    onClicked: exportMenu.popup(exportButton)
+                    PlasmaComponents.Menu {
+                        id: exportMenu
+                        PlasmaComponents.MenuItem {
+                            text: i18n("Entire group…")
+                            onTriggered: { exportDialog.wholeGroup = true; exportDialog.open() }
+                        }
+                        PlasmaComponents.MenuItem {
+                            text: i18n("Selected stack…")
+                            enabled: root.selectedStack !== null
+                            onTriggered: {
+                                exportDialog.wholeGroup = false
+                                exportDialog.exportSettings = root.selectedStack.settings
+                                exportDialog.open()
+                            }
+                        }
                     }
                 }
                 PlasmaComponents.Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     textFormat: Text.PlainText
-                    text: root.profileMessage || i18n("Importing a stack adds an item. Importing a group replaces this editor's contents; Apply saves the changes.")
+                    visible: root.profileMessage.length > 0
+                    text: root.profileMessage
                 }
             }
         }
@@ -404,12 +417,14 @@ ColumnLayout {
         // Inspector: breadcrumb and the selected item's page.
         ColumnLayout {
             id: inspector
-            spacing: Kirigami.Units.smallSpacing
+            spacing: Kirigami.Units.largeSpacing
             QQC2.SplitView.fillWidth: true
 
             PlasmaComponents.Label {
                 objectName: "breadcrumb"
                 Layout.fillWidth: true
+                Layout.leftMargin: Kirigami.Units.largeSpacing
+                Layout.rightMargin: Kirigami.Units.largeSpacing
                 textFormat: Text.StyledText
                 elide: Text.ElideRight
                 // cfg_groupNameDefault is "", so both branches fall back to the
@@ -429,12 +444,17 @@ ColumnLayout {
             StackLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                Layout.leftMargin: Kirigami.Units.largeSpacing
+                Layout.rightMargin: Kirigami.Units.largeSpacing
                 currentIndex: root.selectedIndex < 0 ? 0
                     : root.selectedItem && root.selectedItem.type === "application" ? 1
                     : root.selectedItem && root.selectedItem.type === "stack" ? 2 : 0
 
                 Kirigami.FormLayout {
                     Layout.fillWidth: true
+                    Layout.maximumWidth: Kirigami.Units.gridUnit * 36
+                    Layout.alignment: Qt.AlignLeft | Qt.AlignTop
+                    wideMode: false
                     PlasmaComponents.TextField {
                         id: groupNameField
                         Kirigami.FormData.label: i18n("Group name:")
@@ -444,6 +464,9 @@ ColumnLayout {
                 }
                 Kirigami.FormLayout {
                     Layout.fillWidth: true
+                    Layout.maximumWidth: Kirigami.Units.gridUnit * 36
+                    Layout.alignment: Qt.AlignLeft | Qt.AlignTop
+                    wideMode: false
                     PlasmaComponents.ComboBox {
                         Kirigami.FormData.label: i18n("Application:")
                         Layout.fillWidth: true
@@ -457,7 +480,7 @@ ColumnLayout {
                     PlasmaComponents.Label {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
-                        text: i18n("A direct launcher. Turn it into a stack with Add in the tree.")
+                        text: i18n("Opens this application directly from the panel.")
                     }
                 }
                 StackSettingsEditor {
