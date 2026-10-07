@@ -370,7 +370,9 @@ ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     categories: ApplicationCategories.available(root.catalog, root.settings.applicationCategories)
-                    selected: root.settings.applicationCategories
+                    // `|| []`: settings may be the editor's own empty default
+                    // ({}), whose applicationCategories is undefined.
+                    selected: root.settings.applicationCategories || []
                     caption: i18nc("%1 is a number of applications", "Matches %1 applications. Results are shown in the panel, not editable here.", root.matchesCount())
                     onCategoryToggled: (name, on) => root.toggleCategory(name, on)
                 }
@@ -411,7 +413,9 @@ ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     categories: ApplicationCategories.available(root.catalog, root.settings.applicationCategories)
-                    selected: root.settings.applicationCategories
+                    // `|| []`: settings may be the editor's own empty default
+                    // ({}), whose applicationCategories is undefined.
+                    selected: root.settings.applicationCategories || []
                     caption: i18nc("%1 is a number of applications", "Matches %1 applications. Results are shown in the panel, not editable here.", root.matchesCount())
                     onCategoryToggled: (name, on) => root.toggleCategory(name, on)
                 }
