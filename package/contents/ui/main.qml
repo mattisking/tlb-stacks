@@ -1,20 +1,17 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import "MenuNavigation.js" as Navigation
 import QtQuick.Window
-import QtQuick.Controls as QQC2
 import "IconOverrides.js" as IconOverrides
 import "ApplicationCategories.js" as Categories
 import QtQuick.Layouts
-import org.kde.kirigami as Kirigami
-import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.plasmoid
 import com.mattphilmon.tlbstacks
 
 PlasmoidItem {
     id: root
+    readonly property var menuLauncher: launcher
 
     Plasmoid.icon: Plasmoid.configuration.groupIcon || "applications-all"
 
@@ -139,48 +136,6 @@ PlasmoidItem {
         id: launcherColumn
 
         spacing: 0
-        property int selectedApplication: -1
-        property int hoveredApplication: -1
-        property bool keyboardNavigation: false
-
-        function moveApplicationSelection(step) {
-            if (root.menuSource === "folder") return
-            const index = Navigation.nextIndex(applicationRepeater.count, selectedApplication,
-                hoveredApplication, keyboardNavigation, step,
-                root.visibleEntries.map(entry => entry.isSeparator !== true))
-            if (index < 0) return
-            selectedApplication = index
-            keyboardNavigation = true
-            const item = applicationRepeater.itemAt(index)
-            if (!item) return
-            item.forceActiveFocus(Qt.TabFocusReason)
-            const viewport = applicationScroll.contentItem
-            if (viewport && viewport.contentY !== undefined) {
-                if (item.y < viewport.contentY) viewport.contentY = item.y
-                else if (item.y + item.height > viewport.contentY + viewport.height)
-                    viewport.contentY = item.y + item.height - viewport.height
-            }
-        }
-        Keys.onUpPressed: event => {
-            if (root.menuSource !== "folder") { moveApplicationSelection(-1); event.accepted = true }
-        }
-        Keys.onDownPressed: event => {
-            if (root.menuSource !== "folder") { moveApplicationSelection(1); event.accepted = true }
-        }
-        Connections {
-            target: root
-            function onExpandedChanged() {
-                if (root.expanded && root.menuSource !== "folder") {
-                    launcherColumn.selectedApplication = -1
-                    launcherColumn.hoveredApplication = -1
-                    launcherColumn.keyboardNavigation = false
-                    Qt.callLater(function() {
-                        if (root.expanded && root.menuSource !== "folder") launcherColumn.forceActiveFocus()
-                    })
-                }
-            }
-        }
-
         Layout.minimumWidth: root.menuWidth
         Layout.preferredWidth: root.menuWidth
         Layout.maximumWidth: root.menuWidth
@@ -202,7 +157,7 @@ PlasmoidItem {
         readonly property real folderMenuHeight: folderLoader.item
             ? folderLoader.item.preferredMenuHeight : rememberedFolderHeight
         readonly property real activityMenuHeight: root.visibleEntries.length > 0
-            ? Math.min(applicationColumn.implicitHeight, 480)
+            ? Math.min(applicationMenu.menuContentHeight, 480)
             : Math.max(root.menuRowHeight, activityNotice.implicitHeight)
         readonly property real dynamicMenuHeight: folderLoader.active ? folderMenuHeight : activityMenuHeight
         readonly property bool dynamicMenu: folderLoader.active || root.menuSource === "activity"
@@ -294,150 +249,17 @@ PlasmoidItem {
             textFormat: Text.PlainText
             wrapMode: Text.WordWrap
         }
-        PlasmaComponents.ScrollView {
-            id: applicationScroll
-            contentWidth: availableWidth
-            QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
+        ApplicationMenu {
+            id: applicationMenu
+            launcher: root.menuLauncher
+            entries: root.visibleEntries
+            iconsOnly: root.iconsOnly
+            iconSize: root.menuIconSize
+            popupOpen: root.expanded && root.menuSource !== "folder"
             visible: root.menuSource !== "folder" && root.visibleEntries.length > 0
-            Layout.fillWidth: true
-            Layout.preferredHeight: Math.min(applicationColumn.implicitHeight, 480)
-            ColumnLayout {
-                id: applicationColumn
-                width: applicationScroll.availableWidth
-                spacing: 0
-                Repeater {
-                    id: applicationRepeater
-                    model: root.visibleEntries
-                    onCountChanged: launcherColumn.selectedApplication = -1
-
-                    delegate: PlasmaComponents.ItemDelegate {
-                        id: launcherItem
-
-                        required property int index
-                        required property var modelData
-
-                        readonly property string applicationName:
-                            modelData.isSeparator === true ? "" : modelData.name
-
-                        readonly property string applicationIcon:
-                            modelData.isSeparator === true ? "" : modelData.icon
-
-                        visible: modelData.available
-
-                        Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        Layout.maximumWidth: applicationScroll.availableWidth
-
-                        implicitHeight: root.entryHeight(modelData)
-                        Layout.minimumHeight: root.entryHeight(modelData)
-                        Layout.preferredHeight: root.entryHeight(modelData)
-                        Layout.maximumHeight: root.entryHeight(modelData)
-                        enabled: modelData.isSeparator !== true
-                        hoverEnabled: modelData.isSeparator !== true
-
-                        text: applicationName
-                        icon.name: IconOverrides.isFile(applicationIcon) ? "" : applicationIcon
-                        icon.source: IconOverrides.isFile(applicationIcon) ? applicationIcon : ""
-                        icon.width: root.menuIconSize
-                        icon.height: root.menuIconSize
-                        display: root.iconsOnly ? QQC2.AbstractButton.IconOnly
-                                                : QQC2.AbstractButton.TextBesideIcon
-                        contentItem: RowLayout {
-                            spacing: launcherItem.spacing
-                            Rectangle {
-                                visible: launcherItem.modelData.isSeparator === true
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 1
-                                color: Kirigami.Theme.disabledTextColor
-                            }
-                            PlasmaComponents.Label {
-                                visible: launcherItem.modelData.isSeparator === true &&
-                                         !root.iconsOnly && text.length > 0
-                                text: launcherItem.modelData.name
-                                elide: Text.ElideRight
-                                opacity: 0.7
-                                font.bold: true
-                                Layout.maximumWidth: Math.max(0, launcherItem.width * 0.6)
-                            }
-                            Rectangle {
-                                visible: launcherItem.modelData.isSeparator === true &&
-                                         !root.iconsOnly && launcherItem.modelData.name.length > 0
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 1
-                                color: Kirigami.Theme.disabledTextColor
-                            }
-                            ApplicationIcon {
-                                visible: launcherItem.modelData.isSeparator !== true
-                                source: launcherItem.applicationIcon
-                                sourceAvailable: fromFile || launcher.themeIconAvailable(source)
-                                fallbackSource: launcherItem.modelData.defaultIcon || ""
-                                Layout.preferredWidth: root.menuIconSize
-                                Layout.preferredHeight: root.menuIconSize
-                                Layout.alignment: Qt.AlignCenter
-                                Layout.fillWidth: root.iconsOnly
-                            }
-                            PlasmaComponents.Label {
-                                visible: !root.iconsOnly && launcherItem.modelData.isSeparator !== true
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                text: launcherItem.applicationName
-                                elide: Text.ElideRight
-                            }
-                        }
-                        Keys.onUpPressed: launcherColumn.moveApplicationSelection(-1)
-                        Keys.onDownPressed: launcherColumn.moveApplicationSelection(1)
-                        Keys.onReturnPressed: clicked()
-                        Keys.onEnterPressed: clicked()
-                        highlighted: launcherColumn.keyboardNavigation && launcherColumn.selectedApplication === index
-                        onHoveredChanged: {
-                            if (hovered) {
-                                launcherColumn.hoveredApplication = index
-                                launcherColumn.keyboardNavigation = false
-                            } else if (launcherColumn.hoveredApplication === index) launcherColumn.hoveredApplication = -1
-                        }
-                        Accessible.name: modelData.isSeparator === true
-                            ? i18n("Separator") : applicationName || modelData.id
-
-                        StackToolTip {
-                            id: applicationToolTip
-                            anchors.fill: parent
-                            text: (launcherItem.applicationName || launcherItem.modelData.id)
-                                + (launcherItem.modelData.description ? "\n" + launcherItem.modelData.description : "")
-                            selected: root.expanded && launcherItem.visible
-                                && (launcherColumn.keyboardNavigation
-                                    ? launcherColumn.selectedApplication === launcherItem.index
-                                    : launcherItem.hovered)
-                        }
-
-                        // Consume only right-clicks; normal activation stays with the delegate.
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: launcherItem.modelData.isSeparator !== true
-                                && launcherItem.modelData.actions.length > 0
-                            acceptedButtons: Qt.RightButton
-                            onClicked: {
-                                applicationToolTip.hideToolTip()
-                                launcher.showEntryContextMenu(launcherItem, launcherItem.modelData)
-                            }
-                        }
-                        Keys.onMenuPressed: event => {
-                            if (launcherItem.modelData.actions.length > 0) {
-                                applicationToolTip.hideToolTip()
-                                launcher.showEntryContextMenu(launcherItem, launcherItem.modelData)
-                                event.accepted = true
-                            }
-                        }
-
-                        onClicked: {
-                            if (modelData.isSeparator === true) return
-                            root.activationError = ""
-                            if (launcher.activateEntry(modelData)) {
-                                root.expanded = false
-                            }
-                        }
-                    }
-                }
-            }
+            onActivating: root.activationError = ""
+            onActivated: root.expanded = false
         }
+
     }
 }

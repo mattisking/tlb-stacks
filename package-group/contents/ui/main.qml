@@ -12,22 +12,82 @@ import "GroupItems.js" as GroupItems
 
 PlasmoidItem {
     id: root
+    readonly property var menuLauncher: launcher
     readonly property bool vertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical
     readonly property bool onPanel: vertical || Plasmoid.formFactor === PlasmaCore.Types.Horizontal
     readonly property string displayName: Plasmoid.configuration.groupName || i18n("TLBStacks Group")
     readonly property var decoded: GroupItems.decode(Plasmoid.configuration.items)
     property int catalogRevision: 0
     property string launchError: ""
+    property string activeStackId: ""
+    property var activeButton: null
+    readonly property var activeStack: decoded.items.find(item => item.id === activeStackId && item.type === "stack") || null
+    readonly property var stackEntries: {
+        const revision = catalogRevision
+        return activeStack ? launcher.applicationEntries(activeStack.settings.applications, {}, "applications")
+            .filter(entry => entry.available) : []
+    }
+    onDecodedChanged: {
+        if (stackPopup) stackPopup.visible = false
+    }
+    function showStack(button, toggle) {
+        if (toggle && stackPopup.visible && activeStackId === button.modelData.id) {
+            stackPopup.visible = false
+            return
+        }
+        launcher.closeApplicationContextMenu()
+        launcher.invalidateActivations()
+        launchError = ""
+        activeButton = button
+        activeStackId = button.modelData.id
+        stackPopup.visible = true
+        Qt.callLater(() => { if (stackPopup.visible) stackMenu.resetSelection() })
+    }
+    PlasmaCore.Dialog {
+        id: stackPopup
+        visualParent: root.activeButton
+        location: Plasmoid.location
+        type: PlasmaCore.Dialog.PopupMenu
+        flags: Qt.Popup | Qt.FramelessWindowHint
+        hideOnWindowDeactivate: true
+        onVisibleChanged: {
+            if (!visible) {
+                launcher.closeApplicationContextMenu()
+                if (root.activeButton) root.activeButton.forceActiveFocus()
+                root.activeStackId = ""
+            }
+        }
+        mainItem: GroupStackContent {
+            id: stackMenu
+            launcher: root.menuLauncher
+            entries: root.stackEntries
+            iconsOnly: root.activeStack ? root.activeStack.settings.iconsOnly : false
+            iconSize: root.activeStack ? root.activeStack.settings.menuIconSize : 22
+            popupOpen: stackPopup.visible
+            errorText: root.launchError
+            onDismissRequested: stackPopup.visible = false
+            onActivating: root.launchError = ""
+            onActivated: stackPopup.visible = false
+        }
+    }
+
     Plasmoid.icon: "view-grid"
     toolTipMainText: displayName
     toolTipSubText: launchError || (decoded.error ? i18n("Unsupported group settings. Open configuration for details.")
-        : decoded.items.length ? i18n("Application launchers") : i18n("Empty group — click to configure"))
+        : decoded.items.length ? i18n("Stacks and launchers") : i18n("Empty group — click to configure"))
     preferredRepresentation: fullRepresentation
 
     Launcher {
         id: launcher
         onApplicationsChanged: root.catalogRevision++
         onActivationFailed: message => { root.launchError = message }
+        onRemoveApplicationRequested: desktopId => {
+            if (!root.activeStack) return
+            const items = GroupItems.updateStack(root.decoded.items, root.activeStackId, {
+                applications: root.activeStack.settings.applications.filter(id => id !== desktopId)
+            })
+            Plasmoid.configuration.items = GroupItems.encode(items)
+        }
     }
     function configure() {
         const action = Plasmoid.internalAction("configure")
@@ -68,7 +128,8 @@ PlasmoidItem {
                     required property int index
                     readonly property string appName: {
                         const revision = root.catalogRevision
-                        return launcher.name(modelData.desktopId) || modelData.desktopId
+                        return modelData.type === "stack" ? modelData.settings.groupName || i18n("Stack")
+                            : launcher.name(modelData.desktopId) || modelData.desktopId
                     }
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -79,13 +140,25 @@ PlasmoidItem {
                     text: appName
                     icon.name: {
                         const revision = root.catalogRevision
-                        return launcher.icon(modelData.desktopId) || "application-x-executable"
+                        return modelData.type === "stack" ? modelData.settings.groupIcon || "applications-all"
+                            : launcher.icon(modelData.desktopId) || "application-x-executable"
                     }
                     icon.color: "transparent"
                     Accessible.name: appName
                     onClicked: {
                         root.launchError = ""
-                        launcher.launch(modelData.desktopId)
+                        if (modelData.type === "stack") root.showStack(button, true)
+                        else { stackPopup.visible = false; launcher.launch(modelData.desktopId) }
+                    }
+                    hoverEnabled: true
+                    onHoveredChanged: {
+                        if (hovered && modelData.type === "stack") hoverOpen.restart()
+                        else hoverOpen.stop()
+                    }
+                    Timer {
+                        id: hoverOpen
+                        interval: button.modelData.type === "stack" ? button.modelData.settings.hoverDelay : 250
+                        onTriggered: if (button.hovered) root.showStack(button, false)
                     }
                     Keys.onLeftPressed: content.focusEntry(index - 1)
                     Keys.onRightPressed: content.focusEntry(index + 1)

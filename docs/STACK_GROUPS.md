@@ -29,7 +29,7 @@ a completed checkpoint after acceptance. No automatic migration of existing widg
 
 ## Current checkpoint and resume notes
 
-**Steps 1–2 accepted for progression; step 3 is next.**
+**Step 3 accepted after popup-height correction; separator editor added for follow-up testing.**
 
 The user reported “looks good. Works. icons all work.” after installing step 2.
 This confirms the reported launcher/icon behavior; it does not independently
@@ -37,8 +37,11 @@ certify every optional orientation and keyboard check below.
 
 - Package: `package-group`, ID `com.mattphilmon.tlbstacks.group`.
 - Settings: `General/groupName` and `General/items`. Each instance has independent
-  Plasma configuration. `items` is JSON `{version: 1, items: [...]}`; each current
-  entry has `id`, `type: "application"`, and `desktopId`. IDs survive reordering.
+  Plasma configuration. `items` is JSON `{version, items: [...]}`. Launcher-only groups retain version 1;
+  groups containing stacks write version 2. Both read here; older group widgets
+  reject version 2 rather than dropping stacks. Application entries have `id`,
+  `type: "application"`, and `desktopId`; stacks have `id`, `type: "stack"`, and
+  a `settings` object. IDs survive reordering.
 - The editor stages all edits in cfg properties. The panel only reads saved
   settings; Apply/Cancel remains managed by Plasma. Future/invalid item formats
   are reported and not replaced with an empty list by the editor.
@@ -48,8 +51,15 @@ certify every optional orientation and keyboard check below.
   Home/End select endpoints; Enter/Space activate. Tooltips delay 700 ms.
 - Duplicate application selection is blocked for now. IDs are separate from desktop
   IDs so F-009 can introduce distinct launch variants later without replacing identity.
-- No contained stacks, custom commands or group import/export yet. Next is step 3:
-  reuse Selected Applications rendering inside a group, with list/detail editing.
+- Selected Applications stacks now use the same `ApplicationMenu.qml` as the
+  standalone widget, exposed through the native QML module. It owns rows, icons,
+  tooltips, selection/navigation, activation and context actions. Group hosts one
+  anchored Plasma dialog and restores focus to its stack button on dismissal.
+- The list/detail editor adds stacks, names/icons, icons-only mode, size, hover delay,
+  application membership and ordering. Separators can be appended, labeled, reordered and removed with stack members.
+  Per-application custom icon editing is not yet exposed in this group editor.
+- Other sources, custom commands and group import/export are not implemented.
+  Next: address step-3 desktop issues before step 4's additional sources.
 - Developer installation stays opt-in via `-WithGroup`; normal releases exclude it.
 
 Validation: group entry tests run in the existing CI navigation suite. Static QML
@@ -57,6 +67,40 @@ checks cannot resolve the manually registered Launcher type or Plasma's `i18n`.
 The user has accepted the launcher checkpoint. Keep the detailed checks below for
 regression testing; orientation, restart persistence and individual keyboard cases
 were not separately reported.
+
+Step-3 desktop feedback: a populated stack opened with only a sliver visible.
+The group dialog main item had a width but no explicit height. `GroupStackContent`
+now supplies actual content-driven height (capped at 480 px for the scrolling list),
+computed from entries before delegates settle. Runtime tests cover long-to-short
+switching and icons-only sizing. The user confirmed the sizing fix and expected Selected Applications behavior.
+Separator controls were subsequently added; their desktop check remains outstanding.
+
+## Step 3 desktop test
+
+Install with `./install.ps1 -WithGroup` (including the rebuilt native module).
+
+1. Keep one direct launcher. Add two stacks, give them distinct names/icons, and
+   add different applications to each. Apply and confirm each opens the correct menu.
+2. Switch between the stacks by hovering/clicking their panel buttons. Check placement
+   beside the clicked button, no clipped contents, and only one group popup at a time.
+3. Test Up/Down wrapping, Enter, Escape, outside-click dismissal and focus return.
+4. Right-click an app: test an available desktop action and Remove. Remove must affect
+   only that stack, not the other stack or a direct launcher for the same app.
+5. Reorder group items and stack members. Check Cancel preserves saved state and Apply
+   persists it. Restart Plasma; verify both stacks and the launcher survive.
+6. Check icons-only mode and hover timing. Empty a stack and confirm its message.
+7. Regression-check an existing standalone stack's menu, keyboard controls, tooltips,
+   desktop actions and separators: it now uses the shared renderer too.
+
+Runtime smoke tests (requires installed Plasma/Kirigami runtime, separate from minimal CI):
+
+```sh
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QML_IMPORT_PATH="$PWD/build/qml" qmltestrunner-qt6 -input tests/stack-group-runtime -o -,txt
+```
+
+These exercise both local and packaged shared-menu navigation and real editor changes,
+with simulated application entries. They cannot prove Wayland placement or mouse grabs.
+Group schema/migration/isolation tests remain in the CI navigation suite.
 
 ## Step 2 desktop test
 

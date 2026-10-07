@@ -1,3 +1,14 @@
+# One source of application-menu behavior, available to both widget packages.
+set_source_files_properties("../package/contents/ui/ApplicationMenu.qml" PROPERTIES
+    QT_RESOURCE_ALIAS "ApplicationMenu.qml" QT_QML_SKIP_CACHEGEN TRUE)
+set_source_files_properties("../package/contents/ui/ApplicationIcon.qml" PROPERTIES
+    QT_RESOURCE_ALIAS "ApplicationIcon.qml" QT_QML_SKIP_CACHEGEN TRUE)
+set_source_files_properties("../package/contents/ui/StackToolTip.qml" PROPERTIES
+    QT_RESOURCE_ALIAS "StackToolTip.qml" QT_QML_SKIP_CACHEGEN TRUE)
+set_source_files_properties("../package/contents/ui/MenuNavigation.js" PROPERTIES
+    QT_RESOURCE_ALIAS "MenuNavigation.js" QT_QML_SKIP_CACHEGEN TRUE)
+set_source_files_properties("../package/contents/ui/IconOverrides.js" PROPERTIES
+    QT_RESOURCE_ALIAS "IconOverrides.js" QT_QML_SKIP_CACHEGEN TRUE)
 qt_add_qml_module(tlbstacksplugin
     URI com.mattphilmon.tlbstacks
     VERSION 1.0
@@ -8,6 +19,13 @@ qt_add_qml_module(tlbstacksplugin
 
     OUTPUT_DIRECTORY
         "${CMAKE_BINARY_DIR}/qml/com/mattphilmon/tlbstacks"
+
+    QML_FILES
+        ../package/contents/ui/ApplicationMenu.qml
+        ../package/contents/ui/ApplicationIcon.qml
+        ../package/contents/ui/StackToolTip.qml
+        ../package/contents/ui/MenuNavigation.js
+        ../package/contents/ui/IconOverrides.js
 
     SOURCES
         activitysource.cpp
