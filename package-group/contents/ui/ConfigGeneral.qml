@@ -5,7 +5,6 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import QtQuick.Dialogs as Dialogs
 import org.kde.kirigami as Kirigami
-import org.kde.iconthemes as IconThemes
 import org.kde.plasma.components as PlasmaComponents
 import com.mattphilmon.tlbstacks
 import "GroupItems.js" as GroupItems
@@ -82,50 +81,16 @@ ColumnLayout {
     property string cfg_itemsDefault: '{"version":1,"items":[]}'
     readonly property var decoded: GroupItems.decode(cfg_items)
     property var catalog: []
+    // Selection: -1 shows the group page; >= 0 shows that item's page. Adds
+    // route through the add menu's dialogs, so -1 never means "adding".
     property int selectedIndex: -1
     readonly property var selectedItem: decoded.items[selectedIndex] || null
     readonly property var selectedStack: selectedItem && selectedItem.type === "stack" ? selectedItem : null
     readonly property string selectedSource: selectedStack ? selectedStack.settings.menuSource : ""
     readonly property var categoryNames: ApplicationCategories.available(catalog,
         selectedStack ? selectedStack.settings.applicationCategories : [])
-    property string folderError: ""
-    Dialogs.FolderDialog {
-        id: folderPicker
-        property string targetId: ""
-        title: i18n("Choose a local folder")
-        onAccepted: {
-            const url = selectedFolder.toString()
-            if (!url.startsWith("file:///")) {
-                root.folderError = i18n("Live Folder currently supports local folders only.")
-                return
-            }
-            root.folderError = ""
-            root.cfg_items = GroupItems.encode(GroupItems.updateStack(root.decoded.items, targetId, {folderUrl: url}))
-        }
-    }
     function updateStack(changes) {
         if (selectedStack) cfg_items = GroupItems.encode(GroupItems.updateStack(decoded.items, selectedStack.id, changes))
-    }
-    function changeMember(index, step, remove) {
-        const apps = selectedStack.settings.applications.slice()
-        if (remove) apps.splice(index, 1)
-        else apps.splice(index + step, 0, apps.splice(index, 1)[0])
-        updateStack({applications: apps})
-    }
-    function renameSeparator(stackId, separatorId, label) {
-        const stack = decoded.items.find(item => item.id === stackId && item.type === "stack")
-        if (!stack) return
-        cfg_items = GroupItems.encode(GroupItems.updateStack(decoded.items, stackId, {
-            applications: GroupItems.renameSeparator(stack.settings.applications, separatorId, label)
-        }))
-    }
-    IconThemes.IconDialog {
-        id: iconDialog
-        property string targetId: ""
-        onIconNameChanged: {
-            if (iconName && targetId)
-                root.cfg_items = GroupItems.encode(GroupItems.updateStack(root.decoded.items, targetId, {groupIcon: iconName}))
-        }
     }
     Launcher {
         id: launcher
@@ -151,103 +116,220 @@ ColumnLayout {
         cfg_items = GroupItems.encode(GroupItems.move(decoded.items, index, step))
         selectedIndex = index + step
     }
-    RowLayout {
-        PlasmaComponents.Button {
-            text: i18n("Import…")
-            onClicked: importDialog.open()
+    property var expandedIds: ({})   // stack id → bool, tree expansion state
+    function replaceLauncherApp(desktopId) {
+        if (!selectedItem || selectedItem.type !== "application" || decoded.error) return
+        cfg_items = GroupItems.encode(GroupItems.replaceLauncher(decoded.items, selectedItem.id, desktopId))
+    }
+    function toggleExpanded(id) { const next = Object.assign({}, expandedIds); next[id] = !next[id]; expandedIds = next }
+    function summaryOf(item) {
+        if (item.type !== "stack") return []
+        const s = item.settings
+        if (s.menuSource === "applications")
+            return (s.applications || []).map(id => StackMembers.isSeparator(id)
+                ? i18n("— %1", StackMembers.separatorLabel(id)) : nameFor(id))
+        if (s.menuSource === "categories")
+            return [i18np("1 category", "%1 categories", (s.applicationCategories || []).length)]
+        if (s.menuSource === "activity")
+            return [s.activityOrder === "frequent" ? i18n("Most frequent") : i18n("Most recent")]
+        return [s.folderUrl ? decodeURIComponent(s.folderUrl) : i18n("No folder selected")]
+    }
+    readonly property string selectedItemName: !selectedItem ? ""
+        : selectedItem.type === "stack" ? (selectedItem.settings.groupName || i18n("Stack"))
+        : nameFor(selectedItem.desktopId)
+
+    // Launcher adds come through the shared picker (stack-member adds have
+    // their own picker inside StackSettingsEditor).
+    AppPickerDialog {
+        id: launcherPicker
+        applications: root.catalog
+        onPicked: id => {
+            if (root.decoded.error) return
+            root.cfg_items = GroupItems.encode(GroupItems.add(root.decoded.items, id))
+            root.selectedIndex = root.decoded.items.length - 1
         }
-        PlasmaComponents.Button {
-            text: i18n("Export group…")
-            enabled: !root.decoded.error
-            onClicked: { exportDialog.wholeGroup = true; exportDialog.open() }
+    }
+    PlasmaComponents.Menu {
+        id: addMenu
+        PlasmaComponents.MenuItem {
+            text: i18n("Application launcher…")
+            enabled: !root.decoded.error && root.decoded.items.length < 500
+            onTriggered: {
+                launcherPicker.exclude = root.decoded.items.map(item => item.desktopId).filter(Boolean)
+                launcherPicker.openPicker()
+            }
         }
-        PlasmaComponents.Button {
-            text: i18n("Export selected stack…")
-            enabled: root.selectedStack !== null
-            onClicked: {
-                exportDialog.wholeGroup = false
-                exportDialog.exportSettings = root.selectedStack.settings
-                exportDialog.open()
+        PlasmaComponents.MenuItem {
+            text: i18n("Stack")
+            enabled: !root.decoded.error && root.decoded.items.length < 500
+            onTriggered: {
+                root.cfg_items = GroupItems.encode(GroupItems.addStack(root.decoded.items))
+                root.selectedIndex = root.decoded.items.length - 1
+                const id = root.decoded.items[root.decoded.items.length - 1].id
+                if (!root.expandedIds[id]) root.toggleExpanded(id)
             }
         }
     }
-    PlasmaComponents.Label {
-        Layout.fillWidth: true
-        wrapMode: Text.WordWrap
-        textFormat: Text.PlainText
-        text: root.profileMessage || i18n("Importing a stack adds an item. Importing a group replaces this editor's contents; Apply saves the changes.")
-    }
-    Kirigami.FormLayout {
-        Layout.fillWidth: true
-        PlasmaComponents.TextField {
-            id: groupNameField
-            Kirigami.FormData.label: i18n("Group name:")
-            placeholderText: i18n("TLBStacks Group")
-            maximumLength: 256
-        }
-    }
+
     Kirigami.InlineMessage {
         Layout.fillWidth: true
         visible: root.decoded.error
         type: Kirigami.MessageType.Error
         text: i18n("These group settings cannot be edited by this version. They have been preserved; cancel and use a compatible version.")
     }
-    RowLayout {
+
+    // Preview strip: the panel, in order. Gear = group settings; + = add menu.
+    ListView {
+        id: strip
+        Layout.fillWidth: true
+        Layout.preferredHeight: Kirigami.Units.gridUnit * 2.75
+        orientation: ListView.Horizontal
+        clip: true
+        spacing: Kirigami.Units.smallSpacing
+        QQC2.ScrollBar.horizontal: QQC2.ScrollBar { }
+        model: root.decoded.items
+        header: PlasmaComponents.ToolButton {
+            height: ListView.view.height
+            display: QQC2.AbstractButton.IconOnly
+            icon.name: "settings-configure"
+            text: i18n("Group settings")
+            highlighted: root.selectedIndex < 0
+            onClicked: root.selectedIndex = -1
+            Accessible.name: i18n("Group settings")
+        }
+        footer: PlasmaComponents.ToolButton {
+            id: addFooter
+            height: ListView.view.height
+            display: QQC2.AbstractButton.IconOnly
+            icon.name: "list-add"
+            text: i18n("Add")
+            enabled: !root.decoded.error && root.decoded.items.length < 500
+            onClicked: addMenu.popup(addFooter)
+            Accessible.name: i18n("Add")
+        }
+        delegate: PlasmaComponents.ToolButton {
+            id: stripCell
+            required property var modelData
+            required property int index
+            height: ListView.view.height
+            display: QQC2.AbstractButton.IconOnly
+            readonly property string resolvedIcon: {
+                const catalogNow = root.catalog
+                return modelData.type === "stack" ? modelData.settings.groupIcon || "applications-all"
+                    : (catalogNow.find(app => app.desktopId === modelData.desktopId) || {}).icon
+                        || "application-x-executable"
+            }
+            icon.name: IconOverrides.isFile(resolvedIcon) ? "" : resolvedIcon
+            icon.source: IconOverrides.isFile(resolvedIcon) ? resolvedIcon : ""
+            icon.color: "transparent"
+            icon.width: Kirigami.Units.iconSizes.medium
+            icon.height: Kirigami.Units.iconSizes.medium
+            text: modelData.type === "stack"
+                ? (modelData.settings.groupName || i18n("Stack")) : root.nameFor(modelData.desktopId)
+            highlighted: root.selectedIndex === stripCell.index
+            onClicked: root.selectedIndex = stripCell.index
+            Accessible.name: stripCell.text
+            PlasmaComponents.ToolTip {
+                text: stripCell.text
+            }
+        }
+    }
+
+    QQC2.SplitView {
         Layout.fillWidth: true
         Layout.fillHeight: true
-        enabled: !root.decoded.error
+        orientation: Qt.Horizontal
+
+        // Item tree: the group's structure, in panel order.
         ColumnLayout {
-            Layout.fillWidth: true
-            Layout.minimumWidth: 0
-            PlasmaComponents.Label { text: i18n("Items in panel order"); font.bold: true }
+            id: treeColumn
+            spacing: Kirigami.Units.smallSpacing
+            QQC2.SplitView.preferredWidth: Kirigami.Units.gridUnit * 14
+            enabled: !root.decoded.error
+
             PlasmaComponents.ScrollView {
-                visible: !root.selectedStack || root.selectedSource === "applications"
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: 220
                 contentWidth: availableWidth
                 QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
                 ListView {
-                    id: selectedList
+                    id: itemTree
                     clip: true
-                    model: root.decoded.items
                     currentIndex: root.selectedIndex
+                    model: root.decoded.items
                     Keys.onUpPressed: root.selectedIndex = Math.max(0, root.selectedIndex - 1)
                     Keys.onDownPressed: root.selectedIndex = Math.min(count - 1, root.selectedIndex + 1)
-                    delegate: PlasmaComponents.ItemDelegate {
+                    header: PlasmaComponents.ItemDelegate {
+                        width: ListView.view.width
+                        icon.name: "settings-configure"
+                        text: root.cfg_groupName || i18n("Group")
+                        highlighted: root.selectedIndex < 0
+                        onClicked: { root.selectedIndex = -1; itemTree.forceActiveFocus() }
+                    }
+                    delegate: ColumnLayout {
+                        id: treeRow
                         required property var modelData
                         required property int index
                         width: ListView.view.width
-                        text: modelData.type === "stack" ? (modelData.settings.groupName || i18n("Stack")) + " ▸"
-                            : root.nameFor(modelData.desktopId)
-                        highlighted: root.selectedIndex === index
-                        onClicked: { root.selectedIndex = index; selectedList.forceActiveFocus() }
+                        spacing: 0
+
+                        PlasmaComponents.ItemDelegate {
+                            id: itemRow
+                            readonly property bool isStack: treeRow.modelData.type === "stack"
+                            Layout.fillWidth: true
+                            text: itemRow.isStack
+                                ? (treeRow.modelData.settings.groupName || i18n("Stack"))
+                                : root.nameFor(treeRow.modelData.desktopId)
+                            highlighted: root.selectedIndex === treeRow.index
+                            rightPadding: expandChevron.implicitWidth + Kirigami.Units.smallSpacing * 2
+                            onClicked: { root.selectedIndex = treeRow.index; itemTree.forceActiveFocus() }
+
+                            PlasmaComponents.ToolButton {
+                                id: expandChevron
+                                visible: itemRow.isStack
+                                anchors.right: parent.right
+                                anchors.rightMargin: Kirigami.Units.smallSpacing
+                                anchors.verticalCenter: parent.verticalCenter
+                                icon.name: root.expandedIds[treeRow.modelData.id] ? "arrow-down" : "arrow-right"
+                                Accessible.name: root.expandedIds[treeRow.modelData.id] ? i18n("Collapse") : i18n("Expand")
+                                onClicked: root.toggleExpanded(treeRow.modelData.id)
+                            }
+                        }
+
+                        // Summary rows are plain labels (selectable child rows
+                        // are a deferred increment); no click handlers here.
+                        Repeater {
+                            model: itemRow.isStack && root.expandedIds[treeRow.modelData.id]
+                                ? root.summaryOf(treeRow.modelData) : []
+                            PlasmaComponents.Label {
+                                required property string modelData
+                                Layout.leftMargin: Kirigami.Units.gridUnit * 2
+                                Layout.fillWidth: true
+                                opacity: 0.7
+                                elide: Text.ElideRight
+                                text: modelData
+                            }
+                        }
                     }
                     PlasmaComponents.Label {
                         anchors.centerIn: parent
                         width: parent.width
                         wrapMode: Text.WordWrap
                         horizontalAlignment: Text.AlignHCenter
-                        visible: selectedList.count === 0
+                        visible: itemTree.count === 0
                         text: i18n("Add a stack or an application launcher.")
                     }
                 }
             }
+
             RowLayout {
                 PlasmaComponents.Button {
-                    text: i18n("Add stack")
+                    id: addButton
+                    text: i18n("Add")
+                    icon.name: "list-add"
                     enabled: root.decoded.items.length < 500
-                    onClicked: {
-                        root.cfg_items = GroupItems.encode(GroupItems.addStack(root.decoded.items))
-                        root.selectedIndex = root.decoded.items.length - 1
-                    }
+                    onClicked: addMenu.popup(addButton)
                 }
-                PlasmaComponents.Button {
-                    text: i18n("Add launcher")
-                    onClicked: { root.selectedIndex = -1; search.forceActiveFocus() }
-                }
-            }
-            RowLayout {
                 PlasmaComponents.ToolButton {
                     icon.name: "go-up"
                     Accessible.name: i18n("Move up")
@@ -262,7 +344,7 @@ ColumnLayout {
                 }
                 PlasmaComponents.ToolButton {
                     icon.name: "list-remove"
-                    Accessible.name: i18n("Remove selected launcher")
+                    Accessible.name: i18n("Remove selected item")
                     enabled: root.selectedIndex >= 0 && root.selectedIndex < root.decoded.items.length
                     onClicked: {
                         const index = root.selectedIndex
@@ -272,260 +354,93 @@ ColumnLayout {
                 }
             }
         }
+
+        // Inspector: breadcrumb, profile actions, and the selected item's page.
         ColumnLayout {
-            Layout.fillWidth: true
-            Layout.minimumWidth: 0
+            id: inspector
+            spacing: Kirigami.Units.smallSpacing
+            QQC2.SplitView.fillWidth: true
+
             PlasmaComponents.Label {
                 Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                text: root.selectedStack ? i18n("Stack settings") : i18n("Add a direct application launcher")
-                font.bold: true
+                textFormat: Text.StyledText
+                elide: Text.ElideRight
+                text: root.selectedIndex >= 0 && root.selectedItem
+                    ? "<a href='group'>" + root.cfg_groupName + "</a>  ›  " + root.selectedItemName
+                    : root.cfg_groupName
+                onLinkActivated: root.selectedIndex = -1
             }
-            PlasmaComponents.ComboBox {
-                Layout.fillWidth: true
-                visible: root.selectedStack !== null
-                Accessible.name: i18n("Stack type")
-                readonly property var sources: ["applications", "categories", "activity", "folder"]
-                model: [i18n("Selected Applications"), i18n("Application Categories"),
-                    i18n("Recent / Frequent Applications"), i18n("Live Folder")]
-                currentIndex: Math.max(0, sources.indexOf(root.selectedSource))
-                onActivated: root.updateStack({menuSource: sources[currentIndex]})
-            }
-            PlasmaComponents.TextField {
-                Layout.fillWidth: true
-                visible: root.selectedStack !== null
-                placeholderText: i18n("Stack name")
-                text: root.selectedStack ? root.selectedStack.settings.groupName : ""
-                onTextEdited: root.updateStack({groupName: text})
-            }
+
             RowLayout {
-                visible: root.selectedStack !== null
                 PlasmaComponents.Button {
-                    text: i18n("Choose icon…")
-                    icon.name: root.selectedStack ? root.selectedStack.settings.groupIcon : "applications-all"
-                    onClicked: { iconDialog.targetId = root.selectedStack.id; iconDialog.open() }
+                    text: i18n("Import…")
+                    onClicked: importDialog.open()
                 }
-                PlasmaComponents.CheckBox {
-                    text: i18n("Icons only")
-                    enabled: root.selectedSource !== "folder"
-                    checked: root.selectedStack && root.selectedSource !== "folder" ? root.selectedStack.settings.iconsOnly : false
-                    onToggled: root.updateStack({iconsOnly: checked})
+                PlasmaComponents.Button {
+                    text: i18n("Export group…")
+                    enabled: !root.decoded.error
+                    onClicked: { exportDialog.wholeGroup = true; exportDialog.open() }
                 }
-            }
-            RowLayout {
-                visible: root.selectedStack !== null
-                PlasmaComponents.Label { text: i18n("Icon size:") }
-                QQC2.SpinBox {
-                    from: 16; to: 64
-                    value: root.selectedStack ? root.selectedStack.settings.menuIconSize : 22
-                    onValueModified: root.updateStack({menuIconSize: value})
+                PlasmaComponents.Button {
+                    text: i18n("Export selected stack…")
+                    enabled: root.selectedStack !== null
+                    onClicked: {
+                        exportDialog.wholeGroup = false
+                        exportDialog.exportSettings = root.selectedStack.settings
+                        exportDialog.open()
+                    }
                 }
-                PlasmaComponents.Label { text: i18n("Hover delay:") }
-                QQC2.SpinBox {
-                    from: 0; to: 2000; stepSize: 50
-                    value: root.selectedStack ? root.selectedStack.settings.hoverDelay : 250
-                    onValueModified: root.updateStack({hoverDelay: value})
-                }
-            }
-            RowLayout {
-                visible: root.selectedSource === "activity"
-                PlasmaComponents.ComboBox {
-                    Accessible.name: i18n("Activity order")
-                    model: [i18n("Most recent"), i18n("Most frequent")]
-                    currentIndex: root.selectedStack && root.selectedStack.settings.activityOrder === "frequent" ? 1 : 0
-                    onActivated: root.updateStack({activityOrder: currentIndex === 1 ? "frequent" : "recent"})
-                }
-                PlasmaComponents.Label { text: i18n("Limit:") }
-                QQC2.SpinBox {
-                    from: 1; to: 50
-                    value: root.selectedStack ? root.selectedStack.settings.activityLimit : 10
-                    onValueModified: root.updateStack({activityLimit: value})
-                }
-            }
-            PlasmaComponents.CheckBox {
-                visible: root.selectedSource === "activity"
-                text: i18n("Current Activity only")
-                checked: root.selectedStack ? root.selectedStack.settings.activityCurrent : false
-                onToggled: root.updateStack({activityCurrent: checked})
             }
             PlasmaComponents.Label {
-                visible: root.selectedSource === "categories" || root.selectedSource === "activity"
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
-                text: root.selectedSource === "activity" ? i18n("Optional categories (none means all applications):")
-                    : i18n("Match any selected category:")
+                textFormat: Text.PlainText
+                text: root.profileMessage || i18n("Importing a stack adds an item. Importing a group replaces this editor's contents; Apply saves the changes.")
             }
-            PlasmaComponents.TextField {
-                id: categorySearch
-                objectName: "categorySearch"
-                visible: root.selectedSource === "categories" || root.selectedSource === "activity"
-                Layout.fillWidth: true
-                placeholderText: i18n("Filter categories…")
-                Accessible.name: i18n("Filter categories")
-                clearButtonShown: true
-                Keys.onReturnPressed: event => { event.accepted = true }
-                Keys.onEnterPressed: event => { event.accepted = true }
-            }
-            PlasmaComponents.ScrollView {
-                visible: root.selectedSource === "categories" || root.selectedSource === "activity"
+
+            // Group page / launcher page / stack page. The stack page embeds
+            // the shared StackSettingsEditor; the other two stay host-owned.
+            StackLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.minimumHeight: 180
-                contentWidth: availableWidth
-                QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
-                ListView {
-                    clip: true
-                    objectName: "categoryList"
-                    model: root.categoryNames.filter(value => value.toLowerCase().includes(categorySearch.text.toLowerCase()))
-                    delegate: PlasmaComponents.CheckDelegate {
-                        required property string modelData
-                        width: ListView.view.width
-                        text: modelData
-                        checked: root.selectedStack ? root.selectedStack.settings.applicationCategories.includes(modelData) : false
-                        onToggled: {
-                            if (!root.selectedStack) return
-                            const next = root.selectedStack.settings.applicationCategories.filter(value => value !== modelData)
-                            if (checked) next.push(modelData)
-                            root.updateStack({applicationCategories: next})
-                        }
-                    }
-                }
-            }
-            ColumnLayout {
-                visible: root.selectedSource === "folder"
-                Layout.fillWidth: true
-                RowLayout {
+                currentIndex: root.selectedIndex < 0 ? 0
+                    : root.selectedItem && root.selectedItem.type === "application" ? 1
+                    : root.selectedItem && root.selectedItem.type === "stack" ? 2 : 0
+
+                Kirigami.FormLayout {
                     Layout.fillWidth: true
-                    PlasmaComponents.Button {
-                        text: i18n("Choose folder…")
-                        onClicked: { folderPicker.targetId = root.selectedStack.id; folderPicker.open() }
-                    }
                     PlasmaComponents.TextField {
+                        id: groupNameField
+                        Kirigami.FormData.label: i18n("Group name:")
+                        placeholderText: i18n("TLBStacks Group")
+                        maximumLength: 256
+                    }
+                }
+                Kirigami.FormLayout {
+                    Layout.fillWidth: true
+                    PlasmaComponents.ComboBox {
+                        Kirigami.FormData.label: i18n("Application:")
                         Layout.fillWidth: true
-                        Layout.minimumWidth: 0
-                        implicitWidth: 0
-                        readOnly: true
-                        text: root.selectedStack ? root.selectedStack.settings.folderUrl : ""
-                        placeholderText: i18n("No folder selected")
+                        Accessible.name: i18n("Launcher application")
+                        textRole: "name"
+                        model: root.catalog
+                        currentIndex: root.selectedItem && root.selectedItem.type === "application"
+                            ? root.catalog.findIndex(app => app.desktopId === root.selectedItem.desktopId) : -1
+                        onActivated: root.replaceLauncherApp(root.catalog[currentIndex].desktopId)
+                    }
+                    PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: i18n("A direct launcher. Turn it into a stack with Add in the tree.")
                     }
                 }
-                PlasmaComponents.TextField {
-                    Layout.fillWidth: true
-                    Accessible.name: i18n("File patterns")
-                    placeholderText: i18n("File patterns, for example *.pdf;*.docx")
-                    text: root.selectedStack ? root.selectedStack.settings.folderFilters : "*"
-                    onTextEdited: root.updateStack({folderFilters: text})
-                    Keys.onReturnPressed: event => { event.accepted = true }
-                    Keys.onEnterPressed: event => { event.accepted = true }
-                }
-                PlasmaComponents.Label {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    text: root.folderError || i18n("Separate patterns with semicolons. Subfolders are always shown. Live Folder uses icons and text.")
-                }
-            }
-            PlasmaComponents.Button {
-                visible: root.selectedSource === "applications"
-                text: i18n("Add separator")
-                icon.name: "list-add"
-                enabled: root.selectedStack && root.selectedStack.settings.applications.length < 2000
-                onClicked: root.updateStack({applications: GroupItems.appendSeparator(root.selectedStack.settings.applications)})
-            }
-            PlasmaComponents.ScrollView {
-                visible: root.selectedSource === "applications"
-                Layout.fillWidth: true
-                Layout.preferredHeight: 140
-                contentWidth: availableWidth
-                QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
-                ListView {
-                    clip: true
-                    model: root.selectedStack ? root.selectedStack.settings.applications : []
-                    delegate: RowLayout {
-                        id: member
-                        required property string modelData
-                        required property int index
-                        width: ListView.view.width
-                        PlasmaComponents.Label {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            visible: !GroupItems.isSeparator(member.modelData)
-                            text: root.nameFor(member.modelData)
-                            elide: Text.ElideRight
-                        }
-                        PlasmaComponents.TextField {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            visible: GroupItems.isSeparator(member.modelData)
-                            property string editStackId: ""
-                            property string editSeparatorId: ""
-                            text: GroupItems.separatorLabel(member.modelData)
-                            placeholderText: i18n("Separator label (optional)")
-                            Accessible.name: i18n("Separator label")
-                            maximumLength: 64
-                            onActiveFocusChanged: if (activeFocus && root.selectedStack) {
-                                editStackId = root.selectedStack.id
-                                editSeparatorId = member.modelData
-                            }
-                            onEditingFinished: root.renameSeparator(editStackId, editSeparatorId, text)
-                        }
-                        PlasmaComponents.ToolButton {
-                            icon.name: "go-up"
-                            Accessible.name: i18n("Move up")
-                            enabled: member.index > 0
-                            onClicked: root.changeMember(member.index, -1, false)
-                        }
-                        PlasmaComponents.ToolButton {
-                            icon.name: "go-down"
-                            Accessible.name: i18n("Move down")
-                            enabled: root.selectedStack && member.index < root.selectedStack.settings.applications.length - 1
-                            onClicked: root.changeMember(member.index, 1, false)
-                        }
-                        PlasmaComponents.ToolButton {
-                            icon.name: "list-remove"
-                            Accessible.name: i18n("Remove from stack")
-                            onClicked: root.changeMember(member.index, 0, true)
-                        }
-                    }
-                }
-            }
-            PlasmaComponents.TextField {
-                id: search
-                visible: !root.selectedStack || root.selectedSource === "applications"
-                Layout.fillWidth: true
-                placeholderText: i18n("Search applications…")
-                clearButtonShown: true
-                Keys.onReturnPressed: event => { event.accepted = true }
-                Keys.onEnterPressed: event => { event.accepted = true }
-            }
-            PlasmaComponents.ScrollView {
-                visible: !root.selectedStack || root.selectedSource === "applications"
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.minimumHeight: 220
-                contentWidth: availableWidth
-                QQC2.ScrollBar.horizontal.policy: QQC2.ScrollBar.AlwaysOff
-                ListView {
-                    clip: true
-                    model: root.catalog.filter(app => app.name.toLowerCase().includes(search.text.toLowerCase())
-                        && !(root.selectedStack ? root.selectedStack.settings.applications.includes(app.desktopId)
-                            : root.decoded.items.some(item => item.type === "application" && item.desktopId === app.desktopId)))
-                    delegate: RowLayout {
-                        id: appRow
-                        required property var modelData
-                        width: ListView.view.width
-                        PlasmaComponents.Label {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            text: appRow.modelData.name
-                            elide: Text.ElideRight
-                        }
-                        PlasmaComponents.ToolButton {
-                            icon.name: "list-add"
-                            enabled: root.selectedStack ? root.selectedStack.settings.applications.length < 2000 : root.decoded.items.length < 500
-                            Accessible.name: i18n("Add %1", appRow.modelData.name)
-                            onClicked: root.addApplication(appRow.modelData.desktopId)
-                        }
-                    }
+                StackSettingsEditor {
+                    id: stackEditor
+                    settings: root.selectedStack ? root.selectedStack.settings : {}
+                    catalog: root.catalog
+                    launcher: launcher
+                    stackIconDefault: "applications-all"
+                    onSettingsEdited: changes => root.updateStack(changes)
                 }
             }
         }
