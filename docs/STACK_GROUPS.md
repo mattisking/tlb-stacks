@@ -29,7 +29,10 @@ a completed checkpoint after acceptance. No automatic migration of existing widg
 
 ## Current checkpoint and resume notes
 
-**Step 6 panel sizing/highlighting accepted; configure-selected-item access is next.**
+**Group configuration is rebuilt around a shared stack editor (October 7, 2026,
+branch `shared-stack-editor`); desktop verification of that rebuild is pending.
+Panel sizing/highlighting stays accepted from the step-6 first pass, and the
+group-button right-click/hover fix remains uncommitted in the main checkout.**
 
 The user reported “looks good. Works. icons all work.” after installing step 2.
 This confirms the reported launcher/icon behavior; it does not independently
@@ -56,9 +59,13 @@ certify every optional orientation and keyboard check below.
   standalone widget, exposed through the native QML module. It owns rows, icons,
   tooltips, selection/navigation, activation and context actions. Group hosts one
   anchored Plasma dialog and restores focus to its stack button on dismissal.
-- The list/detail editor adds stacks, names/icons, icons-only mode, size, hover delay,
-  application membership and ordering. Separators can be appended, labeled, reordered and removed with stack members.
-  Per-application custom icon editing is not yet exposed in this group editor.
+- Group configuration shows the panel order as a preview strip above a resizable
+  split view: an expandable item tree on the left, settings on the right. The
+  shared stack editor (see the [shared editor section](#shared-stack-editor-rebuild-branch-shared-stack-editor))
+  covers stack names/icons, icons-only mode, size, hover delay, application
+  membership and ordering, separators (appended, labeled, reordered, removed) and
+  per-application icon overrides through Choose…/Image…/Reset. Tree child rows are
+  plain summary labels; selecting them for editing is a deferred increment.
 - Categories, Recent/Frequent and local Live Folder are now selectable. Category
   matching reuses the shared helper; each activity button owns its own ActivitySource
   cache and refreshes on opening. Folder rendering reuses FolderMenu, including its
@@ -93,6 +100,93 @@ or the installed catalog change and only notifies entry bindings when results
 actually change. Each activity stack retains its independent query/results.
 The user reports that Recent responsiveness now works well. Grouped Live Folder
 cascades/dismissal have not been explicitly confirmed; keep those checks pending.
+
+## Shared stack editor rebuild (branch `shared-stack-editor`)
+
+October 7, 2026: group configuration is rebuilt around one stack editor shared
+with the standalone widget. This delivers step 2 of the
+[configuration design](CONFIGURATION_DESIGN.md#delivery-order--resume-point)
+(introduce the editor structure over existing settings) in code. Desktop
+verification is still pending, and nothing is merged: the main checkout still
+holds the uncommitted right-click/hover work, and the user decides merge order
+after reviewing that WIP.
+
+What shipped on this branch:
+
+- `package/contents/ui/StackSettingsEditor.qml` — one editor for a stack's
+  settings: a kind-segment row (Selected / Live folder / Categories / Recent),
+  Contents and Appearance tabs, and one Contents page per source. It edits plain
+  data and emits partial `{field: value}` changes; it never touches `cfg_*`
+  properties or the group's stored JSON, so each host persists through its own
+  storage. Per-application icon Choose…/Image…/Reset runs through the launcher's
+  `manageIcon` operation, so the same flow works from both widgets. Members are
+  added through the shared search-on-add dialog.
+- `package/contents/ui/AppPickerDialog.qml` — the search-on-add picker; search
+  takes space only while adding, and `exclude` hides applications already in the
+  target list.
+- `package/contents/ui/CategoryChipBar.qml` — a filterable chip cloud whose
+  selection state is host-owned: chips are not checkable, and the highlighted
+  look derives from the host's array so the visuals cannot desync from the data.
+- `package/contents/ui/StackMembers.js` — shared separator member-ID helpers
+  (`tlbstacks-separator:<number>[:<label>]`) for the editor; `GroupItems.js`
+  keeps its own copies for the group schema flow.
+- The standalone host (`package/contents/ui/ConfigGeneral.qml`) synthesizes a
+  `stackSettings` object from its `cfg_*` keys, feeds it to the editor, and
+  writes partial changes back into the same `cfg_*` keys Plasma commits on
+  Apply/OK. Import/export and the unavailable-applications report are unchanged.
+- The group host (`package-group/contents/ui/ConfigGeneral.qml`) shows a preview
+  strip of the panel in order (group-gear header, add footer, one cell per item),
+  an expandable item tree (stack rows expand to plain summary labels, not
+  selectable rows), a breadcrumb linking back to the group page, a resizable
+  `SplitView`, and a group page / launcher page / stack page per selection. The
+  stack page embeds the shared editor; the launcher page swaps its application
+  through `GroupItems.replaceLauncher`; the add menu offers "Application
+  launcher…" (shared picker) and "Stack" (added and auto-expanded).
+- Persistence is unchanged: the standalone widget keeps every `cfg_*` key it had,
+  the group keeps `General/groupName` plus `General/items` (versions 1–3), and no
+  schema or migration changed. Apply/Cancel staging and the import/export flows
+  are preserved.
+
+Explicitly deferred (not built here): inherited group defaults (the prototype's
+`-1` values), a group-level panel icon config key, launcher custom label/icon
+overrides, selectable tree child rows, and drag-and-drop reordering.
+
+Merge-time note: the groupSelection per-item configuration handoff exists only in
+the main checkout's uncommitted WIP and was deliberately not ported. When that
+WIP lands, its consumption block and its test must be re-wired into the new group
+host layout (preview strip / tree / inspector). Expect textual overlap in
+`package-group/contents/ui/ConfigGeneral.qml` and `src/CMakeLists.txt`. The
+right-click/hover fix (design step 1) is part of that uncommitted WIP and
+remains pending desktop verification.
+
+Manual desktop verification (not automatable here). Install both widgets
+(`cmake --build build/ci --target install` configured with `-DTLB_INSTALL_GROUP=ON`,
+or `kpackagetool6 -t Plasma/Applet -u package` and `-u package-group`), open each
+config dialog, and check:
+
+1. Preview strip selection sync (strip ↔ tree ↔ inspector, both directions).
+2. Tree expand/collapse per stack.
+3. Add menu: "Application launcher…" through the picker; "Stack" appears and
+   auto-expands in the tree.
+4. Launcher page: swap the Application combo and confirm the launcher follows.
+5. Breadcrumb link returns to the group page.
+6. Contents/Appearance tabs on all four kinds in both widgets.
+7. Icon Choose…/Image…/Reset round-trips, including `manageIcon` driven from the
+   group widget.
+8. Separator label editing plus the tree's separator summary lines.
+9. Apply/Cancel staging: Cancel restores the saved group; Apply persists.
+10. Import/export round trips: whole group, single stack into a standalone
+    widget, and selected-stack export from the group.
+
+Offscreen suites (run from the repo root; the QML module lands in `build/ci/qml`
+per the CMake `OUTPUT_DIRECTORY` and `scripts/ci-run.sh`):
+
+```sh
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QML_IMPORT_PATH="$PWD/build/ci/qml" \
+    qmltestrunner-qt6 -input tests/stack-group-runtime -o -,txt
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QML_IMPORT_PATH="$PWD/build/ci/qml" \
+    qmltestrunner-qt6 -input tests/stack-editor -o -,txt
+```
 
 ## Step 6 panel polish — first pass
 
@@ -199,7 +293,7 @@ Install with `./install.ps1 -WithGroup` (including the rebuilt native module).
 Runtime smoke tests (requires installed Plasma/Kirigami runtime, separate from minimal CI):
 
 ```sh
-QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QML_IMPORT_PATH="$PWD/build/qml" qmltestrunner-qt6 -input tests/stack-group-runtime -o -,txt
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QML_IMPORT_PATH="$PWD/build/ci/qml" qmltestrunner-qt6 -input tests/stack-group-runtime -o -,txt
 ```
 
 These exercise both local and packaged shared-menu navigation and real editor changes,

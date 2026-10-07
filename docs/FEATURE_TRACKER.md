@@ -2,7 +2,7 @@
 
 [Project guide](README.md) · [Current model](STACK_ENTRY_MODEL.md) · [Verification](TESTING_AND_STATUS.md)
 
-**Updated:** October 6, 2026. This is the authoritative list of requested future
+**Updated:** October 7, 2026. This is the authoritative list of requested future
 work. IDs remain stable even when titles or priorities change. Update entries as
 requests are clarified; link to implementation and verification rather than copy them.
 
@@ -26,7 +26,8 @@ recorded, details unresolved), **In progress**, **Implemented — needs verifica
 | [F-012](#f-012) | Distribution packaging (OBS) and KDE Store listing | Planned |
 | [F-013](#f-013) | Cross-machine profile portability | Implemented — needs verification |
 | [F-014](#f-014) | Direct panel launchers alongside stacks | Planned within F-015 |
-| [F-015](#f-015) | Stack Groups | In progress — step 6 configuration shortcuts next |
+| [F-015](#f-015) | Stack Groups | In progress — shared config editor built; desktop verification next |
+| [F-016](#f-016) | Shared stack settings editor for both widgets | Implemented — needs verification |
 | [M-001](#m-001) | Clean source-control checkpoint | Verified |
 | [M-002](#m-002) | CI/release pipeline hardening follow-ups | In progress |
 
@@ -329,6 +330,42 @@ an individual stack; export one stack or the group. Future item context actions 
 open this editor with the relevant item selected. Do not duplicate stack navigation
 and rendering implementations for the container.
 
+October 7, 2026: group configuration is rebuilt around the shared stack editor
+([F-016](#f-016)) on the `shared-stack-editor` branch — preview strip, expandable
+item tree, breadcrumb and settings pane. Desktop verification of that rebuild is
+pending and nothing is merged; the group-button right-click/hover fix remains
+uncommitted work in the main checkout. Deferred increments (selectable child rows,
+inherited group defaults, drag reordering) stay out of scope here and in F-016.
+
 The six accepted checkpoints and the exact resume/test instructions are maintained
 in [Stack Groups](STACK_GROUPS.md). Complete and desktop-test each checkpoint before
 starting the next; keep changes small enough to resume across usage-limit pauses.
+
+<a id="f-016"></a>
+## F-016 — Shared stack settings editor for both widgets
+
+Requested October 7, 2026 (from the
+[configuration editor redesign](CONFIGURATION_DESIGN.md)). Status:
+**Implemented — needs verification** on the `shared-stack-editor` branch;
+desktop verification pending and nothing merged.
+
+One `StackSettingsEditor` (kind segments for Selected / Live folder / Categories /
+Recent, Contents/Appearance tabs, all four source pages, per-application and stack
+icon Choose…/Image…/Reset through the launcher's `manageIcon` operation) serves
+both the standalone widget and the group. It edits plain data and emits partial
+changes; the standalone host persists into its existing `cfg_*` keys and the group
+host into `General/items`, so schemas, Apply/Cancel staging and import/export are
+unchanged. Supporting pieces: a search-on-add `AppPickerDialog`, a `CategoryChipBar`
+chip cloud with host-owned selection, and shared separator helpers
+(`StackMembers.js`). The group host adds a preview strip, an expandable item tree
+(summary-only child rows), a breadcrumb and a resizable split view; the launcher
+page swaps applications via `GroupItems.replaceLauncher`.
+
+Explicitly deferred: inherited group defaults (`-1` values), a group-level panel
+icon config key, launcher custom label/icon overrides, selectable tree child rows
+and drag-and-drop reordering (see [F-003](#f-003) for reordering scope). The
+group-button right-click/hover fix (design step 1) is separate uncommitted work in
+the main checkout; when it lands, its groupSelection consumption block and test
+must be re-wired into the rebuilt group host layout. The shipped structure and the
+manual verification checklist are recorded in
+[Stack Groups](STACK_GROUPS.md#shared-stack-editor-rebuild-branch-shared-stack-editor).
