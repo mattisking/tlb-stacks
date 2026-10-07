@@ -29,7 +29,7 @@ a completed checkpoint after acceptance. No automatic migration of existing widg
 
 ## Current checkpoint and resume notes
 
-**Step 5 accepted; step 6 panel polish is next.**
+**Step 6 panel sizing/highlighting accepted; configure-selected-item access is next.**
 
 The user reported “looks good. Works. icons all work.” after installing step 2.
 This confirms the reported launcher/icon behavior; it does not independently
@@ -93,6 +93,29 @@ or the installed catalog change and only notifies entry bindings when results
 actually change. Each activity stack retains its independent query/results.
 The user reports that Recent responsiveness now works well. Grouped Live Folder
 cascades/dismissal have not been explicitly confirmed; keep those checks pending.
+
+## Step 6 panel polish — first pass
+
+The user reported “looks good” after this increment. Panel sizing/highlighting is
+accepted; vertical-panel and screen-edge cases were not separately reported.
+
+Group buttons now follow panel thickness without imposing a minimum thickness.
+Icons scale with their buttons up to the theme's large icon size, leaving a small
+inset. Surplus layout space no longer stretches individual buttons. The currently
+open stack stays highlighted. Popup placement remains owned by Plasma's anchored
+dialog; no manual screen coordinates are introduced.
+
+Install with `./install.ps1 -WithGroup`, then check:
+
+1. On your normal panel, compare launcher and stack icon sizes and spacing.
+2. Open a stack and switch to another: only the open stack should stay highlighted.
+   Dismiss it and confirm the highlight clears (ordinary hover/focus may remain).
+3. If convenient, change panel thickness and try a vertical panel. Buttons should
+   remain square, with no forced enlargement of the panel or stretched gaps.
+4. Open stacks near each screen edge and check popup placement and scrolling.
+
+Configure-selected-item access and any adjustments from this desktop feedback
+remain in step 6. These layout changes do not add new saved settings.
 
 ## Step 5 desktop test
 

@@ -137,18 +137,25 @@ PlasmoidItem {
     fullRepresentation: Item {
         id: content
         readonly property real cellSize: root.onPanel
-            ? Math.max(Kirigami.Units.gridUnit * 2, Math.min(128, root.vertical ? root.width : root.height))
+            ? Math.max(1, root.vertical ? root.width : root.height)
             : Kirigami.Units.gridUnit * 2
         readonly property int count: Math.max(1, root.decoded.items.length)
         implicitWidth: root.vertical ? cellSize : count * cellSize
         implicitHeight: root.vertical ? count * cellSize : cellSize
-        Layout.minimumWidth: implicitWidth
-        Layout.minimumHeight: implicitHeight
+        // Only constrain the panel's long axis; Plasma owns its thickness.
+        Layout.minimumWidth: root.vertical ? 0 : implicitWidth
+        Layout.minimumHeight: root.vertical ? implicitHeight : 0
+        Layout.preferredWidth: implicitWidth
+        Layout.preferredHeight: implicitHeight
+        readonly property real panelIconSize: Math.max(1, Math.min(Kirigami.Units.iconSizes.large,
+            cellSize - Kirigami.Units.smallSpacing * 2))
         function focusEntry(index) {
             if (buttons.count) buttons.itemAt((index + buttons.count) % buttons.count).forceActiveFocus()
         }
         GridLayout {
-            anchors.fill: parent
+            anchors.centerIn: parent
+            width: content.implicitWidth
+            height: content.implicitHeight
             columns: root.vertical ? 1 : content.count
             rowSpacing: 0
             columnSpacing: 0
@@ -157,6 +164,8 @@ PlasmoidItem {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 icon.name: root.decoded.error ? "dialog-warning" : "view-grid"
+                icon.width: content.panelIconSize
+                icon.height: content.panelIconSize
                 Accessible.name: i18n("Configure %1", root.displayName)
                 onClicked: root.configure()
             }
@@ -205,6 +214,9 @@ PlasmoidItem {
                     icon.name: IconOverrides.isFile(resolvedIcon) ? "" : resolvedIcon
                     icon.source: IconOverrides.isFile(resolvedIcon) ? resolvedIcon : ""
                     icon.color: "transparent"
+                    icon.width: content.panelIconSize
+                    icon.height: content.panelIconSize
+                    highlighted: stackPopup.visible && root.activeStackId === modelData.id
                     Accessible.name: appName
                     onClicked: {
                         root.launchError = ""
