@@ -197,7 +197,7 @@ PlasmoidItem {
                     readonly property string appName: {
                         const revision = root.catalogRevision
                         return modelData.type === "stack" ? modelData.settings.groupName || i18n("Stack")
-                            : launcher.name(modelData.desktopId) || modelData.desktopId
+                            : modelData.label || launcher.name(modelData.desktopId) || modelData.desktopId
                     }
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -209,11 +209,23 @@ PlasmoidItem {
                     readonly property string resolvedIcon: {
                         const revision = root.catalogRevision
                         return modelData.type === "stack" ? modelData.settings.groupIcon || "applications-all"
-                            : launcher.icon(modelData.desktopId) || "application-x-executable"
+                            : modelData.icon || launcher.icon(modelData.desktopId) || "application-x-executable"
                     }
                     icon.name: IconOverrides.isFile(resolvedIcon) ? "" : resolvedIcon
                     icon.source: IconOverrides.isFile(resolvedIcon) ? resolvedIcon : ""
                     icon.color: "transparent"
+                    contentItem: Item {
+                        implicitWidth: content.panelIconSize
+                        implicitHeight: content.panelIconSize
+                        ApplicationIcon {
+                            anchors.centerIn: parent
+                            width: Math.min(parent.width, content.panelIconSize)
+                            height: Math.min(parent.height, content.panelIconSize)
+                            source: button.resolvedIcon
+                            fallbackSource: button.modelData.type === "application" ? launcher.icon(button.modelData.desktopId) || "application-x-executable" : "applications-all"
+                            sourceAvailable: { const revision = root.catalogRevision; return launcher.themeIconAvailable(source) }
+                        }
+                    }
                     icon.width: content.panelIconSize
                     icon.height: content.panelIconSize
                     highlighted: stackPopup.visible && root.activeStackId === modelData.id

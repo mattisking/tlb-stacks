@@ -83,8 +83,21 @@ TestCase {
         compare(GroupItems.decode(GroupItems.encode(updated)).items[0].settings.applications, apps)
         compare(GroupItems.renameSeparator(apps, apps[1], "")[1], id)
     }
+    function test_launcher_overrides_preserve_identity_and_version() {
+        const initial = GroupItems.add([], "app.desktop")
+        const changed = GroupItems.updateLauncherAppearance(initial, initial[0].id, {label: "My app", icon: "folder"})
+        compare(JSON.parse(GroupItems.encode(changed)).version, 4)
+        compare(GroupItems.decode(GroupItems.encode(changed)).items, changed)
+        verify(!initial[0].label)
+        const replaced = GroupItems.replaceLauncher(changed, changed[0].id, "other.desktop")
+        compare(replaced[0].label, "My app")
+        compare(replaced[0].id, initial[0].id)
+        for (const invalid of [{label: 4}, {label: "x".repeat(257)}, {icon: []}]) {
+            verify(GroupItems.decode(GroupItems.encode(GroupItems.updateLauncherAppearance(initial, initial[0].id, invalid))).error)
+        }
+    }
     function test_future_and_malformed_settings_preserved_as_error() {
-        for (const raw of ["bad", '{"version":4,"items":[]}',
+        for (const raw of ["bad", '{"version":5,"items":[]}',
                            '{"version":1,"items":[{"id":"a","type":"stack"}]}',
                            '{"version":1,"items":[{"id":"a","type":"application","desktopId":"x"},{"id":"a","type":"application","desktopId":"y"}]}']) {
             verify(GroupItems.decode(raw).error)

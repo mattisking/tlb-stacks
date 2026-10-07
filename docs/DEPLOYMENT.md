@@ -338,7 +338,11 @@ In group configuration, **Import…** accepts an individual stack (appended to t
 list) or a group (replaces staged contents). **Export selected stack…** creates a
 standalone-compatible ZIP; **Export group…** includes the ordered collection and
 custom images. Apply saves imported settings; Cancel preserves the saved group.
-Whole-group archives use `TLBStacksGroup` version 1 and require the Group widget.
+Whole-group archives use `TLBStacksGroup` version 2 when direct-launcher label or
+icon overrides are present, otherwise version 1. Both require the Group widget;
+older builds reject version 2. Select a direct launcher in group settings to change
+its label/icon or reset both to application defaults. Custom images travel with
+the group archive; individual-stack exports are unchanged.
 The [portable profile rules](#portable-menu-profiles) also apply to group images
 and folder references. Follow the [step-5 desktop checklist](STACK_GROUPS.md#step-5-desktop-test)
 before moving to panel polish.

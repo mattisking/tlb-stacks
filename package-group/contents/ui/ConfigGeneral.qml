@@ -5,6 +5,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import QtQuick.Dialogs as Dialogs
 import org.kde.kirigami as Kirigami
+import org.kde.iconthemes as IconThemes
 import org.kde.plasma.components as PlasmaComponents
 import com.mattphilmon.tlbstacks
 import "GroupItems.js" as GroupItems
@@ -15,16 +16,22 @@ ColumnLayout {
     enabled: !launcher.profileBusy
     property var pendingProfile: null
     property string profileMessage: ""
-    function startProfile(action, request) {
+    function startProfile(action, request, targetId) {
         if (launcher.profileBusy) return
-        pendingProfile = {id: launcher.profileOperation(action, request), action: action}
+        pendingProfile = {id: launcher.profileOperation(action, request), action: action, targetId: targetId || ""}
         profileMessage = i18n("Working… Please wait before applying changes.")
     }
     function finishProfile(requestId, result) {
         if (!pendingProfile || pendingProfile.id !== requestId) return
         const action = pendingProfile.action
+        const targetId = pendingProfile.targetId
         pendingProfile = null
         if (!result.ok) { profileMessage = result.error; return }
+        if (action === "manageIcon") {
+            updateLauncherAppearance(targetId, {icon: result.icon})
+            profileMessage = ""
+            return
+        }
         if (action !== "importGroup") {
             profileMessage = i18n("Exported with custom images and portable folder references.")
             return
@@ -111,6 +118,34 @@ ColumnLayout {
             selectedIndex = decoded.items.length - 1
         }
     }
+    function updateLauncherAppearance(id, changes) {
+        if (!decoded.error) cfg_items = GroupItems.encode(GroupItems.updateLauncherAppearance(decoded.items, id, changes))
+    }
+    function launcherLabel(item) { return item.label || nameFor(item.desktopId) }
+    function launcherIcon(item) {
+        return item.icon || (catalog.find(app => app.desktopId === item.desktopId) || {}).icon || "application-x-executable"
+    }
+    property string launcherIconTarget: ""
+    function chooseLauncherIcon(fromFile) {
+        if (!selectedItem || selectedItem.type !== "application") return
+        launcherIconTarget = selectedItem.id
+        if (fromFile) launcherImageDialog.open()
+        else {
+            launcherIconDialog.title = i18n("Choose a launcher icon")
+            launcherIconDialog.open()
+        }
+    }
+    IconThemes.IconDialog {
+        id: launcherIconDialog
+        onIconNameChanged: if (iconName.length) root.startProfile("manageIcon", {icon: iconName}, root.launcherIconTarget)
+    }
+    Dialogs.FileDialog {
+        id: launcherImageDialog
+        title: i18n("Choose a launcher image")
+        fileMode: Dialogs.FileDialog.OpenFile
+        nameFilters: [i18n("Icon images (*.png *.svg *.svgz *.jpg *.jpeg *.webp *.ico)")]
+        onAccepted: root.startProfile("manageIcon", {icon: selectedFile.toString()}, root.launcherIconTarget)
+    }
     function moveSelected(step) {
         const index = selectedIndex
         cfg_items = GroupItems.encode(GroupItems.move(decoded.items, index, step))
@@ -136,7 +171,7 @@ ColumnLayout {
     }
     readonly property string selectedItemName: !selectedItem ? ""
         : selectedItem.type === "stack" ? (selectedItem.settings.groupName || i18n("Stack"))
-        : nameFor(selectedItem.desktopId)
+        : launcherLabel(selectedItem)
     // The breadcrumb renders as Text.StyledText, so imported names must be
     // escaped before entering the markup: an imported "<img src=…>" name
     // would otherwise become a live (remotely-fetchable) image tag.
@@ -222,8 +257,7 @@ ColumnLayout {
             readonly property string resolvedIcon: {
                 const catalogNow = root.catalog
                 return modelData.type === "stack" ? modelData.settings.groupIcon || "applications-all"
-                    : (catalogNow.find(app => app.desktopId === modelData.desktopId) || {}).icon
-                        || "application-x-executable"
+                    : root.launcherIcon(modelData)
             }
             icon.name: IconOverrides.isFile(resolvedIcon) ? "" : resolvedIcon
             icon.source: IconOverrides.isFile(resolvedIcon) ? resolvedIcon : ""
@@ -231,7 +265,7 @@ ColumnLayout {
             icon.width: Kirigami.Units.iconSizes.medium
             icon.height: Kirigami.Units.iconSizes.medium
             text: modelData.type === "stack"
-                ? (modelData.settings.groupName || i18n("Stack")) : root.nameFor(modelData.desktopId)
+                ? (modelData.settings.groupName || i18n("Stack")) : root.launcherLabel(modelData)
             highlighted: root.selectedIndex === stripCell.index
             onClicked: root.selectedIndex = stripCell.index
             Accessible.name: stripCell.text
@@ -290,9 +324,9 @@ ColumnLayout {
                             Layout.fillWidth: true
                             text: itemRow.isStack
                                 ? (treeRow.modelData.settings.groupName || i18n("Stack"))
-                                : root.nameFor(treeRow.modelData.desktopId)
+                                : root.launcherLabel(treeRow.modelData)
                             readonly property string itemIcon: itemRow.isStack ? treeRow.modelData.settings.groupIcon || "applications-all"
-                                : (root.catalog.find(app => app.desktopId === treeRow.modelData.desktopId) || {}).icon || "application-x-executable"
+                                : root.launcherIcon(treeRow.modelData)
                             icon.name: IconOverrides.isFile(itemIcon) ? "" : itemIcon
                             icon.source: IconOverrides.isFile(itemIcon) ? itemIcon : ""
                             icon.color: "transparent"
@@ -476,6 +510,32 @@ ColumnLayout {
                         currentIndex: root.selectedItem && root.selectedItem.type === "application"
                             ? root.catalog.findIndex(app => app.desktopId === root.selectedItem.desktopId) : -1
                         onActivated: root.replaceLauncherApp(root.catalog[currentIndex].desktopId)
+                    }
+                    PlasmaComponents.TextField {
+                        objectName: "launcherLabelField"
+                        Kirigami.FormData.label: i18n("Label:")
+                        Layout.fillWidth: true
+                        maximumLength: 256
+                        text: root.selectedItem && root.selectedItem.type === "application" ? root.selectedItem.label || "" : ""
+                        placeholderText: root.selectedItem && root.selectedItem.type === "application" ? root.nameFor(root.selectedItem.desktopId) : ""
+                        onTextEdited: if (root.selectedItem) root.updateLauncherAppearance(root.selectedItem.id, {label: text})
+                    }
+                    RowLayout {
+                        Kirigami.FormData.label: i18n("Icon:")
+                        ApplicationIcon {
+                            Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                            Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                            source: root.selectedItem && root.selectedItem.type === "application" ? root.launcherIcon(root.selectedItem) : ""
+                            fallbackSource: root.selectedItem && root.selectedItem.type === "application" ? launcher.icon(root.selectedItem.desktopId) : ""
+                            sourceAvailable: launcher.themeIconAvailable(source)
+                        }
+                        PlasmaComponents.Button { text: i18n("Choose…"); onClicked: root.chooseLauncherIcon(false) }
+                        PlasmaComponents.Button { text: i18n("Image…"); onClicked: root.chooseLauncherIcon(true) }
+                    }
+                    PlasmaComponents.Button {
+                        text: i18n("Reset appearance")
+                        enabled: root.selectedItem && !!(root.selectedItem.label || root.selectedItem.icon)
+                        onClicked: root.updateLauncherAppearance(root.selectedItem.id, {label: "", icon: ""})
                     }
                     PlasmaComponents.Label {
                         Layout.fillWidth: true

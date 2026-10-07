@@ -60,5 +60,7 @@ and profile formats. The user accepted the editor polish after desktop testing, 
 Recent layout. Optional orientation and group cascade checks remain tracked in
 Stack Groups.
 
-Direct-launcher label/icon appearance, selectable tree child editing, inherited
-group defaults, and drag reordering remain separate future increments.
+Direct-launcher label/icon appearance is implemented and desktop-accepted; see
+[Stack Groups](STACK_GROUPS.md#direct-launcher-appearance).
+Selectable tree child editing, inherited group defaults, and drag reordering remain
+separate future increments.

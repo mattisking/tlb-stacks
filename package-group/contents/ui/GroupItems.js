@@ -5,13 +5,15 @@
 function decode(value) {
     try {
         const data = JSON.parse(value)
-        if (!data || ![1, 2, 3].includes(data.version) || !Array.isArray(data.items) || data.items.length > 500)
+        if (!data || ![1, 2, 3, 4].includes(data.version) || !Array.isArray(data.items) || data.items.length > 500)
             throw new Error("Unsupported group format")
         const ids = new Set()
         for (const item of data.items) {
             if (!item || typeof item.id !== "string" || !item.id || ids.has(item.id))
                 throw new Error("Invalid entry identity")
             if (item.type === "application") {
+                if ((item.label !== undefined && (typeof item.label !== "string" || item.label.length > 256))
+                    || (item.icon !== undefined && typeof item.icon !== "string")) throw new Error("Invalid launcher appearance")
                 if (typeof item.desktopId !== "string" || !item.desktopId) throw new Error("Invalid application")
             } else if (item.type === "stack" && data.version >= 2) {
                 const cfg = item.settings
@@ -50,7 +52,8 @@ function sourceDefaults(settings) {
         activityCurrent: false, applicationIcons: {}, folderUrl: "", folderFilters: "*"}, settings)
 }
 function encode(items) {
-    const version = items.some(item => item.type === "stack" && item.settings.menuSource !== "applications") ? 3
+    const version = items.some(item => item.type === "application" && (item.label || item.icon)) ? 4
+        : items.some(item => item.type === "stack" && item.settings.menuSource !== "applications") ? 3
         : items.some(item => item.type === "stack") ? 2 : 1
     return JSON.stringify({version: version, items: items})
 }
@@ -110,4 +113,9 @@ function replaceLauncher(items, id, desktopId) {
     if (!desktopId || !items.some(item => item.id === id && item.type === "application")) return items
     if (items.some(item => item.type === "application" && item.desktopId === desktopId && item.id !== id)) return items
     return items.map(item => item.id === id ? Object.assign({}, item, {desktopId: desktopId}) : item)
+}
+
+function updateLauncherAppearance(items, id, changes) {
+    return items.map(item => item.id === id && item.type === "application"
+        ? Object.assign({}, item, changes) : item)
 }

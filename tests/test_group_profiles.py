@@ -46,6 +46,33 @@ class GroupProfiles(unittest.TestCase):
             for name, value in data.items():
                 archive.writestr(name, value)
 
+    def test_launcher_appearance_round_trip_and_shared_asset(self):
+        self.group['items'][0].update(label='My editor', icon=str(self.image))
+        self.export()
+        with zipfile.ZipFile(self.archive) as archive:
+            manifest = json.loads(archive.read('profile.json'))
+            self.assertEqual(manifest['version'], 2)
+            self.assertEqual(len(archive.namelist()), 2)
+        self.image.unlink()
+        result = self.imported()['group']['items']
+        self.assertEqual(result[0]['label'], 'My editor')
+        self.assertEqual(result[0]['icon'], result[1]['settings']['groupIcon'])
+        self.assertTrue(Path(result[0]['icon']).is_file())
+        self.assertEqual(result[0]['desktopId'], 'missing.desktop')
+
+    def test_invalid_launcher_icon_prevents_all_asset_writes(self):
+        self.group['items'][0]['icon'] = str(self.image)
+        self.export()
+        self.rewrite(lambda data: data['group']['items'][0].update(icon='assets/' + '0' * 64 + '.png'))
+        with self.assertRaises(ValueError):
+            self.imported()
+        self.assertFalse((self.root / 'destination/tlbstacks/icons').exists())
+
+    def test_launcher_label_is_validated(self):
+        self.group['items'][0]['label'] = 'x' * 257
+        with self.assertRaises(ValueError):
+            self.export()
+
     def test_all_sources_order_images_and_relocation(self):
         for source in ['categories', 'activity', 'folder']:
             settings = dict(self.settings, menuSource=source,

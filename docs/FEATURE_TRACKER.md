@@ -318,7 +318,7 @@ part of this proposal.
 <a id="f-015"></a>
 ## F-015 — Stack Groups
 
-Status: **In progress — step 6 configuration shortcuts next**. The user selected an optional collection widget
+Status: **In progress — launcher Appearance accepted**. The user selected an optional collection widget
 containing stacks and direct launchers, without task management. Preserve existing
 independent stack widgets and individual stack import/export. This is the scoped
 container direction discussed under F-005; it does not authorize a panel replacement.
@@ -330,12 +330,13 @@ an individual stack; export one stack or the group. Future item context actions 
 open this editor with the relevant item selected. Do not duplicate stack navigation
 and rendering implementations for the container.
 
-October 7, 2026: group configuration is rebuilt around the shared stack editor
-([F-016](#f-016)) on the `shared-stack-editor` branch — preview strip, expandable
-item tree, breadcrumb and settings pane. Desktop verification of that rebuild is
-pending and nothing is merged; the group-button right-click/hover fix remains
-uncommitted work in the main checkout. Deferred increments (selectable child rows,
-inherited group defaults, drag reordering) stay out of scope here and in F-016.
+October 7, 2026: the shared configuration editor is merged, and its polish pass
+has desktop acceptance. Panel right-click item editing is dropped for now; leave
+its parked stash untouched. Direct-launcher label/icon overrides are implemented
+and accepted by the user, with Reset explicitly confirmed. Whole-group archive
+transport is covered by automated tests.
+See [the current checklist](STACK_GROUPS.md#direct-launcher-appearance).
+Selectable child rows, inherited defaults and drag reordering remain deferred.
 
 The six accepted checkpoints and the exact resume/test instructions are maintained
 in [Stack Groups](STACK_GROUPS.md). Complete and desktop-test each checkpoint before

@@ -126,6 +126,10 @@ def validate_settings(settings):
 
 def map_icons(settings, transform):
     result = dict(settings)
+    if settings.get('type') == 'application':
+        if settings.get('icon'):
+            result['icon'] = transform(settings['icon'])
+        return result
     result['groupIcon'] = transform(settings['groupIcon'])
     result['applicationIcons'] = {key: transform(value)
                                   for key, value in settings['applicationIcons'].items()}
@@ -197,6 +201,9 @@ def validate_group(group, allow_references=False):
         item = dict(id=identity, type=kind)
         if kind == 'application':
             item['desktopId'] = text(value.get('desktopId'), 'application ID')
+            for field in ('label', 'icon'):
+                if field in value:
+                    item[field] = text(value[field], 'launcher ' + field, 256 if field == 'label' else 4096)
             if not item['desktopId']:
                 raise ValueError('Missing application ID.')
         elif kind == 'stack':
@@ -273,7 +280,10 @@ def export_group(request):
         if item['type'] == 'stack':
             pack_folder(item['settings'], item, request)
             settings_list.append(item['settings'])
-    return write_archive(request, dict(format='TLBStacksGroup', version=1, group=group), settings_list)
+        else:
+            settings_list.append(item)
+    version = 2 if any(item['type'] == 'application' and (item.get('label') or item.get('icon')) for item in group['items']) else 1
+    return write_archive(request, dict(format='TLBStacksGroup', version=version, group=group), settings_list)
 
 
 def import_profile(request, allow_group=False):
@@ -297,7 +307,7 @@ def import_profile(request, allow_group=False):
         if not isinstance(manifest, dict) or type(manifest.get('version')) is not int:
             raise ValueError('Unsupported TLBStacks profile format or version.')
         if manifest.get('format') == 'TLBStacksGroup':
-            if not allow_group or manifest['version'] != 1:
+            if not allow_group or manifest['version'] not in (1, 2):
                 raise ValueError('This archive requires a compatible TLBStacks Group widget.')
             group = validate_group(manifest.get('group'), allow_references=True)
             settings_list = []
@@ -305,6 +315,8 @@ def import_profile(request, allow_group=False):
                 if item['type'] == 'stack':
                     unpack_folder(item['settings'], item, request)
                     settings_list.append(item['settings'])
+                else:
+                    settings_list.append(item)
             result = dict(ok=True, kind='group', group=group)
         elif manifest.get('format') in ('TLBStacks', 'TrueLaunchBar') and manifest['version'] in (1, 2, 3, 4, 5):
             settings = validate_settings(manifest.get('settings'))
@@ -335,7 +347,7 @@ def import_profile(request, allow_group=False):
         return value
     for settings in settings_list:
         settings.update(map_icons(settings, restore))
-    result['folderMissing'] = any(settings['folderUrl'] and not local_path(settings['folderUrl']).is_dir()
+    result['folderMissing'] = any(settings.get('folderUrl') and not local_path(settings['folderUrl']).is_dir()
                                   for settings in settings_list)
     return result
 

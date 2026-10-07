@@ -5,6 +5,22 @@ import "../../package-group/contents/ui/GroupItems.js" as Items
 TestCase {
     name: "GroupStackEditor"
     Group.ConfigGeneral { id: editor; width: 800; height: 650 }
+    function test_launcher_appearance_is_staged_and_targets_identity() {
+        editor.cfg_items = Items.encode(Items.add(Items.add([], "first.desktop"), "second.desktop"))
+        editor.selectedIndex = 0
+        const id = editor.selectedItem.id
+        editor.updateLauncherAppearance(id, {label: "Custom", icon: "utilities-terminal"})
+        compare(JSON.parse(editor.cfg_items).version, 4)
+        compare(editor.selectedItemName, "Custom")
+        editor.pendingProfile = {id: 91, action: "manageIcon", targetId: id}
+        editor.selectedIndex = 1
+        editor.finishProfile(91, {ok: true, icon: "custom-icon"})
+        compare(editor.decoded.items[0].icon, "custom-icon")
+        verify(!editor.selectedItem.icon)
+        editor.updateLauncherAppearance(id, {label: "", icon: ""})
+        compare(JSON.parse(editor.cfg_items).version, 1)
+        compare(editor.decoded.items[0].desktopId, "first.desktop")
+    }
     // Final-review I-3: the default group name is "" (cfg_groupNameDefault),
     // so the breadcrumb must fall back to the tree header's "Group" label in
     // both branches, and StyledText must never receive imported names raw —

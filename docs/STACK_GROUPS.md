@@ -40,9 +40,10 @@ certify every optional orientation and keyboard check below.
 
 - Package: `package-group`, ID `com.mattphilmon.tlbstacks.group`.
 - Settings: `General/groupName` and `General/items`. Each instance has independent
-  Plasma configuration. `items` is JSON `{version, items: [...]}`. Launcher-only groups retain version 1;
+  Plasma configuration. `items` is JSON `{version, items: [...]}`. Launcher-only groups without appearance overrides retain version 1;
   Selected Applications stacks use version 2, and groups with Categories, Activity
-  or Live Folder use version 3. Versions 1–3 read here; older widgets reject
+  or Live Folder use version 3. Direct-launcher appearance overrides use version 4.
+  Versions 1–4 read here; older widgets reject
   newer formats rather than dropping unsupported stacks. Application entries have `id`,
   `type: "application"`, and `desktopId`; stacks have `id`, `type: "stack"`, and
   a `settings` object. IDs survive reordering.
@@ -234,8 +235,8 @@ settings, including unapplied changes.
 5. Check imported folder filters/cascades and Recent results. Folder contents and
    activity history are not in the archive; each source reads the destination machine.
 
-Whole-group archives use `TLBStacksGroup` format version 1, independently of the
-version 1–3 configuration schema. Selected-stack exports remain ordinary version-5
+Whole-group archives originally used `TLBStacksGroup` version 1; launcher
+appearance overrides now require archive version 2 (configuration version 4). Selected-stack exports remain ordinary version-5
 `TLBStacks` archives. A standalone widget rejects whole-group archives. Standard
 folder locations relocate through the destination's XDG directories; other absolute
 paths remain machine-specific. Managed images and validation limits follow the
@@ -356,3 +357,28 @@ checkpoint is accepted; individual optional checks above were not all separately
 reported. Validation: native build, 46 editor checks, 25 group runtime checks, and
 38 profile tests passed. Direct-launcher Appearance remains the next separate
 feature; panel right-click editing remains dropped.
+
+## Direct-launcher Appearance
+
+Select a direct launcher in group settings to set its Label, Choose an icon, or
+select an Image. Empty label/icon values follow the application's defaults; Reset
+appearance clears both overrides. Replacing the application preserves explicit
+overrides. Image selections use shared managed storage. The panel uses the normal
+application icon if an override is unavailable. Application activation still uses
+the desktop ID, with no command or argument changes.
+
+Overrides require group configuration version 4 and group ZIP version 2. Older
+versions are still accepted; groups without overrides retain their older versions.
+Individual-stack exports remain unchanged. Icons share the existing archive limits,
+checksum validation and deduplication.
+
+Test a custom label and image on a launcher; Apply, reopen settings, and inspect the
+panel tooltip. Check Cancel and Reset, then export/import the entire group into a
+second widget. Existing stacks and launchers without overrides should retain their
+appearance. These checks remain a regression checklist.
+
+Launcher Appearance validation: 41 profile tests, 26 group runtime checks, 18
+navigation/schema checks and 7 icon fallback checks passed. The user accepted
+the feature and explicitly confirmed Reset on October 7, 2026. Individual archive
+and Cancel checks were not separately reported. Related-icon search is not planned;
+the user prefers the current Choose / Image / Reset controls.
