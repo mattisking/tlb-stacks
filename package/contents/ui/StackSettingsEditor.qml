@@ -245,6 +245,26 @@ ColumnLayout {
                 checked: root.menuSource === modelData.id
                 Accessible.name: i18n("Stack type %1", modelData.label)
                 onClicked: root.setKind(modelData.id)
+                // User request: every segment is framed at all times; the
+                // active one keeps its existing highlight. A transparent-fill
+                // overlay adds the outline without replacing or fighting the
+                // background — the active accent fill is the Plasma theme's
+                // "toolbutton-pressed" frame (private/FlatButtonBackground),
+                // and item children paint above background and contentItem,
+                // so this 1px stroke just frames whatever the theme draws.
+                // Plain Rectangles accept no mouse buttons, so clicks still
+                // reach the button.
+                Rectangle {
+                    objectName: "kindBorder"
+                    anchors.fill: parent
+                    radius: Kirigami.Units.cornerRadius
+                    color: "transparent"
+                    border.width: 1
+                    // Text color at low opacity: a subtle frame that tracks
+                    // theme contrast on both light and dark themes.
+                    border.color: Kirigami.Theme.textColor
+                    opacity: 0.3
+                }
             }
         }
     }

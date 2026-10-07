@@ -39,6 +39,26 @@ Rectangle {
             compare(spy.count, 1)
             compare(spy.signalArguments[0][0], {menuSource: "folder"})
         }
+        // User request: all four kind segments carry a border at all times
+        // (the active one additionally keeps its highlight). Each segment
+        // must have the 1px overlay, the checked derivation from menuSource
+        // must be untouched, and a real mouse click must still reach the
+        // button through the overlay (plain Rectangles accept no mouse
+        // buttons, but this guards it).
+        function test_kind_segments_have_persistent_borders() {
+            for (const kind of editor.kinds) {
+                const segment = findChild(editor, "kind-" + kind.id)
+                verify(segment !== null)
+                const border = findChild(segment, "kindBorder")
+                verify(border !== null)
+                compare(border.border.width, 1)
+                verify(border.visible)
+                compare(segment.checked, editor.menuSource === kind.id)
+            }
+            mouseClick(findChild(editor, "kind-activity"))
+            compare(spy.count, 1)
+            compare(spy.signalArguments[0][0], {menuSource: "activity"})
+        }
         function test_appearance_fields_emit_partial_changes() {
             editor.setField("groupName", "Development")
             compare(spy.signalArguments[0][0], {groupName: "Development"})
