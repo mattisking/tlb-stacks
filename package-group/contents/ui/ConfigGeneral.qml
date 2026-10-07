@@ -13,6 +13,69 @@ import "GroupItems.js" as GroupItems
 ColumnLayout {
     id: root
     property string title: i18n("General")
+    enabled: !launcher.profileBusy
+    property var pendingProfile: null
+    property string profileMessage: ""
+    function startProfile(action, request) {
+        if (launcher.profileBusy) return
+        pendingProfile = {id: launcher.profileOperation(action, request), action: action}
+        profileMessage = i18n("Working… Please wait before applying changes.")
+    }
+    function finishProfile(requestId, result) {
+        if (!pendingProfile || pendingProfile.id !== requestId) return
+        const action = pendingProfile.action
+        pendingProfile = null
+        if (!result.ok) { profileMessage = result.error; return }
+        if (action !== "importGroup") {
+            profileMessage = i18n("Exported with custom images and portable folder references.")
+            return
+        }
+        if (result.kind === "group") {
+            const encoded = GroupItems.encode(result.group.items)
+            if (GroupItems.decode(encoded).error) {
+                profileMessage = i18n("This group requires a newer editor. Current settings were preserved.")
+                return
+            }
+            cfg_items = encoded
+            cfg_groupName = result.group.groupName
+            selectedIndex = decoded.items.length ? 0 : -1
+            profileMessage = i18n("Group loaded into the editor. Apply to replace this group's contents, or Cancel to keep them.")
+        } else {
+            if (decoded.error || decoded.items.length >= 500) {
+                profileMessage = i18n("Cannot add a stack: the current group is invalid or full.")
+                return
+            }
+            const encoded = GroupItems.encode(GroupItems.appendImportedStack(decoded.items, result.settings))
+            if (GroupItems.decode(encoded).error) {
+                profileMessage = i18n("This stack requires a newer editor. Current settings were preserved.")
+                return
+            }
+            cfg_items = encoded
+            selectedIndex = decoded.items.length - 1
+            profileMessage = i18n("Stack added to the editor. Apply to save, or Cancel to keep the previous group.")
+        }
+        if (result.folderMissing)
+            profileMessage += "\n" + i18n("One or more imported folders are unavailable. Review their locations before applying.")
+    }
+    Dialogs.FileDialog {
+        id: importDialog
+        title: i18n("Import a stack or group into the editor")
+        fileMode: Dialogs.FileDialog.OpenFile
+        nameFilters: [i18n("TLBStacks profile (*.zip)")]
+        onAccepted: root.startProfile("importGroup", {file: selectedFile.toString()})
+    }
+    Dialogs.FileDialog {
+        id: exportDialog
+        property bool wholeGroup: true
+        property var exportSettings: ({})
+        title: wholeGroup ? i18n("Export group") : i18n("Export selected stack")
+        fileMode: Dialogs.FileDialog.SaveFile
+        defaultSuffix: "zip"
+        nameFilters: [i18n("TLBStacks profile (*.zip)")]
+        onAccepted: root.startProfile(wholeGroup ? "exportGroup" : "export", wholeGroup
+            ? {file: selectedFile.toString(), group: {groupName: root.cfg_groupName, items: root.decoded.items}}
+            : {file: selectedFile.toString(), settings: exportSettings})
+    }
     property alias cfg_groupName: groupNameField.text
     property string cfg_groupNameDefault: ""
     property string cfg_items: '{"version":1,"items":[]}'
@@ -67,6 +130,7 @@ ColumnLayout {
     Launcher {
         id: launcher
         onApplicationsChanged: root.catalog = launcher.applications()
+        onProfileFinished: (requestId, result) => root.finishProfile(requestId, result)
     }
     Component.onCompleted: catalog = launcher.applications()
     function nameFor(id) {
@@ -86,6 +150,32 @@ ColumnLayout {
         const index = selectedIndex
         cfg_items = GroupItems.encode(GroupItems.move(decoded.items, index, step))
         selectedIndex = index + step
+    }
+    RowLayout {
+        PlasmaComponents.Button {
+            text: i18n("Import…")
+            onClicked: importDialog.open()
+        }
+        PlasmaComponents.Button {
+            text: i18n("Export group…")
+            enabled: !root.decoded.error
+            onClicked: { exportDialog.wholeGroup = true; exportDialog.open() }
+        }
+        PlasmaComponents.Button {
+            text: i18n("Export selected stack…")
+            enabled: root.selectedStack !== null
+            onClicked: {
+                exportDialog.wholeGroup = false
+                exportDialog.exportSettings = root.selectedStack.settings
+                exportDialog.open()
+            }
+        }
+    }
+    PlasmaComponents.Label {
+        Layout.fillWidth: true
+        wrapMode: Text.WordWrap
+        textFormat: Text.PlainText
+        text: root.profileMessage || i18n("Importing a stack adds an item. Importing a group replaces this editor's contents; Apply saves the changes.")
     }
     Kirigami.FormLayout {
         Layout.fillWidth: true

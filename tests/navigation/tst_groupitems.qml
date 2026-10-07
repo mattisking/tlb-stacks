@@ -39,6 +39,15 @@ TestCase {
         const invalid = GroupItems.updateStack(changed, changed[1].id, {menuSource: "unsupported"})
         verify(GroupItems.decode(GroupItems.encode(invalid)).error)
     }
+    function test_imported_stack_gets_new_identity_and_keeps_icons() {
+        const original = GroupItems.addStack([])
+        const settings = Object.assign({}, original[0].settings,
+            {applicationIcons: {editor: "/tmp/custom.svg"}})
+        const appended = GroupItems.appendImportedStack(original, settings)
+        compare(appended.length, 2)
+        verify(appended[0].id !== appended[1].id)
+        compare(GroupItems.decode(GroupItems.encode(appended)).items[1].settings.applicationIcons.editor, "/tmp/custom.svg")
+    }
     function test_sources_roundtrip_and_old_defaults() {
         let items = GroupItems.addStack([])
         const id = items[0].id

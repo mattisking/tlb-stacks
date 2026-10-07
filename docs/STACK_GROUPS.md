@@ -29,7 +29,7 @@ a completed checkpoint after acceptance. No automatic migration of existing widg
 
 ## Current checkpoint and resume notes
 
-**Step 4 checkpointed; step 5 import/export is next.**
+**Step 5 accepted; step 6 panel polish is next.**
 
 The user reported “looks good. Works. icons all work.” after installing step 2.
 This confirms the reported launcher/icon behavior; it does not independently
@@ -66,8 +66,10 @@ certify every optional orientation and keyboard check below.
 - Switching sources preserves inactive settings. Live Folder always displays labels.
   Folder heights are remembered in memory per stack/path/filter/size; a new session
   can show a loading size until its first listing completes.
-- Custom commands and group import/export remain future work. Next: address step-4
-  desktop feedback before step 5's group transport.
+- Group import/export now reuses the standalone profile helper. Individual stack
+  imports append a new item; whole-group imports replace staged editor contents.
+  Apply saves either change; Cancel preserves the saved group. Custom commands
+  remain future work. Imported per-application icon overrides are retained and rendered.
 - Developer installation stays opt-in via `-WithGroup`; normal releases exclude it.
 
 Validation: group entry tests run in the existing CI navigation suite. Static QML
@@ -91,6 +93,43 @@ or the installed catalog change and only notifies entry bindings when results
 actually change. Each activity stack retains its independent query/results.
 The user reports that Recent responsiveness now works well. Grouped Live Folder
 cascades/dismissal have not been explicitly confirmed; keep those checks pending.
+
+## Step 5 desktop test
+
+The user reported that import/export worked well after installing this checkpoint.
+This accepts step 5; individual checklist cases were not separately reported.
+
+Install with `./install.ps1 -WithGroup`. Group configuration now offers **Import…**,
+**Export group…**, and **Export selected stack…**. Exports include current editor
+settings, including unapplied changes.
+
+1. Import an existing standalone Development ZIP. It should append one stack,
+   preserving applications, separators, icon overrides and menu settings. Apply
+   and compare its popup with the original standalone widget.
+2. Export that selected stack and import it into a spare standalone widget.
+   Confirm its settings and icons survive; Cancel if you do not want to save it.
+3. Export a group containing direct launchers and several source types. Import it
+   into a second test group. Check group name, order, stack names, source settings,
+   custom images and folder locations. Group import replaces the editor contents.
+4. Cancel an import and confirm the previously saved group remains. Repeat and
+   Apply, then reopen configuration to check persistence.
+5. Check imported folder filters/cascades and Recent results. Folder contents and
+   activity history are not in the archive; each source reads the destination machine.
+
+Whole-group archives use `TLBStacksGroup` format version 1, independently of the
+version 1–3 configuration schema. Selected-stack exports remain ordinary version-5
+`TLBStacks` archives. A standalone widget rejects whole-group archives. Standard
+folder locations relocate through the destination's XDG directories; other absolute
+paths remain machine-specific. Managed images and validation limits follow the
+[portable profile rules](DEPLOYMENT.md#portable-menu-profiles), including retention
+of shared image assets after Cancel. Import does not migrate existing widgets.
+
+Automated checks passed: 38 Python profile tests, 16 navigation/schema checks and
+20 offscreen runtime checks. Coverage includes all-source group round trips,
+ordering, separators, image deduplication, folder relocation, invalid archive
+rejection before image writes, and staged editor updates. The automated checks do not establish real Plasma Apply/Cancel,
+file dialogs or popup behavior; retain the checklist above for regression testing. Step-4 Live
+Folder cascade/dismissal checks remain pending as well.
 
 ## Step 4 desktop test
 

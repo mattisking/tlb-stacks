@@ -182,16 +182,56 @@ def restore_folder(reference, request):
     return (locations[base] / path).as_uri()
 
 
-def export_profile(request):
-    settings = validate_settings(request.get('settings'))
-    # Unselected applications' retained overrides need not travel with this menu.
-    if settings['menuSource'] != 'categories':
-        settings['applicationIcons'] = {key: value for key, value in settings['applicationIcons'].items()
-                                        if key in settings['applications']}
-    assets = {}
+def validate_group(group, allow_references=False):
+    if not isinstance(group, dict) or not isinstance(group.get('items'), list) or len(group['items']) > 500:
+        raise ValueError('Invalid group settings.')
+    items, ids = [], set()
+    for value in group['items']:
+        if not isinstance(value, dict):
+            raise ValueError('Invalid group entry.')
+        identity = text(value.get('id'), 'entry ID')
+        if not identity or identity in ids:
+            raise ValueError('Group entry IDs must be nonempty and unique.')
+        ids.add(identity)
+        kind = value.get('type')
+        item = dict(id=identity, type=kind)
+        if kind == 'application':
+            item['desktopId'] = text(value.get('desktopId'), 'application ID')
+            if not item['desktopId']:
+                raise ValueError('Missing application ID.')
+        elif kind == 'stack':
+            item['settings'] = validate_settings(value.get('settings'))
+            if 'folderLocation' in value:
+                if not allow_references:
+                    raise ValueError('Unexpected portable folder reference.')
+                item['folderLocation'] = value['folderLocation']
+        else:
+            raise ValueError('Unsupported group entry type.')
+        items.append(item)
+    return dict(groupName=text(group.get('groupName', ''), 'group name', 256), items=items)
+
+
+def pack_folder(settings, container, request):
+    reference = portable_folder(settings['folderUrl'], request)
+    if reference is not None:
+        settings['folderUrl'] = ''
+        container['folderLocation'] = reference
+
+
+def unpack_folder(settings, container, request):
+    if 'folderLocation' in container:
+        if settings['folderUrl']:
+            raise ValueError('Conflicting portable folder settings.')
+        settings['folderUrl'] = restore_folder(container.pop('folderLocation'), request)
+
+
+def write_archive(request, document, settings_list):
+    # Shared global limits and asset deduplication across all stacks in a group.
+    assets, sources = {}, []
     def pack(value):
         if value.startswith('/') or value.startswith('file:'):
             path = local_path(value)
+            sources.append(path)
             data = image_data(path)
             name = 'assets/' + hashlib.sha256(data).hexdigest() + path.suffix.lower()
             assets[name] = data
@@ -199,21 +239,13 @@ def export_profile(request):
                 raise ValueError('Too many icon images in this profile (maximum 64 MiB / 256 images).')
             return name
         return theme_icon(value)
-    portable = map_icons(settings, pack)
-    folder_reference = portable_folder(portable['folderUrl'], request)
-    manifest_data = dict(format='TLBStacks', version=5, settings=portable)
-    if folder_reference is not None:
-        portable['folderUrl'] = ''
-        manifest_data['folderLocation'] = folder_reference
-    manifest = json.dumps(manifest_data,
-                          ensure_ascii=False, indent=2).encode('utf-8')
+    for settings in settings_list:
+        settings.update(map_icons(settings, pack))
+    manifest = json.dumps(document, ensure_ascii=False, indent=2).encode('utf-8')
     if len(manifest) > MAX_JSON:
         raise ValueError('Profile settings are too large.')
     destination = local_path(request.get('file'))
-    # Refuse accidental replacement of one of the images being exported.
-    sources = [settings['groupIcon'], *settings['applicationIcons'].values()]
-    if any(destination.resolve() == local_path(icon).resolve()
-           for icon in sources if icon.startswith('/') or icon.startswith('file:')):
+    if any(destination.resolve() == path.resolve() for path in sources):
         raise ValueError('The export file cannot replace a source icon.')
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
@@ -224,7 +256,27 @@ def export_profile(request):
     return dict(ok=True, file=str(destination))
 
 
-def import_profile(request):
+def export_profile(request):
+    settings = validate_settings(request.get('settings'))
+    if settings['menuSource'] != 'categories':
+        settings['applicationIcons'] = {key: value for key, value in settings['applicationIcons'].items()
+                                        if key in settings['applications']}
+    document = dict(format='TLBStacks', version=5, settings=settings)
+    pack_folder(settings, document, request)
+    return write_archive(request, document, [settings])
+
+
+def export_group(request):
+    group = validate_group(request.get('group'))
+    settings_list = []
+    for item in group['items']:
+        if item['type'] == 'stack':
+            pack_folder(item['settings'], item, request)
+            settings_list.append(item['settings'])
+    return write_archive(request, dict(format='TLBStacksGroup', version=1, group=group), settings_list)
+
+
+def import_profile(request, allow_group=False):
     source = local_path(request.get('file'))
     if source.stat().st_size > MAX_TOTAL + MAX_JSON:
         raise ValueError('Profile ZIP is too large.')
@@ -242,15 +294,29 @@ def import_profile(request):
             if info.file_size > limit or info.flag_bits & 1:
                 raise ValueError('Oversized or encrypted ZIP entry.')
         manifest = json.loads(archive.read('profile.json'))
-        if not isinstance(manifest, dict) or manifest.get('format') not in ('TLBStacks', 'TrueLaunchBar') or type(manifest.get('version')) is not int or manifest['version'] not in (1, 2, 3, 4, 5):
+        if not isinstance(manifest, dict) or type(manifest.get('version')) is not int:
             raise ValueError('Unsupported TLBStacks profile format or version.')
-        settings = validate_settings(manifest.get('settings'))
-        if 'folderLocation' in manifest:
-            if manifest['version'] != 5 or settings['folderUrl']:
+        if manifest.get('format') == 'TLBStacksGroup':
+            if not allow_group or manifest['version'] != 1:
+                raise ValueError('This archive requires a compatible TLBStacks Group widget.')
+            group = validate_group(manifest.get('group'), allow_references=True)
+            settings_list = []
+            for item in group['items']:
+                if item['type'] == 'stack':
+                    unpack_folder(item['settings'], item, request)
+                    settings_list.append(item['settings'])
+            result = dict(ok=True, kind='group', group=group)
+        elif manifest.get('format') in ('TLBStacks', 'TrueLaunchBar') and manifest['version'] in (1, 2, 3, 4, 5):
+            settings = validate_settings(manifest.get('settings'))
+            if 'folderLocation' in manifest and manifest['version'] != 5:
                 raise ValueError('Conflicting portable folder settings.')
-            settings['folderUrl'] = restore_folder(manifest['folderLocation'], request)
+            unpack_folder(settings, manifest, request)
+            settings_list = [settings]
+            result = dict(ok=True, kind='stack', settings=settings)
+        else:
+            raise ValueError('Unsupported TLBStacks profile format or version.')
         assets = {}
-        # Validate every reference and checksum before storing any images.
+        # Validate all stacks and assets before writing even one managed image.
         def check(value):
             if value.startswith('assets/'):
                 if not ASSET.fullmatch(value) or value not in names:
@@ -261,13 +327,17 @@ def import_profile(request):
                 assets[value] = data
                 return value
             return theme_icon(value)
-        map_icons(settings, check)
+        for settings in settings_list:
+            map_icons(settings, check)
     def restore(value):
         if value in assets:
             return store_image(assets[value], Path(value).suffix)
         return value
-    return dict(ok=True, settings=map_icons(settings, restore),
-                folderMissing=bool(settings['folderUrl'] and not local_path(settings['folderUrl']).is_dir()))
+    for settings in settings_list:
+        settings.update(map_icons(settings, restore))
+    result['folderMissing'] = any(settings['folderUrl'] and not local_path(settings['folderUrl']).is_dir()
+                                  for settings in settings_list)
+    return result
 
 
 def handle(request):
@@ -278,6 +348,10 @@ def handle(request):
             path = local_path(value)
             return dict(ok=True, icon=store_image(image_data(path), path.suffix))
         return dict(ok=True, icon=theme_icon(value))
+    if action == 'exportGroup':
+        return export_group(request)
+    if action == 'importGroup':
+        return import_profile(request, allow_group=True)
     if action == 'export':
         return export_profile(request)
     if action == 'import':

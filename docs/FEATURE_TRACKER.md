@@ -26,7 +26,7 @@ recorded, details unresolved), **In progress**, **Implemented — needs verifica
 | [F-012](#f-012) | Distribution packaging (OBS) and KDE Store listing | Planned |
 | [F-013](#f-013) | Cross-machine profile portability | Implemented — needs verification |
 | [F-014](#f-014) | Direct panel launchers alongside stacks | Planned within F-015 |
-| [F-015](#f-015) | Stack Groups | In progress — step 4 testing |
+| [F-015](#f-015) | Stack Groups | In progress — step 5 accepted; panel polish next |
 | [M-001](#m-001) | Clean source-control checkpoint | Verified |
 | [M-002](#m-002) | CI/release pipeline hardening follow-ups | In progress |
 
@@ -317,7 +317,7 @@ part of this proposal.
 <a id="f-015"></a>
 ## F-015 — Stack Groups
 
-Status: **In progress — step 4 testing**. The user selected an optional collection widget
+Status: **In progress — step 5 accepted; panel polish next**. The user selected an optional collection widget
 containing stacks and direct launchers, without task management. Preserve existing
 independent stack widgets and individual stack import/export. This is the scoped
 container direction discussed under F-005; it does not authorize a panel replacement.

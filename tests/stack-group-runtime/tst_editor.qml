@@ -5,6 +5,23 @@ import "../../package-group/contents/ui/GroupItems.js" as Items
 TestCase {
     name: "GroupStackEditor"
     Group.ConfigGeneral { id: editor; width: 800; height: 650 }
+    function test_import_results_are_staged_and_errors_preserve_editor() {
+        editor.cfg_items = Items.encode(Items.add([], "existing.desktop"))
+        const stack = Items.addStack([])[0]
+        editor.pendingProfile = {id: 41, action: "importGroup"}
+        editor.finishProfile(41, {ok: true, kind: "stack", settings: stack.settings})
+        compare(editor.decoded.items.length, 2)
+        compare(editor.decoded.items[0].desktopId, "existing.desktop")
+        editor.pendingProfile = {id: 42, action: "importGroup"}
+        editor.finishProfile(42, {ok: true, kind: "group", group: {groupName: "Imported", items: [stack]}})
+        compare(editor.cfg_groupName, "Imported")
+        compare(editor.decoded.items.length, 1)
+        const previous = editor.cfg_items
+        editor.pendingProfile = {id: 43, action: "importGroup"}
+        editor.finishProfile(43, {ok: false, error: "Bad archive"})
+        compare(editor.cfg_items, previous)
+        compare(editor.profileMessage, "Bad archive")
+    }
     function test_category_filter_preserves_hidden_selections() {
         editor.cfg_items = Items.encode(Items.addStack([]))
         editor.selectedIndex = 0

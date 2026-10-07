@@ -36,7 +36,7 @@ PlasmoidItem {
         const ids = cfg.menuSource === "categories"
             ? ApplicationCategories.matching(catalog, cfg.applicationCategories).map(app => app.desktopId)
             : cfg.applications
-        return launcher.applicationEntries(ids, {}, cfg.menuSource).filter(entry => entry.available)
+        return launcher.applicationEntries(ids, cfg.applicationIcons || {}, cfg.menuSource).filter(entry => entry.available)
     }
     readonly property string stackNotice: {
         if (!activeStack) return ""
@@ -197,11 +197,13 @@ PlasmoidItem {
                     activeFocusOnTab: true
                     display: QQC2.AbstractButton.IconOnly
                     text: appName
-                    icon.name: {
+                    readonly property string resolvedIcon: {
                         const revision = root.catalogRevision
                         return modelData.type === "stack" ? modelData.settings.groupIcon || "applications-all"
                             : launcher.icon(modelData.desktopId) || "application-x-executable"
                     }
+                    icon.name: IconOverrides.isFile(resolvedIcon) ? "" : resolvedIcon
+                    icon.source: IconOverrides.isFile(resolvedIcon) ? resolvedIcon : ""
                     icon.color: "transparent"
                     Accessible.name: appName
                     onClicked: {

@@ -119,7 +119,9 @@ Run the profile checks with `python3 -m unittest discover -s tests -v`.
 
 Exports use format version 5; versions 1–4 are also accepted. Older TLBStacks
 versions cannot import version 5 archives. The archive
-contains one stack. Combined export of all widget instances remains a separate feature.
+contains one stack. The experimental [Stack Group](#experimental-stack-group) can
+also export its own collection using a separate group archive format. Combined
+export of all independent widget instances remains a separate feature.
 
 Profile operations run asynchronously. The editor shows a working message and
 disables its controls until completion. Wait for completion before Apply/OK;
@@ -315,7 +317,7 @@ Categories, and Recent / frequent applications are unchanged.
 ## Experimental Stack Group
 
 [Stack Groups](STACK_GROUPS.md) is a separately identified experimental widget.
-Step 4 supports direct launchers and all four stack sources: Selected Applications,
+The group supports direct launchers and all four stack sources: Selected Applications,
 Categories, Recent/Frequent Applications, and local Live Folder.
 Install it alongside the existing widget from PowerShell:
 
@@ -330,5 +332,13 @@ Omitting the switch does not remove an already installed group.
 
 The group is not included in normal release binaries yet. Explicit CMake staging
 can include it with `-DTLB_INSTALL_GROUP=ON`; its metadata version must match the
-project version. Follow the [step-4 desktop checklist](STACK_GROUPS.md#step-4-desktop-test)
-before proceeding to group import/export.
+project version.
+
+In group configuration, **Import…** accepts an individual stack (appended to the
+list) or a group (replaces staged contents). **Export selected stack…** creates a
+standalone-compatible ZIP; **Export group…** includes the ordered collection and
+custom images. Apply saves imported settings; Cancel preserves the saved group.
+Whole-group archives use `TLBStacksGroup` version 1 and require the Group widget.
+The [portable profile rules](#portable-menu-profiles) also apply to group images
+and folder references. Follow the [step-5 desktop checklist](STACK_GROUPS.md#step-5-desktop-test)
+before moving to panel polish.

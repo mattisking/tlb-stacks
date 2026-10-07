@@ -24,7 +24,10 @@ function decode(value) {
                     || !Number.isInteger(cfg.hoverDelay) || cfg.hoverDelay < 0 || cfg.hoverDelay > 2000)
                     throw new Error("Invalid stack")
                 const settings = sourceDefaults(cfg)
-                if (!Array.isArray(settings.applicationCategories)
+                if (!settings.applicationIcons || typeof settings.applicationIcons !== "object"
+                    || Array.isArray(settings.applicationIcons)
+                    || Object.values(settings.applicationIcons).some(value => typeof value !== "string")
+                    || !Array.isArray(settings.applicationCategories)
                     || settings.applicationCategories.some(value => typeof value !== "string" || !value)
                     || new Set(settings.applicationCategories).size !== settings.applicationCategories.length
                     || !["recent", "frequent"].includes(settings.activityOrder)
@@ -44,7 +47,7 @@ function decode(value) {
 }
 function sourceDefaults(settings) {
     return Object.assign({applicationCategories: [], activityOrder: "recent", activityLimit: 10,
-        activityCurrent: false, folderUrl: "", folderFilters: "*"}, settings)
+        activityCurrent: false, applicationIcons: {}, folderUrl: "", folderFilters: "*"}, settings)
 }
 function encode(items) {
     const version = items.some(item => item.type === "stack" && item.settings.menuSource !== "applications") ? 3
@@ -96,4 +99,10 @@ function renameSeparator(applications, id, label) {
     if (!isSeparator(id)) return applications
     const base = id.split(":").slice(0, 2).join(":")
     return applications.map(value => value === id ? base + (label.trim() ? ":" + label.trim() : "") : value)
+}
+
+function appendImportedStack(items, settings) {
+    const next = addStack(items)
+    if (next.length === items.length) return items
+    return updateStack(next, next[next.length - 1].id, sourceDefaults(settings))
 }
