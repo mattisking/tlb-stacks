@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents
@@ -42,19 +41,18 @@ ColumnLayout {
                 required property string modelData
                 objectName: "chip-" + modelData
                 text: modelData
-                checkable: true
-                checked: root.selected.includes(modelData)
+                // No Qt-managed toggle state (`checkable`/`checked`): real
+                // pointer clicks imperatively flip `checked` and break its
+                // binding. The selected look is derived from the host-owned
+                // array instead, so visual state can never desync from it.
+                highlighted: root.selected.includes(modelData)
+                Accessible.role: Accessible.Button
                 Accessible.name: i18n("Category %1", modelData)
                 // Emit intent from the host-owned `selected`, not `checked`:
                 // Qt flips `checked` before emitting `clicked` on real pointer
                 // input (but not on direct signal calls), so `!checked` would
                 // report the inverse of the user's action in production.
                 onClicked: root.categoryToggled(modelData, !root.selected.includes(modelData))
-                // `checked` follows the host's `selected` array; flip visually on click.
-                Connections {
-                    target: root
-                    function onSelectedChanged() { chip.checked = root.selected.includes(chip.modelData) }
-                }
             }
         }
     }
