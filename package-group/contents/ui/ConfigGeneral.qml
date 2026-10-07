@@ -246,14 +246,19 @@ ColumnLayout {
         Layout.fillHeight: true
         orientation: Qt.Horizontal
 
-        // Item tree: the group's structure, in panel order.
+        // Left pane: the item tree with its toolbar, then the profile
+        // actions. Import/export lives here — not on a page — so it stays
+        // visible whichever item is selected. The tree goes inert on an
+        // unreadable config, but Import… stays enabled there: importing an
+        // older group is the recovery path for forward-version settings.
         ColumnLayout {
             id: treeColumn
             spacing: Kirigami.Units.smallSpacing
             QQC2.SplitView.preferredWidth: Kirigami.Units.gridUnit * 14
-            enabled: !root.decoded.error
 
+            // Item tree: the group's structure, in panel order.
             PlasmaComponents.ScrollView {
+                enabled: !root.decoded.error
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 contentWidth: availableWidth
@@ -329,6 +334,7 @@ ColumnLayout {
             }
 
             RowLayout {
+                enabled: !root.decoded.error
                 PlasmaComponents.Button {
                     id: addButton
                     text: i18n("Add")
@@ -359,9 +365,43 @@ ColumnLayout {
                     }
                 }
             }
+
+            // The sidebar is narrow, so the three profile buttons stack
+            // full-width instead of sharing a row; the message wraps.
+            ColumnLayout {
+                spacing: Kirigami.Units.smallSpacing
+                Layout.fillWidth: true
+                PlasmaComponents.Button {
+                    Layout.fillWidth: true
+                    text: i18n("Import…")
+                    onClicked: importDialog.open()
+                }
+                PlasmaComponents.Button {
+                    Layout.fillWidth: true
+                    text: i18n("Export group…")
+                    enabled: !root.decoded.error
+                    onClicked: { exportDialog.wholeGroup = true; exportDialog.open() }
+                }
+                PlasmaComponents.Button {
+                    Layout.fillWidth: true
+                    text: i18n("Export selected stack…")
+                    enabled: root.selectedStack !== null
+                    onClicked: {
+                        exportDialog.wholeGroup = false
+                        exportDialog.exportSettings = root.selectedStack.settings
+                        exportDialog.open()
+                    }
+                }
+                PlasmaComponents.Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    textFormat: Text.PlainText
+                    text: root.profileMessage || i18n("Importing a stack adds an item. Importing a group replaces this editor's contents; Apply saves the changes.")
+                }
+            }
         }
 
-        // Inspector: breadcrumb, profile actions, and the selected item's page.
+        // Inspector: breadcrumb and the selected item's page.
         ColumnLayout {
             id: inspector
             spacing: Kirigami.Units.smallSpacing
@@ -382,33 +422,6 @@ ColumnLayout {
                         : groupName
                 }
                 onLinkActivated: root.selectedIndex = -1
-            }
-
-            RowLayout {
-                PlasmaComponents.Button {
-                    text: i18n("Import…")
-                    onClicked: importDialog.open()
-                }
-                PlasmaComponents.Button {
-                    text: i18n("Export group…")
-                    enabled: !root.decoded.error
-                    onClicked: { exportDialog.wholeGroup = true; exportDialog.open() }
-                }
-                PlasmaComponents.Button {
-                    text: i18n("Export selected stack…")
-                    enabled: root.selectedStack !== null
-                    onClicked: {
-                        exportDialog.wholeGroup = false
-                        exportDialog.exportSettings = root.selectedStack.settings
-                        exportDialog.open()
-                    }
-                }
-            }
-            PlasmaComponents.Label {
-                Layout.fillWidth: true
-                wrapMode: Text.WordWrap
-                textFormat: Text.PlainText
-                text: root.profileMessage || i18n("Importing a stack adds an item. Importing a group replaces this editor's contents; Apply saves the changes.")
             }
 
             // Group page / launcher page / stack page. The stack page embeds
