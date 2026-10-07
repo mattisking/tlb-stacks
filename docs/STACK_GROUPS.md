@@ -118,9 +118,10 @@ What shipped on this branch:
   Contents and Appearance tabs, and one Contents page per source. It edits plain
   data and emits partial `{field: value}` changes; it never touches `cfg_*`
   properties or the group's stored JSON, so each host persists through its own
-  storage. Per-application icon Choose…/Image…/Reset runs through the launcher's
-  `manageIcon` operation, so the same flow works from both widgets. Members are
-  added through the shared search-on-add dialog.
+  storage. Per-application icon Image… and member Reset run through the
+  launcher's `manageIcon` operation (Choose… opens the theme icon dialog and
+  applies the picked name directly), so the same flows work from both widgets.
+  Members are added through the shared search-on-add dialog.
 - `package/contents/ui/AppPickerDialog.qml` — the search-on-add picker; search
   takes space only while adding, and `exclude` hides applications already in the
   target list.
@@ -171,8 +172,8 @@ config dialog, and check:
 4. Launcher page: swap the Application combo and confirm the launcher follows.
 5. Breadcrumb link returns to the group page.
 6. Contents/Appearance tabs on all four kinds in both widgets.
-7. Icon Choose…/Image…/Reset round-trips, including `manageIcon` driven from the
-   group widget.
+7. Icon Choose…/Image…/Reset round-trips, including the `manageIcon`-backed
+   flows (Image…, member Reset) driven from the group widget.
 8. Separator label editing plus the tree's separator summary lines.
 9. Apply/Cancel staging: Cancel restores the saved group; Apply persists.
 10. Import/export round trips: whole group, single stack into a standalone

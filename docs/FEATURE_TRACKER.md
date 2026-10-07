@@ -351,7 +351,8 @@ desktop verification pending and nothing merged.
 
 One `StackSettingsEditor` (kind segments for Selected / Live folder / Categories /
 Recent, Contents/Appearance tabs, all four source pages, per-application and stack
-icon Choose…/Image…/Reset through the launcher's `manageIcon` operation) serves
+icon Choose…/Image…/Reset; Image… and member Reset go through the launcher's
+`manageIcon` operation, Choose… picks from the theme dialog directly) serves
 both the standalone widget and the group. It edits plain data and emits partial
 changes; the standalone host persists into its existing `cfg_*` keys and the group
 host into `General/items`, so schemas, Apply/Cancel staging and import/export are

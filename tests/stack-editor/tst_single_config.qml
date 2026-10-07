@@ -90,5 +90,18 @@ Rectangle {
             compare(page.stackSettings.groupName, "Imported")
             compare(nameField.text, "Imported")
         }
+        // Final-review I-1 end to end: cfg_hoverDelay 0 is a stored value, so
+        // the synthesized settings must carry it through to the editor's
+        // spinbox as 0 (previously `|| 250` displayed the default instead).
+        function test_zero_hover_delay_reflects_in_editor() {
+            page.cfg_hoverDelay = 0
+            page.cfg_menuIconSize = 30
+            const delay = findChild(page, "hoverDelayField")
+            verify(delay !== null)
+            compare(delay.value, 0)
+            const size = findChild(page, "menuIconSizeField")
+            verify(size !== null)
+            compare(size.value, 30)
+        }
     }
 }

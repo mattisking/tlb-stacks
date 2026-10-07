@@ -5,6 +5,33 @@ import "../../package-group/contents/ui/GroupItems.js" as Items
 TestCase {
     name: "GroupStackEditor"
     Group.ConfigGeneral { id: editor; width: 800; height: 650 }
+    // Final-review I-3: the default group name is "" (cfg_groupNameDefault),
+    // so the breadcrumb must fall back to the tree header's "Group" label in
+    // both branches, and StyledText must never receive imported names raw —
+    // an imported "<img src=…>" name would render as a remotely-fetchable
+    // image tag. The test env is untranslated, so i18n("Group") is "Group".
+    function test_breadcrumb_fallback_and_escaping() {
+        editor.cfg_groupName = ""
+        editor.cfg_items = Items.encode(Items.addStack([]))
+        editor.selectedIndex = 0
+        const crumb = findChild(editor, "breadcrumb")
+        verify(crumb !== null)
+        // Empty group name still labels the link (and the plain branch too).
+        verify(crumb.text.indexOf("<a href='group'>Group</a>") === 0)
+        // A stack name containing markup renders escaped.
+        editor.updateStack({groupName: "<img src='x'>"})
+        verify(crumb.text.indexOf("&lt;img") >= 0)
+        verify(crumb.text.indexOf("<img src='x'>") < 0)
+        // The group-name link is escaped as well.
+        editor.cfg_groupName = "A&B <b>"
+        verify(crumb.text.indexOf("A&amp;B") >= 0)
+        verify(crumb.text.indexOf("&lt;b&gt;") >= 0)
+        verify(crumb.text.indexOf("<b>") < 0)
+        // Back on the group page the plain branch shows the fallback, too.
+        editor.cfg_groupName = ""
+        editor.selectedIndex = -1
+        compare(crumb.text, "Group")
+    }
     function test_import_results_are_staged_and_errors_preserve_editor() {
         editor.cfg_items = Items.encode(Items.add([], "existing.desktop"))
         const stack = Items.addStack([])[0]

@@ -137,6 +137,12 @@ ColumnLayout {
     readonly property string selectedItemName: !selectedItem ? ""
         : selectedItem.type === "stack" ? (selectedItem.settings.groupName || i18n("Stack"))
         : nameFor(selectedItem.desktopId)
+    // The breadcrumb renders as Text.StyledText, so imported names must be
+    // escaped before entering the markup: an imported "<img src=…>" name
+    // would otherwise become a live (remotely-fetchable) image tag.
+    function escapeHtml(text) {
+        return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    }
 
     // Launcher adds come through the shared picker (stack-member adds have
     // their own picker inside StackSettingsEditor).
@@ -362,12 +368,19 @@ ColumnLayout {
             QQC2.SplitView.fillWidth: true
 
             PlasmaComponents.Label {
+                objectName: "breadcrumb"
                 Layout.fillWidth: true
                 textFormat: Text.StyledText
                 elide: Text.ElideRight
-                text: root.selectedIndex >= 0 && root.selectedItem
-                    ? "<a href='group'>" + root.cfg_groupName + "</a>  ›  " + root.selectedItemName
-                    : root.cfg_groupName
+                // cfg_groupNameDefault is "", so both branches fall back to the
+                // tree header's "Group" label — the link is never empty. Both
+                // the group name and the selected item's name are escaped.
+                text: {
+                    const groupName = root.escapeHtml(root.cfg_groupName || i18n("Group"))
+                    return root.selectedIndex >= 0 && root.selectedItem
+                        ? "<a href='group'>" + groupName + "</a>  ›  " + root.escapeHtml(root.selectedItemName)
+                        : groupName
+                }
                 onLinkActivated: root.selectedIndex = -1
             }
 

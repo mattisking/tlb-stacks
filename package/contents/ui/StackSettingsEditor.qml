@@ -41,6 +41,15 @@ ColumnLayout {
     function setKind(kind) { settingsEdited({menuSource: kind}) }
     function setField(key, value) { const c = {}; c[key] = value; settingsEdited(c) }
 
+    // Settings-fallback policy: `??` wherever a falsy value is legitimate
+    // stored data (hoverDelay 0 means immediate opening; a cleared
+    // folderFilters string is real input) and `||` where a falsy value must
+    // fall back by design (groupIcon "" means "use the default icon";
+    // menuSource "" would leave the contents pages blank) or where the
+    // value is an array, which is truthy when empty, so `||` and `??`
+    // agree. Text fallbacks to "" (folderUrl, groupName) are identical
+    // under either operator.
+
     // ---- contents pages (data out: partial changes only, host persists)
     function memberName(desktopId) {
         const app = catalog.find(entry => entry.desktopId === desktopId)
@@ -85,8 +94,10 @@ ColumnLayout {
     // ---- icon flow (Choose… / Image… / Reset, per existing single-host behavior)
     property string iconTarget: ""   // "" = the stack icon; otherwise a desktopId
     property var iconPending: null
+    property string iconError: ""    // last failed icon operation's message
 
     function chooseIcon(target, fromFile) {
+        iconError = ""
         iconTarget = target
         if (fromFile) iconFileDialog.open()
         else {
@@ -104,18 +115,28 @@ ColumnLayout {
         if (icon) icons[target] = icon; else delete icons[target]
         settingsEdited({applicationIcons: icons})
     }
+    // Result intake split out of the Connections handler so tests can drive
+    // the failure path headlessly: profile.py raises for bad or oversized
+    // images and answers {ok: false, error}, which previously vanished.
+    function handleIconResult(requestId, result) {
+        if (!iconPending || iconPending.id !== requestId) return
+        const target = iconPending.target
+        iconPending = null
+        if (result.ok) {
+            iconError = ""
+            applyIconResult(target, result.icon)
+        } else {
+            iconError = result.error || i18n("The icon could not be applied.")
+        }
+    }
     Connections {
         target: root.launcher
-        function onProfileFinished(requestId, result) {
-            if (!root.iconPending || root.iconPending.id !== requestId) return
-            const target = root.iconPending.target
-            root.iconPending = null
-            if (result.ok) root.applyIconResult(target, result.icon)
-        }
+        function onProfileFinished(requestId, result) { root.handleIconResult(requestId, result) }
     }
     IconThemes.IconDialog { id: stackIconDialog; onIconNameChanged: if (iconName.length > 0) root.applyIconResult(root.iconTarget, iconName) }
     Dialogs.FileDialog {
         id: iconFileDialog
+        objectName: "iconFileDialog"
         title: i18n("Choose an icon image")
         fileMode: Dialogs.FileDialog.OpenFile
         nameFilters: [i18n("Icon images (*.png *.svg *.svgz *.jpg *.jpeg *.webp *.ico)")]
@@ -170,6 +191,7 @@ ColumnLayout {
 
     QQC2.TabBar {
         id: tabs
+        objectName: "tabs"
         Layout.fillWidth: true
         QQC2.TabButton { text: i18n("Contents") }
         QQC2.TabButton { text: i18n("Appearance") }
@@ -331,6 +353,7 @@ ColumnLayout {
                         onClicked: folderPicker.open()
                     }
                     PlasmaComponents.TextField {
+                        objectName: "folderUrlField"
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         implicitWidth: 0
@@ -341,18 +364,21 @@ ColumnLayout {
                     }
                 }
                 PlasmaComponents.TextField {
+                    objectName: "folderFiltersField"
                     Kirigami.FormData.label: i18n("File patterns:")
                     Layout.fillWidth: true
                     Accessible.name: i18n("File patterns")
                     placeholderText: i18n("File patterns, for example *.pdf;*.docx")
-                    text: root.settings.folderFilters || "*"
+                    // `??`: a cleared field is real stored input (the old host
+                    // displayed storage verbatim); "*" is only for "missing".
+                    text: root.settings.folderFilters ?? "*"
                     onTextEdited: root.setField("folderFilters", text)
                     Keys.onReturnPressed: event => { event.accepted = true }
                     Keys.onEnterPressed: event => { event.accepted = true }
                 }
                 PlasmaComponents.Label {
                     Layout.fillWidth: true
-                    text: root.folderError || i18n("Separate patterns with semicolons. Subfolders are always shown. Live Folder uses icons and text.")
+                    text: root.folderError || i18n("Separate patterns with semicolons. Subfolders are always shown. Live Folder uses icons and text. Choose a new folder here when importing onto another computer.")
                     wrapMode: Text.WordWrap
                 }
             }
@@ -373,7 +399,12 @@ ColumnLayout {
                     // `|| []`: settings may be the editor's own empty default
                     // ({}), whose applicationCategories is undefined.
                     selected: root.settings.applicationCategories || []
-                    caption: i18nc("%1 is a number of applications", "Matches %1 applications. Results are shown in the panel, not editable here.", root.matchesCount())
+                    // Zero selected is this page's empty state: the actionable
+                    // old-host hint, not a bare "Matches 0 applications"
+                    // (ApplicationCategories.matching yields [] for no filter).
+                    caption: (root.settings.applicationCategories || []).length === 0
+                        ? i18n("Select at least one category.")
+                        : i18nc("%1 is a number of applications", "Matches %1 applications. Results are shown in the panel, not editable here.", root.matchesCount())
                     onCategoryToggled: (name, on) => root.toggleCategory(name, on)
                 }
             }
@@ -392,15 +423,18 @@ ColumnLayout {
                         onActivated: root.setField("activityOrder", currentIndex === 1 ? "frequent" : "recent")
                     }
                     QQC2.SpinBox {
+                        objectName: "activityLimitField"
                         Kirigami.FormData.label: i18n("Limit:")
                         from: 1; to: 50
-                        value: root.settings.activityLimit || 10
+                        // `??` for policy consistency; the schema floor is 1,
+                        // so 0 is not a stored value today.
+                        value: root.settings.activityLimit ?? 10
                         onValueModified: root.setField("activityLimit", value)
                     }
                     PlasmaComponents.CheckBox {
                         Kirigami.FormData.label: i18n("Activity scope:")
                         text: i18n("Current Activity only")
-                        checked: root.settings.activityCurrent || false
+                        checked: root.settings.activityCurrent ?? false
                         onToggled: root.setField("activityCurrent", checked)
                     }
                 }
@@ -416,8 +450,18 @@ ColumnLayout {
                     // `|| []`: settings may be the editor's own empty default
                     // ({}), whose applicationCategories is undefined.
                     selected: root.settings.applicationCategories || []
-                    caption: i18nc("%1 is a number of applications", "Matches %1 applications. Results are shown in the panel, not editable here.", root.matchesCount())
+                    // With no category filter every application is eligible,
+                    // so a "Matches 0" caption would be wrong here; this
+                    // mirrors the old single host's zero-selected wording.
+                    caption: (root.settings.applicationCategories || []).length === 0
+                        ? i18n("All applications are eligible. Results are shown in the panel, not editable here.")
+                        : i18nc("%1 is a number of applications", "Matches %1 applications. Results are shown in the panel, not editable here.", root.matchesCount())
                     onCategoryToggled: (name, on) => root.toggleCategory(name, on)
+                }
+                PlasmaComponents.Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: i18n("KDE Activities tracking must be enabled; TLBStacks does not change tracking settings.")
                 }
             }
         }
@@ -453,27 +497,51 @@ ColumnLayout {
                         onClicked: root.applyIconResult("", "")
                     }
                 }
+                // Failed icon operations (bad or oversized images) surface
+                // here, in the shared editor — no host change needed to see
+                // them. PlainText: the message may echo a file name.
+                PlasmaComponents.Label {
+                    objectName: "iconErrorLabel"
+                    Layout.fillWidth: true
+                    visible: root.iconError.length > 0
+                    text: root.iconError
+                    textFormat: Text.PlainText
+                    wrapMode: Text.WordWrap
+                    color: Kirigami.Theme.negativeTextColor
+                }
                 PlasmaComponents.CheckBox {
+                    objectName: "iconsOnlyBox"
                     Kirigami.FormData.label: i18n("Display:")
                     text: root.menuSource === "folder" ? i18n("Icons only (unavailable for Live Folder)")
                         : i18n("Icons only (show names on hover)")
                     enabled: root.menuSource !== "folder"
-                    checked: root.settings.iconsOnly || false
+                    // `??` per policy; false is the stored default either way.
+                    checked: root.settings.iconsOnly ?? false
                     onToggled: root.setField("iconsOnly", checked)
                 }
                 QQC2.SpinBox {
+                    objectName: "menuIconSizeField"
                     Kirigami.FormData.label: i18n("Icon size (px):")
                     from: 16; to: 64
                     editable: true
-                    value: root.settings.menuIconSize || 22
+                    // `??` per policy; the schema range is 16–64.
+                    value: root.settings.menuIconSize ?? 22
                     onValueModified: root.setField("menuIconSize", value)
                 }
                 QQC2.SpinBox {
+                    objectName: "hoverDelayField"
                     Kirigami.FormData.label: i18n("Hover delay (ms):")
                     from: 0; to: 2000; stepSize: 50
                     editable: true
-                    value: root.settings.hoverDelay || 250
+                    // 0 is a legitimate stored value (immediate opening) —
+                    // `??`, never `||` (which showed 250 for a stored 0).
+                    value: root.settings.hoverDelay ?? 250
                     onValueModified: root.setField("hoverDelay", value)
+                }
+                PlasmaComponents.Label {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    text: i18n("Applies to this stack's button and all its subfolders. Set to 0 for immediate opening; the default is 250 ms.")
                 }
             }
         }
