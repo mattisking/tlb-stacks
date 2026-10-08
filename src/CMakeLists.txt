@@ -1,3 +1,7 @@
+set_source_files_properties("../package/contents/ui/ListReorderHandle.qml" PROPERTIES
+    QT_RESOURCE_ALIAS "ListReorderHandle.qml" QT_QML_SKIP_CACHEGEN TRUE)
+set_source_files_properties("../package/contents/ui/ListReorderController.qml" PROPERTIES
+    QT_RESOURCE_ALIAS "ListReorderController.qml" QT_QML_SKIP_CACHEGEN TRUE)
 set_source_files_properties("../package/contents/ui/FolderMenu.qml" PROPERTIES
     QT_RESOURCE_ALIAS "FolderMenu.qml" QT_QML_SKIP_CACHEGEN TRUE)
 set_source_files_properties("../package/contents/ui/ApplicationCategories.js" PROPERTIES
@@ -33,6 +37,8 @@ qt_add_qml_module(tlbstacksplugin
         "${CMAKE_BINARY_DIR}/qml/com/mattphilmon/tlbstacks"
 
     QML_FILES
+        ../package/contents/ui/ListReorderHandle.qml
+        ../package/contents/ui/ListReorderController.qml
         ../package/contents/ui/FolderMenu.qml
         ../package/contents/ui/ApplicationCategories.js
         ../package/contents/ui/StackMembers.js

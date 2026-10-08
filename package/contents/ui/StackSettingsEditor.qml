@@ -80,6 +80,23 @@ ColumnLayout {
         next.splice(target, 0, next.splice(index, 1)[0])
         emitApplications(next)
     }
+    function reorderMember(id, boundary) {
+        if (menuSource !== "applications") return
+        const apps = settings.applications || []
+        const from = apps.indexOf(id)
+        if (from < 0 || boundary < 0 || boundary > apps.length) return
+        const to = boundary > from ? boundary - 1 : boundary
+        if (to !== from) moveMember(from, to - from)
+    }
+    ListReorderController {
+        id: memberReorder
+        objectName: "memberReorder"
+        view: memberList
+        onMoveRequested: (itemId, destination) => root.reorderMember(itemId, destination)
+    }
+    // A different stack may have the same member IDs. Never carry a gesture
+    // across a settings switch, even when the visible list happens to match.
+    onSettingsChanged: memberReorder.cancel()
     function addSeparator() { emitApplications(StackMembers.appendSeparator(settings.applications || [])) }
     function renameSeparator(id, label) { emitApplications(StackMembers.renameSeparator(settings.applications || [], id, label)) }
     function toggleCategory(name, on) {
@@ -313,6 +330,8 @@ ColumnLayout {
                     ListView {
                         id: memberList
                         objectName: "memberList"
+                        interactive: !memberReorder.active
+                        cacheBuffer: memberReorder.active ? Math.max(contentHeight, height) : 320
                         clip: true
                         model: root.settings.applications || []
                         delegate: RowLayout {
@@ -321,6 +340,12 @@ ColumnLayout {
                             required property int index
                             readonly property bool isSeparator: StackMembers.isSeparator(memberRow.modelData)
                             width: ListView.view.width
+                            ListReorderHandle {
+                                objectName: "reorder-member-" + memberRow.modelData
+                                controller: memberReorder
+                                itemId: memberRow.modelData
+                                label: memberRow.isSeparator ? i18n("Separator") : root.memberName(memberRow.modelData)
+                            }
                             ApplicationIcon {
                                 visible: !memberRow.isSeparator
                                 source: root.memberIcon(memberRow.modelData)

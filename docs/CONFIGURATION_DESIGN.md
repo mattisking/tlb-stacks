@@ -65,4 +65,6 @@ Direct-launcher label/icon appearance is implemented and desktop-accepted; see
 Selectable application rows in the group tree were accepted on October 7, 2026;
 the user confirmed icon changes and Reset. Top-level drag ordering is implemented
 and desktop-accepted; see [the test checklist](STACK_GROUPS.md#drag-panel-items-into-order--desktop-test).
-Dragging members within a stack and inherited group defaults remain future increments.
+Dragging applications and separators within a stack is implemented and
+desktop-accepted on October 8, 2026; see [member dragging](STACK_GROUPS.md#drag-selected-applications-and-separators--desktop-test).
+Inherited group defaults remain a future increment.

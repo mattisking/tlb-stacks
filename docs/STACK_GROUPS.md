@@ -426,4 +426,27 @@ Regression checklist: move a launcher past a stack, move an expanded stack, chec
 the preview, then Apply and reopen. Also check Cancel; individual checklist cases
 were not separately reported.
 Dragging applications and separators inside a Selected Applications stack is
-the next separate increment.
+covered by the next checkpoint below.
+
+## Drag selected applications and separators — desktop test
+
+The shared stack editor's Contents list now offers the same move handle for
+applications and separators. This works in both standalone and grouped stacks.
+Use the insertion line to choose a position; release to stage the change.
+Escape or release outside the list cancels. Up/Down controls remain available,
+and Apply/Cancel retain their existing save/discard behavior. Custom icon
+overrides stay associated with their application IDs; separator labels move
+with their entries. This does not move applications between different stacks.
+
+The group tree and member list share ListReorderController/ListReorderHandle
+for gesture handling, insertion feedback and edge scrolling. Each host retains
+its model update logic. Changing the edited settings cancels an in-flight drag.
+No configuration or archive format changes are required.
+
+Validation: plugin rebuilt; 53 shared editor checks and 34 group runtime checks
+passed. Includes actual application/separator gestures, cancellation, scoped
+settings changes, and the existing group drag regression tests. The user accepted
+dragging on October 8, 2026 ("dragging works great"). Individual Apply/Cancel and
+standalone/group cases were not separately reported and remain a regression
+checklist. Up/Down buttons remain unchanged; showing them only on a selected or
+keyboard-focused row is a proposed visual follow-up, not yet implemented.

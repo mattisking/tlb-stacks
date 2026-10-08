@@ -186,36 +186,13 @@ ColumnLayout {
         cfg_items = GroupItems.encode(GroupItems.move(decoded.items, index, step))
         selectedIndex = index + step
     }
-    // Stage one move on release. Keeping the model intact during the gesture
-    // preserves the mouse grab and expanded delegates.
-    property string draggingItemId: ""
-    property int dropBoundary: -1
-    property real dragPointerX: 0
-    property real dragPointerY: 0
-    property real dropLineY: 0
-    function cancelItemDrag() {
-        draggingItemId = ""
-        dropBoundary = -1
-    }
-    function updateItemDrag(x, y) {
-        dragPointerX = x
-        dragPointerY = y
-        dropBoundary = -1
-        if (!draggingItemId || x < 0 || x > itemTree.width || y < 0 || y > itemTree.height) return
-        const contentY = y + itemTree.contentY
-        const index = itemTree.indexAt(itemTree.width / 2, contentY)
-        if (index >= 0) {
-            const row = itemTree.itemAtIndex(index)
-            const after = contentY >= row.y + row.height / 2
-            dropBoundary = index + (after ? 1 : 0)
-            dropLineY = row.y + (after ? row.height : 0)
-        } else if (contentY < itemTree.headerItem.height) {
-            dropBoundary = 0
-            dropLineY = itemTree.headerItem.height
-        } else if (contentY >= itemTree.contentHeight) {
-            dropBoundary = decoded.items.length
-            dropLineY = itemTree.contentHeight
-        }
+    readonly property string draggingItemId: treeReorder.draggingId
+    readonly property int dropBoundary: treeReorder.boundary
+    function cancelItemDrag() { treeReorder.cancel() }
+    ListReorderController {
+        id: treeReorder
+        view: itemTree
+        onMoveRequested: (itemId, destination) => root.reorderItem(itemId, destination)
     }
     function reorderItem(id, boundary) {
         const items = decoded.items.slice()
@@ -229,32 +206,6 @@ ColumnLayout {
         cfg_items = GroupItems.encode(items)
         selectedIndex = items.findIndex(item => item.id === selectedId)
         selectedMemberId = memberId
-    }
-    function finishItemDrag() {
-        const id = draggingItemId
-        const boundary = dropBoundary
-        cancelItemDrag()
-        reorderItem(id, boundary)
-    }
-    Shortcut {
-        sequence: "Escape"
-        enabled: root.draggingItemId.length > 0
-        onActivated: root.cancelItemDrag()
-    }
-    Timer {
-        interval: 30
-        repeat: true
-        running: root.draggingItemId.length > 0
-        onTriggered: {
-            const y = root.dragPointerY
-            if (root.dragPointerX < 0 || root.dragPointerX > itemTree.width || y < 0 || y > itemTree.height) return
-            const margin = Kirigami.Units.gridUnit * 2
-            const step = y < margin ? -8 : y > itemTree.height - margin ? 8 : 0
-            if (!step) return
-            itemTree.contentY = Math.max(itemTree.originY,
-                Math.min(itemTree.originY + Math.max(0, itemTree.contentHeight - itemTree.height), itemTree.contentY + step))
-            root.updateItemDrag(root.dragPointerX, y)
-        }
     }
     property var expandedIds: ({})   // stack id → bool, tree expansion state
     function replaceLauncherApp(desktopId) {
@@ -449,38 +400,16 @@ ColumnLayout {
                             rightPadding: expandChevron.implicitWidth + Kirigami.Units.smallSpacing * 2
                             onClicked: { root.selectedMemberId = ""; root.selectedIndex = treeRow.index; itemTree.forceActiveFocus() }
 
-                            MouseArea {
+                            ListReorderHandle {
                                 id: dragHandle
                                 objectName: "reorder-" + treeRow.modelData.id
+                                controller: treeReorder
+                                itemId: treeRow.modelData.id
+                                label: itemRow.text
                                 anchors.left: parent.left
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: Kirigami.Units.gridUnit * 1.5
+                                width: implicitWidth
                                 height: parent.height
-                                cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-                                preventStealing: true
-                                property real pressY: 0
-                                property bool started: false
-                                onPressed: mouse => { pressY = mouse.y; started = false }
-                                onPositionChanged: mouse => {
-                                    if (!pressed) return
-                                    if (!started && Math.abs(mouse.y - pressY) >= 8) {
-                                        started = true
-                                        root.draggingItemId = treeRow.modelData.id
-                                    }
-                                    if (!root.draggingItemId) return
-                                    const point = mapToItem(itemTree, mouse.x, mouse.y)
-                                    root.updateItemDrag(point.x, point.y)
-                                }
-                                onReleased: root.finishItemDrag()
-                                onCanceled: root.cancelItemDrag()
-                                Accessible.name: i18n("Drag to reorder %1", itemRow.text)
-                                Kirigami.Icon {
-                                    anchors.centerIn: parent
-                                    width: Kirigami.Units.iconSizes.small
-                                    height: width
-                                    source: "transform-move"
-                                    opacity: dragHandle.pressed ? 1 : 0.55
-                                }
                             }
 
                             PlasmaComponents.ToolButton {
@@ -516,15 +445,6 @@ ColumnLayout {
                                 Accessible.name: modelData
                             }
                         }
-                    }
-                    Rectangle {
-                        parent: itemTree.contentItem
-                        z: 10
-                        width: itemTree.width
-                        height: 2
-                        y: root.dropLineY - 1
-                        color: Kirigami.Theme.highlightColor
-                        visible: root.draggingItemId.length > 0 && root.dropBoundary >= 0
                     }
                     PlasmaComponents.Label {
                         anchors.centerIn: parent

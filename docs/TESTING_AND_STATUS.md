@@ -193,3 +193,12 @@ custom theme/file icons, valid overrides, and generic fallback when both icons a
 unavailable. It is separate from the minimal CI suites because it imports Kirigami.
 The native caller checks theme availability with `QIcon::hasThemeIcon`; verify the
 complete lookup and rendering together in the installed widget.
+
+### CI QML runtime dependencies
+
+Both Fedora CI and release workflows explicitly install `libplasma`,
+`kf6-kirigami`, and `kf6-kiconthemes` for editor runtime tests, in addition
+to the C++ build dependencies. Development packages alone did not supply
+Plasma Components and Kirigami in the minimal container. The dependency fix
+in `f5b921e` passed [the full Actions run](https://github.com/mattisking/tlb-stacks/actions/runs/37734823287),
+including release-pipeline regression checks.

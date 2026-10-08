@@ -80,11 +80,11 @@ Selected Applications accepts applications only; this tracker entry does not cha
 <a id="f-003"></a>
 ## F-003 — Drag-sort editor items
 
-Status: **In progress — top-level group ordering desktop-accepted**.
+Status: **Implemented — desktop-accepted**.
 Drag handles reorder whole launchers and stacks, retaining Up/Down controls and
-Apply/Cancel semantics. The next increment adds dragging applications and
-separators within Selected Applications stacks. See the
-[test checklist](STACK_GROUPS.md#drag-panel-items-into-order--desktop-test).
+Apply/Cancel semantics. Dragging applications and separators within Selected Applications stacks is now
+implemented in the shared editor and desktop-accepted on October 8, 2026. See the
+[member test checklist](STACK_GROUPS.md#drag-selected-applications-and-separators--desktop-test).
 
 <a id="f-004"></a>
 ## F-004 — Future extension support
@@ -338,8 +338,8 @@ and accepted by the user, with Reset explicitly confirmed. Whole-group archive
 transport is covered by automated tests.
 See [the current checklist](STACK_GROUPS.md#direct-launcher-appearance).
 Selectable child rows for icon editing are desktop-accepted. Top-level drag
-ordering is desktop-accepted; inherited defaults and member dragging remain
-future increments.
+ordering and member dragging are desktop-accepted. Inherited
+defaults remain a future increment.
 
 The six accepted checkpoints and the exact resume/test instructions are maintained
 in [Stack Groups](STACK_GROUPS.md). Complete and desktop-test each checkpoint before
