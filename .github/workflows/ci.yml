@@ -20,6 +20,7 @@ jobs:
             git cmake extra-cmake-modules gcc-c++ \
             qt6-qtbase-devel qt6-qtdeclarative-devel \
             kf6-kio-devel kf6-kservice-devel \
+            libplasma kf6-kirigami kf6-kiconthemes \
             plasma-activities-devel plasma-activities-stats-devel \
             python3 zip
       - name: Checkout
