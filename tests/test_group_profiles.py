@@ -146,7 +146,7 @@ class GroupProfiles(unittest.TestCase):
     def test_empty_group_roundtrip(self):
         self.group['items'] = []
         self.export()
-        self.assertEqual(self.imported()['group'], self.group)
+        self.assertEqual(self.imported()['group'], dict(self.group, panelIconSize=0))
 
     def test_export_cannot_replace_group_source_image(self):
         original = self.image.read_bytes()

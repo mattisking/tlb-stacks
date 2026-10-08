@@ -6,6 +6,7 @@ Item {
     id: root
     property string source: ""
     property string fallbackSource: ""
+    property bool roundToIconSize: true
     property bool sourceAvailable: true
     readonly property bool useAppFallback: fallbackSource.length > 0 && fallbackSource !== source
         && (fromFile ? image.status === Image.Error : !sourceAvailable)
@@ -35,12 +36,16 @@ Item {
         fallback: root.fallbackSource.length > 0 && root.fallbackSource !== root.source
             ? "" : "application-x-executable"
         isMask: false
+        roundToIconSize: root.roundToIconSize
     }
     Loader {
         anchors.fill: parent
         active: root.useAppFallback
         // Load only on failure; the child has no further app fallback.
         source: active ? Qt.resolvedUrl("ApplicationIcon.qml") : ""
-        onLoaded: item.source = Qt.binding(() => root.fallbackSource)
+        onLoaded: {
+            item.source = Qt.binding(() => root.fallbackSource)
+            item.roundToIconSize = Qt.binding(() => root.roundToIconSize)
+        }
     }
 }

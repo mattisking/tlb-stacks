@@ -346,3 +346,63 @@ the group archive; individual-stack exports are unchanged.
 The [portable profile rules](#portable-menu-profiles) also apply to group images
 and folder references. Follow the [step-5 desktop checklist](STACK_GROUPS.md#step-5-desktop-test)
 before moving to panel polish.
+
+
+## Custom executable launchers
+
+In Selected Contents, choose **Add custom launcher…**. Supply a name, an absolute
+executable path (or Browse), and optional arguments. Use single or double quotes
+for spaces and a backslash to escape characters outside single quotes. Empty
+quoted arguments are preserved. For example: `--profile "Work profile"`.
+
+The executable is started directly. Shell variables, pipes, redirections, and
+command substitution are not interpreted. This first increment does not change
+arguments for search-added applications or add terminal/working-directory options.
+Choose a real executable (including an executable script with a shebang), not a
+`.desktop` document. TLBStacks does not change file permissions.
+
+Each custom launcher has a stable ID, so multiple entries may use the same program
+with different arguments. Use the pencil to edit its definition and the existing
+icon controls for Choose/Image/Reset. Dragging, arrows and Remove work as for other
+members. Remove deletes only the configured entry. Apply/Cancel stage these changes
+normally. A missing/non-executable path remains visible and reports a launch error.
+
+Definitions live in `customLaunchers`, keyed by `tlbstacks-command:<number>` IDs
+in the ordered applications list. Standalone configuration stores the map as JSON;
+groups containing definitions use configuration version 5. Profiles containing
+custom launchers use stack ZIP version 6 or group ZIP version 3; older versions
+remain accepted and exports without custom launchers retain their previous versions.
+Custom icons are bundled as usual; executable files are never bundled, and import
+never launches them. Paths remain absolute: edit them on another machine if needed.
+
+
+Custom launchers can also be added directly to a TLBStacks Group panel through
+**Add → Custom launcher…**. They use the same dialog and argument rules, and launch
+immediately when clicked. Select one in the group editor to edit its command or
+appearance; dragging and group export/import work as for other panel items.
+Groups containing direct custom launchers use configuration version 6 and group
+ZIP version 4. Search-added application's argument customization remains a separate
+follow-up. To open a console program visibly today, launch a terminal emulator
+(such as Konsole) with the program as its arguments.
+
+Direct application and custom launchers also have **Panel icon size**. Automatic
+uses the panel's normal size; turn it off to choose 16–64 pixels. Rendering clamps
+the icon to its available panel cell. Reset appearance restores Automatic along
+with the default label/icon. This is separate from a stack's popup icon size.
+An explicit panel size also requires group configuration version 6 / ZIP version 4.
+
+
+### Group panel icon default
+
+Select the group name in the editor to set **Panel icon size** for the whole bar.
+**Compact automatic** preserves the existing smaller appearance; turn it off to
+choose 16–64 px. Every stack button, application launcher and custom launcher
+defaults to **Use group setting**, with a per-item override available. Existing
+explicit launcher sizes remain overrides. Inherited/automatic controls hide the
+numeric value so a placeholder cannot be mistaken for the rendered size.
+
+Custom sizes are bounded by the panel cell, with room around the icon. Automatic
+keeps the existing compact sizing. **Popup item icon size** controls entries
+inside a stack and does not change its panel button. Group export/import includes
+the default and per-item overrides; individual stack exports retain their existing
+popup settings and do not carry group-level panel presentation.

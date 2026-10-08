@@ -29,6 +29,9 @@ PlasmoidItem {
             if (root.menuSource !== "applications") return
             const remaining = Array.from(Plasmoid.configuration.applications || [])
                 .filter(id => id !== desktopId)
+            const commands = Object.assign({}, StackMembers.parseCustomLaunchers(Plasmoid.configuration.customLaunchers))
+            delete commands[desktopId]
+            Plasmoid.configuration.customLaunchers = JSON.stringify(commands)
             Plasmoid.configuration.applications = remaining
             if (remaining.length === 0) root.expanded = false
         }
@@ -64,7 +67,7 @@ PlasmoidItem {
     readonly property var entries: {
         const revision = catalogRevision
         if (root.menuSource === "activity") return activitySource.entries
-        return launcher.applicationEntries(root.applications, root.applicationIcons, root.menuSource)
+        return launcher.applicationEntries(root.applications, root.applicationIcons, root.menuSource, StackMembers.parseCustomLaunchers(Plasmoid.configuration.customLaunchers))
     }
     readonly property var visibleEntries: entries.filter(entry => entry.available)
     property var categoryApplications: []

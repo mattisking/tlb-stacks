@@ -19,10 +19,54 @@ TestCase {
             applicationIcons: {"first.desktop": "custom-icon"}}
         wait(30)
         findChild(editor, "memberList").positionViewAtBeginning()
+        editor.activeMemberId = ""
         edits.clear()
     }
     function handle(index) {
         return findChild(findChild(editor, "memberList").itemAtIndex(index), "reorder-member-" + editor.settings.applications[index])
+    }
+    function test_arrows_follow_clicked_and_keyboard_focused_row() {
+        const list = findChild(editor, "memberList")
+        let first = list.itemAtIndex(0)
+        let up = findChild(first, "member-up-first.desktop")
+        let down = findChild(first, "member-down-first.desktop")
+        verify(!up.visible && !down.visible)
+        const downX = down.mapToItem(editor, 0, 0).x
+        mouseClick(first, 120, first.height / 2)
+        verify(up.visible && down.visible)
+        verify(!up.enabled && down.enabled)
+        compare(down.mapToItem(editor, 0, 0).x, downX)
+        list.itemAtIndex(2).forceActiveFocus()
+        verify(!down.visible)
+        verify(findChild(list.itemAtIndex(2), "member-up-last.desktop").visible)
+        first.forceActiveFocus()
+        keyClick(Qt.Key_Tab)
+        verify(down.activeFocus)
+        keyClick(Qt.Key_Space)
+        compare(editor.settings.applications[1], "first.desktop")
+        wait(30)
+        compare(editor.activeMemberId, "first.desktop")
+        verify(findChild(list.itemAtIndex(1), "member-up-first.desktop").visible)
+    }
+    function test_custom_launcher_create_edit_remove() {
+        editor.editCustomLauncher("")
+        const dialog = findChild(editor, "customLauncherDialog")
+        verify(dialog.visible)
+        dialog.reject()
+        verify(editor.saveCustomLauncher("", "One", "/usr/bin/echo", "'two words' --flag"))
+        verify(editor.saveCustomLauncher("", "Two", "/usr/bin/echo", "different"))
+        const ids = Object.keys(editor.settings.customLaunchers)
+        compare(ids.length, 2)
+        verify(ids[0] !== ids[1])
+        compare(editor.memberName(ids[0]), "One")
+        compare(editor.settings.customLaunchers[ids[0]].arguments, ["two words", "--flag"])
+        verify(editor.saveCustomLauncher(ids[0], "Edited", "/usr/bin/echo", ""))
+        compare(editor.memberName(ids[0]), "Edited")
+        verify(!editor.saveCustomLauncher("", "Bad", "relative", ""))
+        verify(!editor.saveCustomLauncher("", "Bad", "/bin/echo", "'unfinished"))
+        editor.removeMember(editor.settings.applications.indexOf(ids[0]))
+        verify(!editor.settings.customLaunchers[ids[0]])
+        verify(editor.settings.customLaunchers[ids[1]])
     }
     function test_drag_application_past_separator() {
         const first = handle(0), last = handle(2)

@@ -448,5 +448,75 @@ passed. Includes actual application/separator gestures, cancellation, scoped
 settings changes, and the existing group drag regression tests. The user accepted
 dragging on October 8, 2026 ("dragging works great"). Individual Apply/Cancel and
 standalone/group cases were not separately reported and remain a regression
-checklist. Up/Down buttons remain unchanged; showing them only on a selected or
-keyboard-focused row is a proposed visual follow-up, not yet implemented.
+checklist.
+
+## Selected Contents arrow cleanup — desktop test
+
+Up/Down buttons now appear only on the selected or keyboard-focused member row.
+Click an application name or focus a row with Tab to reveal them. Their space is
+reserved so labels, icon controls, and Remove do not shift. The active row has a
+subtle highlight; moving it retains selection and keyboard focus on that entry.
+Drag handles remain available on every row, including separators.
+
+Validation: 54 shared editor checks passed, including real mouse selection,
+Tab/Space reordering, stable button placement, preserved selection, and the drag
+regressions. The group suite passed 34 checks during this cleanup. Desktop test:
+select different rows, use their arrows, Tab to a row/control and reorder, then
+confirm dragging and editing separator labels still feel right. This visual
+increment awaits desktop acceptance.
+
+
+## Custom executable launchers — desktop test
+
+Selected Contents now supports named executable paths with optional quoted
+arguments, alongside searched applications and separators. Both widget hosts use
+the shared dialog and native direct-execution path. Entries can be edited,
+reordered, removed, and given custom icons. See [usage and formats](DEPLOYMENT.md#custom-executable-launchers).
+
+Validation includes literal argv delivery to a temporary test executable,
+missing-path errors, duplicate executable variants, argument formatting/parsing,
+editor changes and individual/group archive round trips. Desktop acceptance is
+pending: add a known executable, pass an observable argument, edit it, change its
+icon, then Apply/reopen and export/import. Search-added app arguments and terminal
+options are the next separate scope, not included in this increment.
+
+
+## Direct panel custom launchers — desktop test
+
+Add → Custom launcher uses the same dialog as Selected Contents and places the
+entry directly on the group panel. The inspector supports editing name/path/args
+and choosing/resetting appearance. Definitions, order and icons survive group
+export/import. Selected Contents now uses a plus icon consistently on all three
+Add controls. Search-added app parameters remain a separate follow-up.
+
+Desktop test: add the working Konsole/PowerShell Assistant command directly to the
+group, Apply, click it, edit its arguments, reorder it, and export/import the group.
+Automated checks cover command identity, arguments, appearance/reset, ordering and
+archive round trips. This increment awaits desktop acceptance.
+
+Panel launcher appearance follow-up: all three group Add choices use matching
+plus icons. Application and custom launchers share Automatic/custom panel icon
+sizing (16–64 px, bounded by panel space), including Reset and archive persistence.
+Desktop verification is pending for both launcher types.
+
+
+## Group panel icon defaults — desktop test
+
+Group settings now supplies Compact automatic or an explicit panel icon size.
+All three panel item types inherit it unless overridden; stack buttons now also
+expose an override. Existing custom launcher sizes are preserved, and custom sizes
+use available panel space rather than the button's additional content padding.
+Automatic retains the earlier compact appearance. Popup sizes stay independent.
+
+Desktop test: set the group to 32, check stack/application/custom buttons, override
+one item to 24, change the group default, then return that item to inheritance.
+Check Compact automatic, Apply/reopen, and whole-group export/import. Automated
+checks cover inheritance, overrides, editor updates and archive persistence.
+Desktop acceptance is pending.
+
+Sizing correction: the running panel supplied 36 logical pixels to the group.
+Subtracting padding left 28 px, and themed icons could round that down to a
+standard size. Explicit sizes now use the full available cell and disable theme
+size rounding, including fallback icons. Compact automatic retains its existing
+padding and rounding. A requested 40 remains bounded to 36 in that panel; 24 and
+32 should render distinctly. Desktop retest pending.

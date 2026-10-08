@@ -46,6 +46,7 @@ ColumnLayout {
                 return
             }
             cfg_items = encoded
+            cfg_panelIconSize = result.group.panelIconSize || 0
             cfg_groupName = result.group.groupName
             selectedIndex = decoded.items.length ? 0 : -1
             profileMessage = i18n("Group loaded into the editor. Apply to replace this group's contents, or Cancel to keep them.")
@@ -82,9 +83,11 @@ ColumnLayout {
         defaultSuffix: "zip"
         nameFilters: [i18n("TLBStacks profile (*.zip)")]
         onAccepted: root.startProfile(wholeGroup ? "exportGroup" : "export", wholeGroup
-            ? {file: selectedFile.toString(), group: {groupName: root.cfg_groupName, items: root.decoded.items}}
+            ? {file: selectedFile.toString(), group: {groupName: root.cfg_groupName, panelIconSize: root.cfg_panelIconSize, items: root.decoded.items}}
             : {file: selectedFile.toString(), settings: exportSettings})
     }
+    property int cfg_panelIconSize: 0
+    property int cfg_panelIconSizeDefault: 0
     property alias cfg_groupName: groupNameField.text
     property string cfg_groupNameDefault: ""
     property string cfg_items: '{"version":1,"items":[]}'
@@ -139,6 +142,8 @@ ColumnLayout {
     }
     Component.onCompleted: catalog = launcher.applications()
     function nameFor(id) {
+        const custom = selectedStack ? (selectedStack.settings.customLaunchers || {})[id] : null
+        if (custom) return custom.name
         const app = catalog.find(app => app.desktopId === id)
         return app ? app.name : i18n("%1 (unavailable)", id)
     }
@@ -154,14 +159,14 @@ ColumnLayout {
     function updateLauncherAppearance(id, changes) {
         if (!decoded.error) cfg_items = GroupItems.encode(GroupItems.updateLauncherAppearance(decoded.items, id, changes))
     }
-    function launcherLabel(item) { return item.label || nameFor(item.desktopId) }
+    function launcherLabel(item) { return item.label || (item.type === "command" ? item.command.name : nameFor(item.desktopId)) }
     function launcherIcon(item) {
         return item.icon || (catalog.find(app => app.desktopId === item.desktopId) || {}).icon || "application-x-executable"
     }
     property string launcherIconTarget: ""
     property string iconTargetMember: ""
     function chooseLauncherIcon(fromFile) {
-        if (!selectedItem || selectedItem.type !== "application") return
+        if (!selectedItem || !["application", "command"].includes(selectedItem.type)) return
         launcherIconTarget = selectedItem.id
         iconTargetMember = ""
         if (fromFile) launcherImageDialog.open()
@@ -223,7 +228,7 @@ ColumnLayout {
         const s = item.settings
         if (s.menuSource === "applications")
             return (s.applications || []).map(id => StackMembers.isSeparator(id)
-                ? i18n("— %1", StackMembers.separatorLabel(id)) : nameFor(id))
+                ? i18n("— %1", StackMembers.separatorLabel(id)) : (s.customLaunchers || {})[id] ? s.customLaunchers[id].name : nameFor(id))
         if (s.menuSource === "categories")
             return [i18np("1 category", "%1 categories", (s.applicationCategories || []).length)]
         if (s.menuSource === "activity")
@@ -251,10 +256,28 @@ ColumnLayout {
             root.selectedIndex = root.decoded.items.length - 1
         }
     }
+    function savePanelCommand(id, name, executable, argumentsText) {
+        const parsed = StackMembers.parseArguments(argumentsText)
+        if (decoded.error || parsed.error) return
+        const items = GroupItems.saveCommand(decoded.items, id, {name: name.trim(), executable: executable, arguments: parsed.arguments})
+        cfg_items = GroupItems.encode(items)
+        if (!id) selectedIndex = items.length - 1
+    }
+    CustomLauncherDialog {
+        id: panelCommandDialog
+        onSaved: (id, name, executable, argumentsText) => root.savePanelCommand(id, name, executable, argumentsText)
+    }
     PlasmaComponents.Menu {
         id: addMenu
         PlasmaComponents.MenuItem {
+            text: i18n("Custom launcher…")
+            icon.name: "list-add"
+            enabled: !root.decoded.error && root.decoded.items.length < 500
+            onTriggered: panelCommandDialog.edit("", {})
+        }
+        PlasmaComponents.MenuItem {
             text: i18n("Application launcher…")
+            icon.name: "list-add"
             enabled: !root.decoded.error && root.decoded.items.length < 500
             onTriggered: {
                 launcherPicker.exclude = root.decoded.items.map(item => item.desktopId).filter(Boolean)
@@ -263,6 +286,7 @@ ColumnLayout {
         }
         PlasmaComponents.MenuItem {
             text: i18n("Stack")
+            icon.name: "list-add"
             enabled: !root.decoded.error && root.decoded.items.length < 500
             onTriggered: {
                 root.cfg_items = GroupItems.encode(GroupItems.addStack(root.decoded.items))
@@ -568,7 +592,7 @@ ColumnLayout {
                 Layout.leftMargin: Kirigami.Units.largeSpacing
                 Layout.rightMargin: Kirigami.Units.largeSpacing
                 currentIndex: root.memberSelected ? 3 : root.selectedIndex < 0 ? 0
-                    : root.selectedItem && root.selectedItem.type === "application" ? 1
+                    : root.selectedItem && ["application", "command"].includes(root.selectedItem.type) ? 1
                     : root.selectedItem && root.selectedItem.type === "stack" ? 2 : 0
 
                 Kirigami.FormLayout {
@@ -582,6 +606,19 @@ ColumnLayout {
                         placeholderText: i18n("TLBStacks Group")
                         maximumLength: 256
                     }
+                    PanelIconSizeEditor {
+                        objectName: "groupPanelSize"
+                        spinObjectName: "groupIconSize"
+                        Kirigami.FormData.label: i18n("Panel icon size:")
+                        automaticLabel: i18n("Compact automatic")
+                        value: root.cfg_panelIconSize
+                        onEdited: size => root.cfg_panelIconSize = size
+                    }
+                    PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        text: i18n("Default for all panel buttons. Each item can override it. Custom sizes are limited by panel space; popup icons are configured separately.")
+                    }
                 }
                 Kirigami.FormLayout {
                     Layout.fillWidth: true
@@ -589,6 +626,7 @@ ColumnLayout {
                     Layout.alignment: Qt.AlignLeft | Qt.AlignTop
                     wideMode: false
                     PlasmaComponents.ComboBox {
+                        visible: root.selectedItem && root.selectedItem.type === "application"
                         Kirigami.FormData.label: i18n("Application:")
                         Layout.fillWidth: true
                         Accessible.name: i18n("Launcher application")
@@ -598,13 +636,18 @@ ColumnLayout {
                             ? root.catalog.findIndex(app => app.desktopId === root.selectedItem.desktopId) : -1
                         onActivated: root.replaceLauncherApp(root.catalog[currentIndex].desktopId)
                     }
+                    PlasmaComponents.Button {
+                        text: i18n("Edit custom launcher…")
+                        visible: root.selectedItem && root.selectedItem.type === "command"
+                        onClicked: panelCommandDialog.edit(root.selectedItem.id, root.selectedItem.command)
+                    }
                     PlasmaComponents.TextField {
                         objectName: "launcherLabelField"
                         Kirigami.FormData.label: i18n("Label:")
                         Layout.fillWidth: true
                         maximumLength: 256
-                        text: root.selectedItem && root.selectedItem.type === "application" ? root.selectedItem.label || "" : ""
-                        placeholderText: root.selectedItem && root.selectedItem.type === "application" ? root.nameFor(root.selectedItem.desktopId) : ""
+                        text: root.selectedItem && ["application", "command"].includes(root.selectedItem.type) ? root.selectedItem.label || "" : ""
+                        placeholderText: root.selectedItem ? (root.selectedItem.type === "command" ? root.selectedItem.command.name : root.nameFor(root.selectedItem.desktopId)) : ""
                         onTextEdited: if (root.selectedItem) root.updateLauncherAppearance(root.selectedItem.id, {label: text})
                     }
                     RowLayout {
@@ -612,17 +655,22 @@ ColumnLayout {
                         ApplicationIcon {
                             Layout.preferredWidth: Kirigami.Units.iconSizes.medium
                             Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                            source: root.selectedItem && root.selectedItem.type === "application" ? root.launcherIcon(root.selectedItem) : ""
+                            source: root.selectedItem && ["application", "command"].includes(root.selectedItem.type) ? root.launcherIcon(root.selectedItem) : ""
                             fallbackSource: root.selectedItem && root.selectedItem.type === "application" ? launcher.icon(root.selectedItem.desktopId) : ""
                             sourceAvailable: launcher.themeIconAvailable(source)
                         }
                         PlasmaComponents.Button { text: i18n("Choose…"); onClicked: root.chooseLauncherIcon(false) }
                         PlasmaComponents.Button { text: i18n("Image…"); onClicked: root.chooseLauncherIcon(true) }
                     }
+                    PanelIconSizeEditor {
+                        Kirigami.FormData.label: i18n("Panel icon size:")
+                        value: root.selectedItem ? root.selectedItem.panelIconSize || 0 : 0
+                        onEdited: size => { if (root.selectedItem) root.updateLauncherAppearance(root.selectedItem.id, {panelIconSize: size}) }
+                    }
                     PlasmaComponents.Button {
                         text: i18n("Reset appearance")
-                        enabled: root.selectedItem && !!(root.selectedItem.label || root.selectedItem.icon)
-                        onClicked: root.updateLauncherAppearance(root.selectedItem.id, {label: "", icon: ""})
+                        enabled: root.selectedItem && !!(root.selectedItem.label || root.selectedItem.icon || root.selectedItem.panelIconSize)
+                        onClicked: root.updateLauncherAppearance(root.selectedItem.id, {label: "", icon: "", panelIconSize: 0})
                     }
                     PlasmaComponents.Label {
                         Layout.fillWidth: true
@@ -630,6 +678,13 @@ ColumnLayout {
                         text: i18n("Opens this application directly from the panel.")
                     }
                 }
+                ColumnLayout {
+                    PlasmaComponents.Label { text: i18n("Panel icon size:") }
+                    PanelIconSizeEditor {
+                        spinObjectName: "stackPanelIconSize"
+                        value: root.selectedStack ? root.selectedStack.panelIconSize || 0 : 0
+                        onEdited: size => { if (root.selectedStack) root.updateLauncherAppearance(root.selectedStack.id, {panelIconSize: size}) }
+                    }
                 StackSettingsEditor {
                     id: stackEditor
                     settings: root.selectedStack ? root.selectedStack.settings : {}
@@ -637,6 +692,7 @@ ColumnLayout {
                     launcher: launcher
                     stackIconDefault: "applications-all"
                     onSettingsEdited: changes => root.updateStack(changes)
+                }
                 }
                 ColumnLayout {
                     Layout.alignment: Qt.AlignTop

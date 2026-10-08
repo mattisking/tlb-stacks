@@ -52,6 +52,8 @@ ColumnLayout {
 
     // ---- contents pages (data out: partial changes only, host persists)
     function memberName(desktopId) {
+        const custom = (settings.customLaunchers || {})[desktopId]
+        if (custom) return custom.name
         const app = catalog.find(entry => entry.desktopId === desktopId)
         return app ? app.name : i18n("%1 (unavailable)", desktopId)
     }
@@ -66,19 +68,60 @@ ColumnLayout {
             || (settings.applications || []).length >= 2000) return
         emitApplications((settings.applications || []).concat([desktopId]))
     }
+    function editCustomLauncher(id) {
+        customDialog.edit(id, (settings.customLaunchers || {})[id] || {})
+    }
+    function saveCustomLauncher(id, name, executable, argumentsText) {
+        const parsed = StackMembers.parseArguments(argumentsText)
+        if (!name.trim() || name.includes("\0") || executable.includes("\0") || !executable.startsWith("/") || parsed.error
+            || name.length > 256 || executable.length > 4096 || parsed.arguments.length > 256
+            || parsed.arguments.some(a => a.length > 4096 || a.includes("\0"))) return false
+        const apps = (settings.applications || []).slice()
+        const commands = Object.assign({}, settings.customLaunchers || {})
+        if (id && (!apps.includes(id) || !commands[id])) return false
+        if (!id) {
+            if (apps.length >= 2000) return false
+            let number = 1
+            while (apps.includes("tlbstacks-command:" + number) || commands["tlbstacks-command:" + number]
+                || root.applicationIcons["tlbstacks-command:" + number]) ++number
+            id = "tlbstacks-command:" + number
+            apps.push(id)
+        }
+        commands[id] = {name: name.trim(), executable: executable, arguments: parsed.arguments}
+        settingsEdited({applications: apps, customLaunchers: commands})
+        return true
+    }
+    CustomLauncherDialog {
+        id: customDialog
+        onSaved: (id, name, executable, argumentsText) => root.saveCustomLauncher(id, name, executable, argumentsText)
+    }
     function removeMember(index) {
         const next = (settings.applications || []).slice()
         if (index < 0 || index >= next.length) return
+        const id = next[index]
         next.splice(index, 1)
-        emitApplications(next)
+        const commands = Object.assign({}, settings.customLaunchers || {})
+        delete commands[id]
+        settingsEdited({applications: next, customLaunchers: commands})
     }
+    property string activeMemberId: ""
     function moveMember(index, delta) {
         const apps = settings.applications || []
         const target = index + delta
         if (index < 0 || index >= apps.length || target < 0 || target >= apps.length) return
         const next = apps.slice()
         next.splice(target, 0, next.splice(index, 1)[0])
+        const movedId = apps[index]
+        activeMemberId = movedId
         emitApplications(next)
+        Qt.callLater(function() {
+            const index = (root.settings.applications || []).indexOf(movedId)
+            if (index < 0) return
+            memberList.positionViewAtIndex(index, ListView.Contain)
+            const row = memberList.itemAtIndex(index)
+            root.activeMemberId = movedId
+            if (row) row.forceActiveFocus()
+        })
     }
     function reorderMember(id, boundary) {
         if (menuSource !== "applications") return
@@ -96,7 +139,10 @@ ColumnLayout {
     }
     // A different stack may have the same member IDs. Never carry a gesture
     // across a settings switch, even when the visible list happens to match.
-    onSettingsChanged: memberReorder.cancel()
+    onSettingsChanged: {
+        memberReorder.cancel()
+        if (!(settings.applications || []).includes(activeMemberId)) activeMemberId = ""
+    }
     function addSeparator() { emitApplications(StackMembers.appendSeparator(settings.applications || [])) }
     function renameSeparator(id, label) { emitApplications(StackMembers.renameSeparator(settings.applications || [], id, label)) }
     function toggleCategory(name, on) {
@@ -334,101 +380,134 @@ ColumnLayout {
                         cacheBuffer: memberReorder.active ? Math.max(contentHeight, height) : 320
                         clip: true
                         model: root.settings.applications || []
-                        delegate: RowLayout {
+                        delegate: FocusScope {
                             id: memberRow
                             required property string modelData
                             required property int index
                             readonly property bool isSeparator: StackMembers.isSeparator(memberRow.modelData)
                             width: ListView.view.width
-                            ListReorderHandle {
-                                objectName: "reorder-member-" + memberRow.modelData
-                                controller: memberReorder
-                                itemId: memberRow.modelData
-                                label: memberRow.isSeparator ? i18n("Separator") : root.memberName(memberRow.modelData)
-                            }
-                            ApplicationIcon {
-                                visible: !memberRow.isSeparator
-                                source: root.memberIcon(memberRow.modelData)
-                                fallbackSource: (root.catalog.find(app => app.desktopId === memberRow.modelData) || {}).icon || "application-x-executable"
-                                sourceAvailable: root.launcher ? root.launcher.themeIconAvailable(source) : true
-                                Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
-                                Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
-                            }
-                            PlasmaComponents.Label {
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                visible: !memberRow.isSeparator
-                                text: root.memberName(memberRow.modelData)
-                                elide: Text.ElideRight
+                            implicitHeight: memberContents.implicitHeight
+                            activeFocusOnTab: true
+                            onActiveFocusChanged: if (activeFocus) root.activeMemberId = modelData
+                            TapHandler {
+                                onTapped: root.activeMemberId = memberRow.modelData
                             }
                             Rectangle {
-                                visible: memberRow.isSeparator
-                                Layout.preferredWidth: Kirigami.Units.gridUnit * 2
-                                Layout.preferredHeight: 1
-                                color: Kirigami.Theme.disabledTextColor
+                                anchors.fill: parent
+                                color: Kirigami.Theme.highlightColor
+                                opacity: 0.15
+                                visible: root.activeMemberId === memberRow.modelData
                             }
-                            QQC2.TextField {
-                                visible: memberRow.isSeparator
-                                Layout.fillWidth: true
-                                Layout.minimumWidth: 0
-                                text: memberRow.isSeparator ? StackMembers.separatorLabel(memberRow.modelData) : ""
-                                placeholderText: i18n("Separator label (optional)")
-                                maximumLength: 64
-                                horizontalAlignment: Text.AlignHCenter
-                                Accessible.name: i18n("Separator label")
-                                onEditingFinished: root.renameSeparator(memberRow.modelData, text)
-                            }
-                            Rectangle {
-                                visible: memberRow.isSeparator
-                                Layout.preferredWidth: Kirigami.Units.gridUnit * 2
-                                Layout.preferredHeight: 1
-                                color: Kirigami.Theme.disabledTextColor
-                            }
-                            PlasmaComponents.ToolButton {
-                                icon.name: "go-up"
-                                enabled: memberRow.index > 0
-                                Accessible.name: i18n("Move up")
-                                onClicked: root.moveMember(memberRow.index, -1)
-                            }
-                            PlasmaComponents.ToolButton {
-                                icon.name: "go-down"
-                                enabled: memberRow.index < (root.settings.applications || []).length - 1
-                                Accessible.name: i18n("Move down")
-                                onClicked: root.moveMember(memberRow.index, 1)
-                            }
-                            PlasmaComponents.ToolButton {
-                                icon.name: "list-remove"
-                                Accessible.name: memberRow.isSeparator ? i18n("Remove separator")
-                                    : i18n("Remove %1", root.memberName(memberRow.modelData))
-                                onClicked: root.removeMember(memberRow.index)
-                            }
-                            PlasmaComponents.ToolButton {
-                                visible: !memberRow.isSeparator
-                                icon.name: "preferences-desktop-icons"
-                                Accessible.name: i18n("Change icon for %1", root.memberName(memberRow.modelData))
-                                onClicked: iconMenu.open()
-
-                                PlasmaComponents.ToolTip {
-                                    text: i18n("Change icon")
+                            RowLayout {
+                                id: memberContents
+                                width: parent.width
+                                ListReorderHandle {
+                                    objectName: "reorder-member-" + memberRow.modelData
+                                    controller: memberReorder
+                                    itemId: memberRow.modelData
+                                    label: memberRow.isSeparator ? i18n("Separator") : root.memberName(memberRow.modelData)
                                 }
-
-                                PlasmaComponents.Menu {
-                                    id: iconMenu
-                                    PlasmaComponents.MenuItem {
-                                        text: i18n("Choose icon…")
-                                        onTriggered: root.chooseIcon(memberRow.modelData, false)
-                                    }
-                                    PlasmaComponents.MenuItem {
-                                        text: i18n("Choose image…")
-                                        onTriggered: root.chooseIcon(memberRow.modelData, true)
-                                    }
-                                    PlasmaComponents.MenuItem {
-                                        text: i18n("Reset icon")
-                                        enabled: IconOverrides.get(root.applicationIcons, memberRow.modelData).length > 0
-                                        onTriggered: root.setCustomIcon(memberRow.modelData, "")
+                                ApplicationIcon {
+                                    visible: !memberRow.isSeparator
+                                    source: root.memberIcon(memberRow.modelData)
+                                    fallbackSource: (root.catalog.find(app => app.desktopId === memberRow.modelData) || {}).icon || "application-x-executable"
+                                    sourceAvailable: root.launcher ? root.launcher.themeIconAvailable(source) : true
+                                    Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                                    Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                                }
+                                PlasmaComponents.Label {
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    visible: !memberRow.isSeparator
+                                    text: root.memberName(memberRow.modelData)
+                                    elide: Text.ElideRight
+                                }
+                                Rectangle {
+                                    visible: memberRow.isSeparator
+                                    Layout.preferredWidth: Kirigami.Units.gridUnit * 2
+                                    Layout.preferredHeight: 1
+                                    color: Kirigami.Theme.disabledTextColor
+                                }
+                                QQC2.TextField {
+                                    visible: memberRow.isSeparator
+                                    Layout.fillWidth: true
+                                    Layout.minimumWidth: 0
+                                    text: memberRow.isSeparator ? StackMembers.separatorLabel(memberRow.modelData) : ""
+                                    placeholderText: i18n("Separator label (optional)")
+                                    maximumLength: 64
+                                    horizontalAlignment: Text.AlignHCenter
+                                    Accessible.name: i18n("Separator label")
+                                    onEditingFinished: root.renameSeparator(memberRow.modelData, text)
+                                }
+                                Rectangle {
+                                    visible: memberRow.isSeparator
+                                    Layout.preferredWidth: Kirigami.Units.gridUnit * 2
+                                    Layout.preferredHeight: 1
+                                    color: Kirigami.Theme.disabledTextColor
+                                }
+                                // Reserve the space so labels and action targets do not jump.
+                                Item {
+                                    Layout.preferredWidth: moveButtons.implicitWidth
+                                    Layout.preferredHeight: moveButtons.implicitHeight
+                                    RowLayout {
+                                        id: moveButtons
+                                        visible: root.activeMemberId === memberRow.modelData
+                                        PlasmaComponents.ToolButton {
+                                            objectName: "member-up-" + memberRow.modelData
+                                            icon.name: "go-up"
+                                            enabled: memberRow.index > 0
+                                            Accessible.name: i18n("Move up")
+                                            onClicked: root.moveMember(memberRow.index, -1)
+                                        }
+                                        PlasmaComponents.ToolButton {
+                                            objectName: "member-down-" + memberRow.modelData
+                                            icon.name: "go-down"
+                                            enabled: memberRow.index < (root.settings.applications || []).length - 1
+                                            Accessible.name: i18n("Move down")
+                                            onClicked: root.moveMember(memberRow.index, 1)
+                                        }
                                     }
                                 }
-                            }
+                                PlasmaComponents.ToolButton {
+                                    icon.name: "list-remove"
+                                    Accessible.name: memberRow.isSeparator ? i18n("Remove separator")
+                                        : i18n("Remove %1", root.memberName(memberRow.modelData))
+                                    onClicked: root.removeMember(memberRow.index)
+                                }
+                                PlasmaComponents.ToolButton {
+                                    visible: !!(root.settings.customLaunchers || {})[memberRow.modelData]
+                                    icon.name: "document-edit"
+                                    Accessible.name: i18n("Edit custom launcher")
+                                    onClicked: root.editCustomLauncher(memberRow.modelData)
+                                }
+                                PlasmaComponents.ToolButton {
+                                    visible: !memberRow.isSeparator
+                                    icon.name: "preferences-desktop-icons"
+                                    Accessible.name: i18n("Change icon for %1", root.memberName(memberRow.modelData))
+                                    onClicked: iconMenu.open()
+
+                                    PlasmaComponents.ToolTip {
+                                        text: i18n("Change icon")
+                                    }
+
+                                    PlasmaComponents.Menu {
+                                        id: iconMenu
+                                        PlasmaComponents.MenuItem {
+                                            text: i18n("Choose icon…")
+                                            onTriggered: root.chooseIcon(memberRow.modelData, false)
+                                        }
+                                        PlasmaComponents.MenuItem {
+                                            text: i18n("Choose image…")
+                                            onTriggered: root.chooseIcon(memberRow.modelData, true)
+                                        }
+                                        PlasmaComponents.MenuItem {
+                                            text: i18n("Reset icon")
+                                            enabled: IconOverrides.get(root.applicationIcons, memberRow.modelData).length > 0
+                                            onTriggered: root.setCustomIcon(memberRow.modelData, "")
+                                        }
+                                    }
+                                }
+                        }
                         }
                         PlasmaComponents.Label {
                             anchors.centerIn: parent
@@ -451,6 +530,12 @@ ColumnLayout {
                             appPicker.exclude = root.settings.applications
                             appPicker.openPicker()
                         }
+                    }
+                    PlasmaComponents.Button {
+                        text: i18n("Add custom launcher…")
+                        icon.name: "list-add"
+                        enabled: (root.settings.applications || []).length < 2000
+                        onClicked: root.editCustomLauncher("")
                     }
                     PlasmaComponents.Button {
                         text: i18n("Add separator")
@@ -681,7 +766,7 @@ ColumnLayout {
                 }
                 QQC2.SpinBox {
                     objectName: "menuIconSizeField"
-                    Kirigami.FormData.label: i18n("Icon size (px):")
+                    Kirigami.FormData.label: i18n("Popup item icon size (px):")
                     from: 16; to: 64
                     editable: true
                     live: true

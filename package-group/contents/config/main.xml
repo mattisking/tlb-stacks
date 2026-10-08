@@ -8,6 +8,7 @@
             <label>Name of this stack group</label>
             <default></default>
         </entry>
+        <entry name="panelIconSize" type="Int"><default>0</default><min>0</min><max>64</max></entry>
         <entry name="items" type="String">
             <label>Ordered group entries</label>
             <default>{"version":1,"items":[]}</default>

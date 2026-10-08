@@ -22,6 +22,8 @@ ColumnLayout {
     property int cfg_menuIconSizeDefault: 22
     property int cfg_hoverDelay: 250
     property int cfg_hoverDelayDefault: 250
+    property string cfg_customLaunchers: "{}"
+    property string cfg_customLaunchersDefault: "{}"
     property string cfg_applicationIcons: "{}"
     property string cfg_applicationIconsDefault: "{}"
     readonly property var applicationIcons: IconOverrides.parse(cfg_applicationIcons)
@@ -55,6 +57,7 @@ ColumnLayout {
         groupName: cfg_groupName, groupIcon: cfg_groupIcon, iconsOnly: cfg_iconsOnly,
         menuIconSize: cfg_menuIconSize, hoverDelay: cfg_hoverDelay,
         applications: Array.from(cfg_applications || []),
+        customLaunchers: StackMembers.parseCustomLaunchers(cfg_customLaunchers),
         applicationIcons: IconOverrides.parse(cfg_applicationIcons),
         menuSource: cfg_menuSource, activityOrder: cfg_activityOrder,
         activityLimit: cfg_activityLimit, activityCurrent: cfg_activityCurrent,
@@ -71,6 +74,7 @@ ColumnLayout {
         if ("menuIconSize" in changes) cfg_menuIconSize = changes.menuIconSize
         if ("hoverDelay" in changes) cfg_hoverDelay = changes.hoverDelay
         if ("applications" in changes) cfg_applications = changes.applications
+        if ("customLaunchers" in changes) cfg_customLaunchers = JSON.stringify(changes.customLaunchers)
         if ("applicationIcons" in changes) cfg_applicationIcons = JSON.stringify(changes.applicationIcons)
         if ("menuSource" in changes) cfg_menuSource = changes.menuSource
         if ("activityOrder" in changes) cfg_activityOrder = changes.activityOrder
@@ -99,6 +103,7 @@ ColumnLayout {
             menuIconSize: root.cfg_menuIconSize,
             hoverDelay: root.cfg_hoverDelay,
             applications: Array.from(root.cfg_applications),
+            customLaunchers: StackMembers.parseCustomLaunchers(root.cfg_customLaunchers),
             applicationIcons: IconOverrides.parse(root.cfg_applicationIcons),
             menuSource: root.cfg_menuSource,
             activityOrder: root.cfg_activityOrder,
@@ -154,6 +159,7 @@ ColumnLayout {
             root.cfg_iconsOnly = settings.iconsOnly
             root.cfg_menuIconSize = settings.menuIconSize
             root.cfg_hoverDelay = settings.hoverDelay
+            root.cfg_customLaunchers = JSON.stringify(settings.customLaunchers || {})
             root.cfg_applicationIcons = JSON.stringify(settings.applicationIcons)
             root.cfg_applications = settings.applications
             root.cfg_applicationCategories = settings.applicationCategories || []
@@ -171,7 +177,7 @@ ColumnLayout {
 
     function refreshMissingApplications() {
         root.missingApplications = Array.from(root.cfg_applications || [])
-            .filter(id => !StackMembers.isSeparator(id) && !launcher.exists(id))
+            .filter(id => !id.startsWith("tlbstacks-command:") && !StackMembers.isSeparator(id) && !launcher.exists(id))
     }
 
     onCfg_applicationsChanged: refreshMissingApplications()

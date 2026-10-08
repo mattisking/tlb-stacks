@@ -23,6 +23,41 @@ class Profiles(unittest.TestCase):
             iconsOnly=True, menuIconSize=32, menuSource='applications', folderUrl='', folderFilters='*', applicationCategories=[], hoverDelay=250)
         self.archive = self.root / 'menu.zip'
 
+    def test_direct_custom_launcher_group_roundtrip(self):
+        command = dict(name='Assistant', executable='/usr/bin/konsole', arguments=['-e', '/usr/bin/pwsh', '-NoExit'])
+        item = dict(id='command-1', type='command', command=command, icon=str(self.image), label='Work', panelIconSize=24)
+        profile.export_group(dict(file=str(self.archive), group=dict(items=[item], panelIconSize=40)))
+        with zipfile.ZipFile(self.archive) as archive:
+            self.assertEqual(json.loads(archive.read('profile.json'))['version'], 4)
+        group = profile.import_profile(dict(file=str(self.archive)), allow_group=True)['group']
+        self.assertEqual(group['panelIconSize'], 40)
+        result = group['items'][0]
+        self.assertEqual(result['command'], command)
+        self.assertEqual(result['label'], 'Work')
+        self.assertEqual(result['panelIconSize'], 24)
+        self.assertTrue(Path(result['icon']).exists())
+
+    def test_custom_launcher_roundtrip(self):
+        key = 'tlbstacks-command:1'
+        command = dict(name='Custom', executable='/opt/a program', arguments=['two words', '', '$HOME'])
+        self.settings['applications'].append(key)
+        self.settings['customLaunchers'] = {key: command}
+        self.settings['applicationIcons'][key] = str(self.image)
+        profile.export_profile(dict(file=str(self.archive), settings=self.settings))
+        with zipfile.ZipFile(self.archive) as archive:
+            self.assertEqual(json.loads(archive.read('profile.json'))['version'], 6)
+        imported = profile.import_profile(dict(file=str(self.archive)))['settings']
+        self.assertEqual(imported['customLaunchers'][key], command)
+        self.assertTrue(Path(imported['applicationIcons'][key]).exists())
+        group = dict(items=[dict(id='stack', type='stack', settings=self.settings)])
+        profile.export_group(dict(file=str(self.archive), group=group))
+        with zipfile.ZipFile(self.archive) as archive:
+            self.assertEqual(json.loads(archive.read('profile.json'))['version'], 3)
+        result = profile.import_profile(dict(file=str(self.archive)), allow_group=True)
+        self.assertEqual(result['group']['items'][0]['settings']['customLaunchers'][key], command)
+        self.settings['customLaunchers'][key]['executable'] = 'relative'
+        with self.assertRaises(ValueError): profile.validate_settings(self.settings)
+
     def test_portable_standard_folder_roundtrip(self):
         locations = {'home': str(self.root / 'alice'),
                      'documents': str(self.root / 'alice/Documents')}

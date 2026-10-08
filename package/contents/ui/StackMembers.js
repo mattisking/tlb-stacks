@@ -30,3 +30,29 @@ function renameSeparator(applications, id, label) {
     const updated = base + (clean ? ":" + clean : "")
     return applications.map(value => value === id ? updated : value)
 }
+
+function parseArguments(text) {
+    const args = []
+    let word = "", quote = "", escaped = false, started = false
+    for (const ch of text) {
+        if (escaped) { word += ch; escaped = false; started = true }
+        else if (ch === "\\" && quote !== "'") { escaped = true; started = true }
+        else if (quote) { if (ch === quote) quote = ""; else word += ch }
+        else if (ch === "'" || ch === '"') { quote = ch; started = true }
+        else if (/\s/.test(ch)) { if (started) { args.push(word); word = ""; started = false } }
+        else { word += ch; started = true }
+    }
+    if (quote || escaped) return {error: "Unfinished quote or escape", arguments: []}
+    if (started) args.push(word)
+    return {error: "", arguments: args}
+}
+function formatArguments(args) {
+    return args.map(arg => '"' + arg.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"').join(" ")
+}
+
+function parseCustomLaunchers(value) {
+    try {
+        const result = typeof value === "string" ? JSON.parse(value) : value
+        return result && typeof result === "object" && !Array.isArray(result) ? result : {}
+    } catch (error) { return {} }
+}

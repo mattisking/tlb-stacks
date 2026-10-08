@@ -36,7 +36,7 @@ PlasmoidItem {
         const ids = cfg.menuSource === "categories"
             ? ApplicationCategories.matching(catalog, cfg.applicationCategories).map(app => app.desktopId)
             : cfg.applications
-        return launcher.applicationEntries(ids, cfg.applicationIcons || {}, cfg.menuSource).filter(entry => entry.available)
+        return launcher.applicationEntries(ids, cfg.applicationIcons || {}, cfg.menuSource, cfg.customLaunchers || {}).filter(entry => entry.available)
     }
     readonly property string stackNotice: {
         if (!activeStack) return ""
@@ -124,7 +124,10 @@ PlasmoidItem {
         onActivationFailed: message => { root.launchError = message }
         onRemoveApplicationRequested: desktopId => {
             if (!root.activeStack || root.activeStack.settings.menuSource !== "applications") return
+            const commands = Object.assign({}, root.activeStack.settings.customLaunchers || {})
+            delete commands[desktopId]
             const items = GroupItems.updateStack(root.decoded.items, root.activeStackId, {
+                customLaunchers: commands,
                 applications: root.activeStack.settings.applications.filter(id => id !== desktopId)
             })
             Plasmoid.configuration.items = GroupItems.encode(items)
@@ -197,7 +200,7 @@ PlasmoidItem {
                     readonly property string appName: {
                         const revision = root.catalogRevision
                         return modelData.type === "stack" ? modelData.settings.groupName || i18n("Stack")
-                            : modelData.label || launcher.name(modelData.desktopId) || modelData.desktopId
+                            : modelData.label || (modelData.type === "command" ? modelData.command.name : launcher.name(modelData.desktopId) || modelData.desktopId)
                     }
                     Layout.fillWidth: true
                     Layout.fillHeight: true
@@ -206,34 +209,44 @@ PlasmoidItem {
                     activeFocusOnTab: true
                     display: QQC2.AbstractButton.IconOnly
                     text: appName
+                    readonly property int requestedIconSize: GroupItems.panelSize(modelData, Plasmoid.configuration.panelIconSize)
+                    readonly property real launcherIconSize: requestedIconSize
+                        ? Math.max(1, Math.min(requestedIconSize, content.cellSize))
+                        : content.panelIconSize
                     readonly property string resolvedIcon: {
                         const revision = root.catalogRevision
                         return modelData.type === "stack" ? modelData.settings.groupIcon || "applications-all"
-                            : modelData.icon || launcher.icon(modelData.desktopId) || "application-x-executable"
+                            : modelData.icon || (modelData.type === "command" ? "application-x-executable" : launcher.icon(modelData.desktopId) || "application-x-executable")
                     }
                     icon.name: IconOverrides.isFile(resolvedIcon) ? "" : resolvedIcon
                     icon.source: IconOverrides.isFile(resolvedIcon) ? resolvedIcon : ""
                     icon.color: "transparent"
                     contentItem: Item {
-                        implicitWidth: content.panelIconSize
-                        implicitHeight: content.panelIconSize
+                        implicitWidth: button.launcherIconSize
+                        implicitHeight: button.launcherIconSize
                         ApplicationIcon {
                             anchors.centerIn: parent
-                            width: Math.min(parent.width, content.panelIconSize)
-                            height: Math.min(parent.height, content.panelIconSize)
+                            width: Math.min(button.requestedIconSize ? button.width : parent.width, button.launcherIconSize)
+                            height: Math.min(button.requestedIconSize ? button.height : parent.height, button.launcherIconSize)
+                            roundToIconSize: button.requestedIconSize === 0
                             source: button.resolvedIcon
-                            fallbackSource: button.modelData.type === "application" ? launcher.icon(button.modelData.desktopId) || "application-x-executable" : "applications-all"
+                            fallbackSource: button.modelData.type === "application" ? launcher.icon(button.modelData.desktopId) || "application-x-executable" : button.modelData.type === "command" ? "application-x-executable" : "applications-all"
                             sourceAvailable: { const revision = root.catalogRevision; return launcher.themeIconAvailable(source) }
                         }
                     }
-                    icon.width: content.panelIconSize
-                    icon.height: content.panelIconSize
+                    icon.width: button.launcherIconSize
+                    icon.height: button.launcherIconSize
                     highlighted: stackPopup.visible && root.activeStackId === modelData.id
                     Accessible.name: appName
                     onClicked: {
                         root.launchError = ""
                         if (modelData.type === "stack") root.showStack(button, true)
-                        else { stackPopup.visible = false; launcher.launch(modelData.desktopId) }
+                        else {
+                            stackPopup.visible = false
+                            if (modelData.type === "command") launcher.activateEntry({source: "applications", action: "launchCommand",
+                                target: modelData.command.executable, arguments: modelData.command.arguments})
+                            else launcher.launch(modelData.desktopId)
+                        }
                     }
                     hoverEnabled: true
                     onHoveredChanged: {

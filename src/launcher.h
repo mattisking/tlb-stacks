@@ -30,7 +30,7 @@ public:
     Q_INVOKABLE void showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool removable = true, bool desktopActions = true);
     Q_INVOKABLE void closeApplicationContextMenu();
 
-    Q_INVOKABLE QVariantList applicationEntries(const QStringList &ids, const QVariantMap &icons, const QString &source) const;
+    Q_INVOKABLE QVariantList applicationEntries(const QStringList &ids, const QVariantMap &icons, const QString &source, const QVariantMap &customLaunchers = {}) const;
     Q_INVOKABLE QVariantMap folderEntry(const QUrl &url) const;
     Q_INVOKABLE bool activateEntry(const QVariantMap &entry);
     Q_INVOKABLE void showEntryContextMenu(QQuickItem *anchor, const QVariantMap &entry);

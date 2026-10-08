@@ -5,6 +5,19 @@ TestCase {
     name: "ApplicationIconFallback"
     // Simulate theme availability; the native caller uses QIcon::hasThemeIcon.
     TLB.ApplicationIcon { id: icon; sourceAvailable: !source.startsWith("tlbstacks-missing-") }
+    function test_explicit_size_disables_theme_snapping_through_fallback() {
+        icon.width = 29
+        icon.height = 29
+        icon.roundToIconSize = false
+        icon.source = "tlbstacks-missing-81379"
+        icon.fallbackSource = "folder"
+        const loader = icon.children[2]
+        tryVerify(() => loader.item !== null)
+        tryCompare(loader.item, "width", 29)
+        compare(loader.item.children[1].roundToIconSize, false)
+        icon.roundToIconSize = true
+        compare(loader.item.children[1].roundToIconSize, true)
+    }
     function test_chain_data() {
         return [
             {tag: "missing-theme", source: "tlbstacks-missing-81379", fallback: "folder", app: true},

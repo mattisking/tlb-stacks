@@ -405,11 +405,25 @@ bool Launcher::eventFilter(QObject *watched, QEvent *event)
     return QObject::eventFilter(watched, event);
 }
 
-QVariantList Launcher::applicationEntries(const QStringList &ids, const QVariantMap &icons, const QString &source) const
+QVariantList Launcher::applicationEntries(const QStringList &ids, const QVariantMap &icons, const QString &source, const QVariantMap &customLaunchers) const
 {
     QVariantList entries;
     if (source != "applications" && source != "categories") return entries;
     for (const auto &id : ids) {
+        if (source == "applications" && id.startsWith("tlbstacks-command:")) {
+            const auto command = customLaunchers.value(id).toMap();
+            const QString executable = command.value("executable").toString();
+            const QFileInfo info(executable);
+            auto entry = StackEntry::make(id, command.value("name", id).toString(),
+                icons.value(id, "application-x-executable").toString(), source,
+                "launchCommand", executable, true, false, true);
+            entry["executableAvailable"] = info.isAbsolute() && info.isFile() && info.isExecutable();
+            entry["arguments"] = command.value("arguments").toStringList();
+            entry["description"] = executable;
+            entry["defaultIcon"] = "application-x-executable";
+            entries.append(entry);
+            continue;
+        }
         const auto separatorPrefix = QStringLiteral("tlbstacks-separator:");
         if (source == "applications" && id.startsWith(separatorPrefix)) {
             // Format: tlbstacks-separator:<number>[:<label>]
@@ -436,6 +450,19 @@ bool Launcher::activateEntry(const QVariantMap &entry)
 {
     const auto action = entry.value("action").toString();
     const auto source = entry.value("source").toString();
+    if (action == "launchCommand" && source == "applications") {
+        const QString executable = entry.value("target").toString();
+        const QFileInfo info(executable);
+        if (executable.contains(QChar::Null) || !info.isAbsolute() || !info.isFile() || !info.isExecutable()) {
+            Q_EMIT activationFailed(tr("Executable is unavailable: %1").arg(executable));
+            return false;
+        }
+        if (!QProcess::startDetached(executable, entry.value("arguments").toStringList())) {
+            Q_EMIT activationFailed(tr("Could not start %1").arg(executable));
+            return false;
+        }
+        return true;
+    }
     if (action == "launchApplication" && (source == "applications" || source == "categories" || source == "activity"))
         return launch(entry.value("target").toString());
     if (action == "openFile" && source == "folder") return openFile(QUrl(entry.value("target").toString()));

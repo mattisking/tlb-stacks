@@ -4,6 +4,13 @@ import com.mattphilmon.tlbstacks
 
 TestCase {
     name: "StackMembers"
+    function test_argument_roundtrip() {
+        const args = ["two words", "", "plain", "a\"b", "back\\slash", "$HOME", ";"]
+        compare(StackMembers.parseArguments(StackMembers.formatArguments(args)).arguments, args)
+        compare(StackMembers.parseArguments("--flag 'two words' \"\"").arguments, ["--flag", "two words", ""])
+        verify(StackMembers.parseArguments("'unfinished").error.length > 0)
+        verify(StackMembers.parseArguments("bad\\").error.length > 0)
+    }
     function test_separator_detection() {
         verify(StackMembers.isSeparator("tlbstacks-separator:1"))
         verify(StackMembers.isSeparator("tlbstacks-separator:2:Games"))

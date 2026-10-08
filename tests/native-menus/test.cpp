@@ -15,11 +15,42 @@
 #include <QQmlEngine>
 #include <QQmlComponent>
 #include <QQmlExpression>
+#include <QJsonDocument>
+#include <QJsonArray>
 
 class FolderPopupTest : public QObject {
     Q_OBJECT
 private slots:
     void initTestCase() { qRegisterMetaType<QQuickItem *>("QQuickItem*"); }
+    void customLauncherPassesLiteralArguments() {
+        QTemporaryDir dir;
+        const QString output = dir.filePath("result");
+        const QString script = dir.filePath("test executable");
+        QFile executable(script);
+        QVERIFY(executable.open(QIODevice::WriteOnly));
+        executable.write("#!/usr/bin/python3\nimport sys,json\nwith open(sys.argv[1], 'w') as f: json.dump(sys.argv[2:], f)\n");
+        executable.close();
+        QVERIFY(executable.setPermissions(QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner));
+        Launcher launcher;
+        const QString id = "tlbstacks-command:1";
+        const QStringList args{output, "two words", "", "$HOME", ";echo nope", "a\"b"};
+        const QVariantMap custom{{id, QVariantMap{{"name", "Custom"}, {"executable", script}, {"arguments", args}}}};
+        const auto entries = launcher.applicationEntries({id}, {}, "applications", custom);
+        QCOMPARE(entries.size(), 1);
+        const auto entry = entries.first().toMap();
+        QCOMPARE(entry.value("name").toString(), QString("Custom"));
+        QVERIFY(entry.value("actions").toStringList().contains("removeFromStack"));
+        QVERIFY(launcher.activateEntry(entry));
+        QTRY_VERIFY(QFileInfo::exists(output));
+        QFile result(output); QVERIFY(result.open(QIODevice::ReadOnly));
+        const auto actual = QJsonDocument::fromJson(result.readAll()).array().toVariantList();
+        QCOMPARE(actual, QVariant(args.mid(1)).toList());
+        auto missing = entry;
+        missing["target"] = dir.filePath("missing");
+        QSignalSpy error(&launcher, &Launcher::activationFailed);
+        QVERIFY(!launcher.activateEntry(missing));
+        QCOMPARE(error.count(), 1);
+    }
     void asyncRootRefreshAndFilterChange() {
         QTemporaryDir dir;
         QFile file(dir.filePath("one.txt"));

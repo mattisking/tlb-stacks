@@ -1,376 +1,240 @@
 # Feature and follow-up tracker
 
-[Project guide](README.md) · [Current model](STACK_ENTRY_MODEL.md) · [Verification](TESTING_AND_STATUS.md)
+[Project guide](README.md) · [Current model](STACK_ENTRY_MODEL.md) · [Verification](TESTING_AND_STATUS.md) · [Group checkpoints](STACK_GROUPS.md)
 
-**Updated:** October 7, 2026. This is the authoritative list of requested future
-work. IDs remain stable even when titles or priorities change. Update entries as
-requests are clarified; link to implementation and verification rather than copy them.
+**Reviewed:** October 8, 2026. This tracks requested work, not a promise to implement
+all historical ideas. IDs and anchors are retained for existing links. Completed
+features belong in the implementation docs; test gaps belong in the verification
+record. Desktop acceptance does not mean every optional test combination was run.
 
-Statuses: **Planned** (agreed direction, not started), **Needs design** (intent
-recorded, details unresolved), **In progress**, **Implemented — needs verification**,
-**Verified**, or **Deferred** (explicitly outside current work). No dates are promised.
+## Current queue
 
-| ID | Request | Status |
+| ID | Request | Current status |
 |---|---|---|
-| [F-001](#f-001) | Unobtrusive, delayed tooltips | Implemented — needs verification |
-| [F-002](#f-002) | Folders alongside selected application shortcuts | Needs design |
-| [F-003](#f-003) | Drag-sort selected items in the editor | Deferred |
-| [F-004](#f-004) | Future content/plugin extension support | Deferred |
-| [F-005](#f-005) | Possible whole-panel widget | Deferred |
-| [F-006](#f-006) | Application actions and recent documents | Implemented — needs verification (actions); Planned (documents) |
-| [F-007](#f-007) | Recent / Frequent activity source | Implemented — needs verification |
-| [F-008](#f-008) | KIO virtual and remote folders | Needs design |
-| [F-009](#f-009) | Custom launch commands and terminal entries | Needs design |
-| [F-010](#f-010) | Grouped Most frequent / Most recently used activity stacks | Needs design |
-| [F-011](#f-011) | Menu column wrapping (True Launch Bar style) | Needs design |
-| [F-012](#f-012) | Distribution packaging (OBS) and KDE Store listing | Planned |
-| [F-013](#f-013) | Cross-machine profile portability | Implemented — needs verification |
-| [F-014](#f-014) | Direct panel launchers alongside stacks | Planned within F-015 |
-| [F-015](#f-015) | Stack Groups | In progress — shared config editor built; desktop verification next |
-| [F-016](#f-016) | Shared stack settings editor for both widgets | Implemented — needs verification |
-| [M-001](#m-001) | Clean source-control checkpoint | Verified |
-| [M-002](#m-002) | CI/release pipeline hardening follow-ups | In progress |
+| [F-003](#f-003) | Drag ordering and editor controls | Dragging accepted; selected-row arrow polish awaiting desktop test |
+| [F-015](#f-015) | Stack Groups | Delivered increments accepted; panel icon defaults await desktop testing |
+| [F-009](#f-009) | App arguments and custom/terminal commands | Custom executables implemented; desktop test pending |
+| [M-002](#m-002) | Release maintenance | CI fixed; maintainer release checklist still planned |
+| [F-002](#f-002) | Original launcher/mixed-folder request | Superseded by F-015; mixed folders deferred |
+| [F-006](#f-006) | Application actions and recent documents | Actions implemented; documents planned |
+| [F-007](#f-007) | Recent/Frequent source | Application source implemented; documents a follow-up |
+| [F-010](#f-010) | Combined Frequent/Recent sections | Needs design |
+| [F-011](#f-011) | Menu column wrapping | Needs design |
+| [F-008](#f-008) | KIO virtual/remote folders | Needs design |
+| [F-012](#f-012) | Distribution repositories and KDE Store listing | Planned |
+| [F-013](#f-013) | Cross-machine portability | Implemented; cross-machine verification remains |
+
+Completed or deliberately set aside: [tooltips](#f-001), [plugin support](#f-004),
+[whole-panel replacement](#f-005), [direct launchers](#f-014),
+[shared editor](#f-016), and [source-control cleanup](#m-001).
 
 <a id="f-001"></a>
 ## F-001 — Unobtrusive, delayed tooltips
 
-Requested October 5, 2026. Status: **Implemented — needs verification**.
-
-Acceptance criteria:
-
-- Names in icons-only mode appear outside or away from menu rows, without obscuring
-  other items; account for screen edges.
-- Show after the pointer or keyboard selection pauses. Rapid traversal should not
-  flash a tooltip for each row; cancel pending display when selection changes.
-- Show tooltips in both display modes (updated user preference). Application
-  descriptions appear when supplied by the desktop entry. Live Folder always shows filenames.
-- Keep tooltip timing separate from the existing panel/submenu opening delay.
-- Preserve mouse/keyboard handoff and menu dismissal behavior at each depth.
-
-Implemented a fixed 700 ms selection delay, independent of menu opening. All
-root rows use small, input-transparent Plasma tooltip windows beside the popup; native submenus use Qt menu tooltips. Folder previews suppress the parent tooltip while open.
-A configurable delay remains a possible refinement.
-Desktop placement and input verification are still required.
-Context: [navigation contract](STACK_ENTRY_MODEL.md#navigation-contract) and
-[historical information display](TRUE_LAUNCH_BAR_WINDOWS_FEATURE_REFERENCE.md#8-appearance-and-information-display).
+**Implemented; desktop behavior accepted.** Tooltips appear beside the menu after
+pausing, with application descriptions when available. They work in both display
+modes; Live Folder uses icons and filenames. Tooltip delay is separate from popup
+opening delay. A configurable tooltip delay is only a possible refinement, not an
+active commitment. Screen-edge and input combinations remain regression checks.
+See the [navigation contract](STACK_ENTRY_MODEL.md#navigation-contract).
 
 <a id="f-002"></a>
 ## F-002 — Folders alongside selected application shortcuts
 
-Requested October 5, 2026. Status: **Needs design**.
+**Superseded by F-015 for the chosen launcher direction.** Folders *inside* a
+Selected Applications menu remain only a deferred idea, not an active commitment. The everyday direct-panel-shortcut request was split out and
+has been delivered through [Stack Groups](#f-015); do not reopen that decision here.
 
-October 6 clarification: the user's main everyday-launcher goal is direct panel
-shortcuts without opening a popup; that is tracked separately in [F-014](#f-014).
-This entry retains the earlier request for folders *inside* a stack, rather than
-making that a prerequisite for direct launchers or custom commands.
-
-Allow a Selected Applications stack to include a folder entry alongside application
-shortcuts. A folder should reuse the same preview, Right/Left, hover, and focus-return
-behavior as Live Folder. Navigation should depend on an entry having children, not
-on inventing a new set of key rules for each source.
-
-Open decisions: persisted mixed-item schema and migration from desktop-ID lists;
-editor addition/order/labels/icons; per-folder filtering; menu export versioning;
-removing a configured folder reference versus trashing files inside it. Removing
-an entry must not silently delete the referenced folder.
-
-Current boundary: [entry model](STACK_ENTRY_MODEL.md#sources-and-renderers). Current
-Selected Applications accepts applications only; this tracker entry does not change that.
+Mixed entries need a persistence/migration design, folder addition and filtering,
+consistent submenu navigation, and archive compatibility. Removing a configured
+folder reference must not delete the folder. Current Selected Applications holds
+applications and separators, not folder entries. See [entry boundaries](STACK_ENTRY_MODEL.md).
 
 <a id="f-003"></a>
-## F-003 — Drag-sort editor items
+## F-003 — Drag ordering and editor controls
 
-Status: **Implemented — desktop-accepted**.
-Drag handles reorder whole launchers and stacks, retaining Up/Down controls and
-Apply/Cancel semantics. Dragging applications and separators within Selected Applications stacks is now
-implemented in the shared editor and desktop-accepted on October 8, 2026. See the
-[member test checklist](STACK_GROUPS.md#drag-selected-applications-and-separators--desktop-test).
+**Dragging implemented and desktop-accepted.** Both whole group items and
+applications/separators within stacks can be dragged. Shared gesture handling
+preserves Apply/Cancel, custom icons, cancellation, and edge scrolling.
+
+Current visual polish: Up/Down controls appear only on the selected or
+keyboard-focused Contents row, with space reserved so other controls do not move.
+This polish awaits desktop acceptance; dragging itself is complete.
+See [the member checkpoint](STACK_GROUPS.md#drag-selected-applications-and-separators--desktop-test).
 
 <a id="f-004"></a>
-## F-004 — Future extension support
+## F-004 — Future content/plugin extension support
 
-Earlier user intent; status: **Deferred**. Preserve room for content providers or
-plugins, without claiming the current internal entry structure is a public SDK.
-No API, trust model, packaging, or compatibility promise has been designed.
-See [current entry boundaries](STACK_ENTRY_MODEL.md) and the
-[historical SDK distinction](TRUE_LAUNCH_BAR_WINDOWS_FEATURE_REFERENCE.md#11-published-source-sdk-and-application-boundary).
+**Deferred.** Still a user interest, but no SDK, trust model, packaging contract,
+or compatibility promise has been designed. The common entry description is an
+internal foundation, not a public plugin API. See [entry model](STACK_ENTRY_MODEL.md).
 
 <a id="f-005"></a>
 ## F-005 — Possible whole-panel widget
 
-Earlier user interest; status: **Deferred**. Explore a larger widget that could
-host multiple stacks and individual launchers. No decision to replace or extend
-Icons Only Task Manager has been made. Current work remains individual stack widgets;
-this idea does not authorize a task-manager rewrite.
+**Original launcher-container direction superseded by F-015.** Stack Groups
+provides the chosen collection of stacks and direct launchers, alongside the
+existing standalone widget. A separate competing launcher container is not queued.
 
-<a id="m-001"></a>
-## M-001 — Clean source-control checkpoint
-
-Status: **Verified** for the local October 5 source checkpoint. Generated build
-files were removed from the Git index, not deleted from disk. Ignore rules cover
-build/test output, local installation staging, and Python caches. The checkpoint
-includes source, regression tests, documentation, and the supplied manual.
-Remote publication is a separate Git operation and is not implied by this status.
-See [current repository/testing status](TESTING_AND_STATUS.md).
-
-## Completed work and ongoing verification
-
-The [code-review follow-up](TESTING_AND_STATUS.md#october-code-review-follow-up) owns
-R1–R7 status. The [desktop results](TESTING_AND_STATUS.md#desktop-checks-reported-by-the-user)
-own the completed navigation, dismissal, sizing, and Trash verification record.
-The [remaining verification list](TESTING_AND_STATUS.md#still-to-verify) owns untested
-combinations. Do not duplicate those checklists here. New implementation requests
-receive tracker IDs; additional test evidence belongs in that existing record.
+A full panel/task-manager replacement remains **deferred**, not part of current
+scope. Extending or forking Icons Only Task Manager was explored, not selected.
 
 <a id="f-006"></a>
 ## F-006 — Application actions and recent documents
 
-Application-provided desktop actions: **Implemented — needs verification**.
-Selected Applications and category stacks expose visible desktop-entry actions
-in their right-click/keyboard context menus. Only selected shortcuts offer Remove.
-Actions launch through KDE's application launcher; Live Folder is unchanged.
+**Desktop actions implemented.** Application-provided actions are exposed by app
+menus across selected, category, and activity sources when the desktop entry offers
+them. Only selected membership offers Remove. An app with no actions need not show
+any; this is not an incomplete implementation.
 
-Recent documents: **Planned**, separate from desktop actions. Determine the KDE
-history source and respect its privacy settings before implementing this part.
+**Recent documents planned**, separate from desktop actions. Determine the KDE
+history source and respect privacy settings. Coordinate with F-007 rather than
+building two separate document-history implementations.
 
 <a id="f-007"></a>
 ## F-007 — Recent / Frequent activity source
 
-Status: **Implemented — needs verification** (applications). Use KDE's Activities Stats API rather than maintaining a
-separate usage database. Initial implementation targets applications, ranked by
-recent use or frequency, with a configurable limit, optional desktop categories,
-and current/all Activities scope. Apply the category filter before the final item
-limit; preserve ranking and deduplicate desktop IDs.
+**Application source implemented; desktop feedback accepted its improved behavior.**
+Uses KActivities Stats, with recent/frequent ordering, limits, category filtering,
+and Activity scope. Configuration exports query settings, not history. Membership
+is computed, so it does not offer Remove. Keep open-menu results stable and do not
+change KDE tracking/privacy preferences.
 
-Reuse application entries, icons, activation, keyboard navigation, and desktop
-actions. Do not offer Remove from this stack for computed membership. Refresh
-on opening while keeping an open menu stable. Empty/unavailable history needs
-an explanatory state; never enable tracking or change KDE privacy settings.
-Exports contain query settings, not usage history. Regression coverage should
-include filtering/ranking, unavailable apps, deduplication, limits, and old-profile
-defaults. KDE service integration additionally needs desktop verification.
-
-Documents are a follow-up within this source: define document type/application
-filters separately from desktop application categories. Recent-document context
-menus must not inherit Live Folder deletion capabilities by accident.
-
-Build prerequisite: PlasmaActivities and PlasmaActivitiesStats development
-packages (Fedora: plasma-activities-devel and plasma-activities-stats-devel).
+Documents remain a follow-up shared with F-006. Define document filters separately
+from application categories; do not inherit Live Folder deletion actions. Service
+availability and unusual history combinations remain verification work.
 
 <a id="f-008"></a>
 ## F-008 — KIO virtual and remote folders
 
-Status: **Needs design**. Investigate asynchronous KIO listing for virtual and
-remote URLs (timeline, tags, remote, SMB), contingent on installed workers and
-services. Current Live Folder remains local-only. Preserve URLs throughout
-listing, activation, configuration, and profile transport. First scope should be
-browsing/opening, with cancellation, authentication, and offline handling; file
-operations require capability checks rather than assuming Trash is supported.
+**Needs design.** Current Live Folder is local-only. Explore asynchronous listing
+for timeline, tags, remote and SMB URLs with installed KIO workers. Start with
+browsing/opening, cancellation, authentication and offline handling. File actions
+must follow backend capabilities; do not assume remote Trash support.
 
 <a id="f-009"></a>
 ## F-009 — Custom launch commands and terminal entries
 
-Status: **Needs design**. Allow per-entry launch customization, especially command
-arguments, without modifying the system application desktop file. Add standalone
-command entries with name, icon, executable, arguments, working directory, and
-optional terminal execution. Separate direct executable/arguments from explicit
-shell-script execution. Investigate preferred-terminal integration and optional
-keep-open behavior. Preserve installed-app launch wrappers/field codes rather than
-blindly concatenating text to desktop Exec lines.
+**First increment implemented, awaiting desktop acceptance; independent of mixed folders.**
+Selected Contents supports custom executable launchers with a name, absolute path,
+quoted arguments, and the existing icon controls. The group Add menu also supports
+direct panel custom launchers using the same editor. Commands execute directly without
+a shell; paths remain explicit in archives. See [custom launchers](DEPLOYMENT.md#custom-executable-launchers).
 
-October 6 clarification: keep this feature independent of [F-002](#f-002).
-Application selection should remain search-based: choose an installed application,
-then optionally configure arguments for that entry without editing its installed
-`.desktop` file. Distinct entries may reference the same application with different
-arguments, names, or icons (for example, VS Code opening two different projects).
+Remaining scope:
 
-A second part is a library of common commands, which may have no installed
-application identity. Design this explicitly as command entries rather than
-pretending every command is an installed application. Executable/argument lists,
-working directory, terminal behavior, and explicit shell execution are separate
-settings; the exact editor and first supported subset remain to be agreed.
+- Select an installed application through search, then optionally supply arguments
+  without editing its installed desktop file. Multiple entries may target the same
+  application with different arguments, labels, or icons.
+- Extend custom entries with working directory and optional terminal behavior. Explicit shell scripts and direct
+  execution are separate choices; preferred-terminal/keep-open behavior needs design.
 
-Share launch definitions with [direct panel launchers](#f-014) so the same action
-can eventually be used in a popup or directly on the panel. Coordinate entry
-identity/schema when useful, but do not require mixed-folder support first.
-Include Apply/Cancel and profile migration/export behavior in the design; profiles
-store commands, not arbitrary bundled executables. Importing must not run commands.
+Share definitions between direct panel launchers and popup entries. Preserve desktop
+launch wrappers/field codes rather than concatenating text onto Exec lines. Design
+identity, Apply/Cancel and archive migration together. Importing a profile must not
+execute commands; profiles do not bundle arbitrary executables.
 
 <a id="f-010"></a>
-## F-010 — Grouped Most frequent / Most recently used activity stacks
+## F-010 — Combined Frequent / Recent sections
 
-Requested October 6, 2026. Status: **Needs design**.
-
-Split the activity stack into two ordered groups — Most frequently used and Most
-recently used — with a titled separator between them, reusing the labeled-separator
-rendering already used by Selected Applications (separator rendering is
-source-agnostic; any entry with `isSeparator` renders). Today [F-007](#f-007)
-makes one mutually exclusive query (`RecentlyUsedFirst` or `HighScoredFirst`,
-chosen by the order setting) and overwrites the entry list per refresh, so this
-needs a dual-list producer: two queries and a synthetic labeled separator entry
-between the concatenated groups.
-
-Open decisions: duplicate applications across both groups (show twice, or does
-one group win?); which group is first; per-group limits versus splitting
-`activityLimit`; whether grouping becomes a third ordering option or replaces an
-existing one; refresh stability while a menu is open (F-007 constraint).
-Regression coverage should mirror F-007's: filtering, unavailable apps,
-deduplication, and limits.
+**Needs design.** One activity menu containing two titled sections, not the already
+implemented choice between recent and frequent sorting. Decide ordering, per-section
+limits, duplicate handling and refresh stability. Reuse existing separator rendering
+and activity queries; keep this separate from the completed basic activity source.
 
 <a id="f-011"></a>
-## F-011 — Menu column wrapping (True Launch Bar style)
+## F-011 — Menu column wrapping
 
-Requested October 6, 2026. Status: **Needs design**.
-
-When a popup menu would grow taller than the screen, wrap entries into a second
-side-by-side column instead of forcing scrolling, keeping the whole menu visible —
-True Launch Bar behavior. The root menu is a ScrollView over a ColumnLayout plus
-Repeater with a height clamp and fixed width (`main.qml`); wrapping requires
-chunking entries across columns, syncing popup width as well as height, and
-updating the manual keyboard navigation and content handling that assumes one
-column. The folder root menu uses a ListView and can chunk similarly. Native
-cascades are C++ QMenu popups; Qt has no built-in multi-column menus, so that path
-needs a custom popup design — decide whether cascades wrap at all in the first
-scope. Separators are entries in the same flat array; a column break must not
-orphan a separator at a column edge. Column count, height budget, and screen-edge
-placement need desktop verification.
+**Needs design.** Wrap tall menus into side-by-side columns instead of scrolling.
+Requires screen-aware sizing, keyboard navigation, separator placement, and a
+specific decision about whether native folder cascades participate in the first
+scope. It is not ordinary horizontal scrolling.
 
 <a id="f-012"></a>
-## F-012 — Distribution packaging (OBS) and KDE Store listing
+## F-012 — Distribution packaging and KDE Store listing
 
-Requested October 6, 2026. Status: **Planned** (direction agreed).
-
-Build distribution packages via the Open Build Service so Fedora, openSUSE,
-Debian, and Ubuntu users install a native build of the compiled plugin through
-their own package managers, built per-distro against each distribution's real
-Qt6/KF6 stack from the tagged source tarballs the release pipeline already
-publishes. A KDE Store listing page is for discovery and ratings only: "Get New
-Widgets" cannot install a compiled C++ plugin, and no store upload API exists
-(October 6 research — store updates are manual web uploads). COPR (Fedora) and
-AUR (Arch) are lighter single-distro alternatives if full OBS proves heavy.
-First scope: one Fedora and one Debian/Ubuntu repository publishing the plugin
-and widget files from release tags.
-
-<a id="m-002"></a>
-## M-002 — CI/release pipeline hardening follow-ups
-
-Requested October 6, 2026 (review follow-up). Status: **In progress** (pinning
-and permissions done; release checklist planned).
-
-Remaining reviewer recommendations after the October 6 pipeline work (PRs
-#3–#9; regression tests are already wired into CI, and runner resolution and
-absolute build directories are done):
-
-- Pin `actions/checkout` and `softprops/action-gh-release` to reviewed commit
-  SHAs — **done October 6, 2026** (checkout v4.4.0, gh-release v2.6.2; version
-  comments kept for Dependabot updates).
-- Declare `permissions: contents: read` on `ci.yml` — **done October 6, 2026**
-  (least-privilege for the build job; `release.yml` already scopes its write).
-- Add a maintainer release checklist to [Deployment](DEPLOYMENT.md): bump
-  `CMakeLists.txt` and `package/metadata.json` versions together, confirm green
-  CI on `main`, tag the merged commit, push the tag, then verify the three
-  release assets. — **Planned**.
-
+**Planned.** Release assets and packaging groundwork exist; publishing distribution
+repositories is separate work. Agreed direction: investigate Open Build Service,
+initially Fedora and Debian/Ubuntu builds against their own Qt/KF versions. COPR/AUR
+remain alternatives, not additional simultaneous commitments. A KDE Store listing
+would provide discovery; the compiled plugin still needs distribution installation.
+Recheck service requirements when this work starts.
 
 <a id="f-013"></a>
 ## F-013 — Cross-machine profile portability
 
-Status: **Implemented — needs verification** (October 6, 2026).
+**Implemented; import/export desktop testing accepted.** Standard user-folder
+references relocate using Qt's configured directories; custom images travel with
+profiles. Missing overrides fall back to the app icon, then a generic icon.
 
-Standard user folders relocate through Qt's configured locations in version 5
-archives; other absolute locations remain explicit. Missing folders are reported
-on import. Custom images remain bundled, desktop IDs and separator order are
-preserved, and the shared QML icon renderer falls back from unavailable custom artwork to
-the app’s default icon, then to a generic application icon.
-See [profile format and import behavior](DEPLOYMENT.md#portable-menu-profiles).
-
-Import/export desktop testing was reported successful by the user.
-Cross-machine checks remaining: export a Documents subfolder and import under another
-user with a different Documents location; inspect the resolved path before Apply.
-Check an unavailable theme icon in both panel and menu. Native/Flatpak application
-ID mapping remains manual; no guessed substitutions are made. Existing Qt6/KF6/
-Plasma6 builds and Fedora CI do not establish a cross-distribution minimum version.
-
+Remaining verification: import on a different account with a different Documents
+location, inspect missing-folder handling and unavailable theme icons. Native versus
+Flatpak desktop-ID mapping remains manual; do not infer substitutions. Cross-distro
+compatibility is not established by Fedora-only testing.
+See [portable profiles](DEPLOYMENT.md#portable-menu-profiles).
 
 <a id="f-014"></a>
 ## F-014 — Direct panel launchers alongside stacks
 
-Clarified October 6, 2026. Status: **Planned within [F-015](#f-015)**.
+**Delivered within F-015; no separate implementation pending.** Stack Groups hosts
+search-added application launchers alongside popup stacks, with custom labels/icons.
+Icons Only Task Manager remains responsible for running windows.
 
-Frequently used shortcuts should launch directly from the panel without opening
-a stack popup. The user wants to keep Icons Only Task Manager for running-window
-management while using TLBStacks for launching. This is distinct from folders
-inside a Selected Applications menu ([F-002](#f-002)) and does not require the
-whole-panel widget idea ([F-005](#f-005)).
-
-Earlier alternative, not selected: an explicit single-launcher mode on an
-individual widget instance, configured through application search with a name and
-icon. Click or keyboard activation launches; hover offers a tooltip, not a menu.
-Users arrange launcher instances alongside stack instances using Plasma's panel
-editor. Do not automatically change a one-item stack into a launcher: its intended
-interaction must remain explicit.
-
-Share launch behavior with [F-009](#f-009) when arguments and custom commands are
-introduced. A multi-launcher strip could follow if arranging separate instances
-proves cumbersome; no task-manager replacement or window-grouping behavior is
-part of this proposal.
-
+The alternative of one standalone widget instance per direct launcher was not
+selected and is not queued. Argument customization belongs to F-009.
 
 <a id="f-015"></a>
 ## F-015 — Stack Groups
 
-Status: **In progress — launcher Appearance accepted**. The user selected an optional collection widget
-containing stacks and direct launchers, without task management. Preserve existing
-independent stack widgets and individual stack import/export. This is the scoped
-container direction discussed under F-005; it does not authorize a panel replacement.
-Direct launchers from F-014 belong here. F-009 remains independently scoped.
+**Delivered increments desktop-accepted; experimental widget remains opt-in.**
+Includes direct launchers, all four stack sources, ordering, shared settings,
+individual-stack/group import/export, launcher appearance, member icon editing,
+and dragging. See [checkpoints and remaining test combinations](STACK_GROUPS.md).
 
-Use one configuration window with an ordered item list and settings for the selected
-item, whole-window Apply/Cancel, Add stack/application, ordering and removal. Import
-an individual stack; export one stack or the group. Future item context actions can
-open this editor with the relevant item selected. Do not duplicate stack navigation
-and rendering implementations for the container.
+**Implemented, awaiting desktop acceptance:** a group panel icon-size default with
+per-item overrides for stacks, applications and custom launchers. Compact automatic
+remains the default; existing explicit sizes are preserved. Group archives retain
+these choices. Broader inheritance (such as hover delay and popup appearance)
+remains planned. Prototype `-1` values are not an approved schema.
 
-October 7, 2026: the shared configuration editor is merged, and its polish pass
-has desktop acceptance. Panel right-click item editing is dropped for now; leave
-its parked stash untouched. Direct-launcher label/icon overrides are implemented
-and accepted by the user, with Reset explicitly confirmed. Whole-group archive
-transport is covered by automated tests.
-See [the current checklist](STACK_GROUPS.md#direct-launcher-appearance).
-Selectable child rows for icon editing are desktop-accepted. Top-level drag
-ordering and member dragging are desktop-accepted. Inherited
-defaults remain a future increment.
-
-The six accepted checkpoints and the exact resume/test instructions are maintained
-in [Stack Groups](STACK_GROUPS.md). Complete and desktop-test each checkpoint before
-starting the next; keep changes small enough to resume across usage-limit pauses.
+**Dropped:** panel right-click “Configure this item” and the transient groupSelection
+handoff. Edit through the full group editor. The old stash must stay parked; it is
+not unfinished work to restore. No task-manager replacement is implied.
 
 <a id="f-016"></a>
-## F-016 — Shared stack settings editor for both widgets
+## F-016 — Shared stack settings editor
 
-Requested October 7, 2026 (from the
-[configuration editor redesign](CONFIGURATION_DESIGN.md)). Status:
-**Implemented — needs verification** on the `shared-stack-editor` branch;
-desktop verification pending and nothing merged.
+**Merged and desktop-accepted.** One StackSettingsEditor serves standalone and
+group widgets, with Contents/Appearance, all sources, category search, managed
+custom icons, and profile controls. Hosts keep their existing persistence contracts.
+The group adds its preview, tree, breadcrumb and split view. Child app rows are
+selectable for icon editing. Earlier notes calling this an unmerged branch or
+requiring the right-click handoff are obsolete.
 
-One `StackSettingsEditor` (kind segments for Selected / Live folder / Categories /
-Recent, Contents/Appearance tabs, all four source pages, per-application and stack
-icon Choose…/Image…/Reset; Image… and member Reset go through the launcher's
-`manageIcon` operation, Choose… picks from the theme dialog directly) serves
-both the standalone widget and the group. It edits plain data and emits partial
-changes; the standalone host persists into its existing `cfg_*` keys and the group
-host into `General/items`, so schemas, Apply/Cancel staging and import/export are
-unchanged. Supporting pieces: a search-on-add `AppPickerDialog`, a `CategoryChipBar`
-chip cloud with host-owned selection, and shared separator helpers
-(`StackMembers.js`). The group host adds a preview strip, an expandable item tree
-(summary-only child rows), a breadcrumb and a resizable split view; the launcher
-page swaps applications via `GroupItems.replaceLauncher`.
+Future inheritance belongs to F-015; current arrow polish belongs to F-003.
+See [configuration design](CONFIGURATION_DESIGN.md).
 
-Explicitly deferred: inherited group defaults (`-1` values), a group-level panel
-icon config key, launcher custom label/icon overrides, selectable tree child rows
-and drag-and-drop reordering (see [F-003](#f-003) for reordering scope). The
-group-button right-click/hover fix (design step 1) is separate uncommitted work in
-the main checkout; when it lands, its groupSelection consumption block and test
-must be re-wired into the rebuilt group host layout. The shipped structure and the
-manual verification checklist are recorded in
-[Stack Groups](STACK_GROUPS.md#shared-stack-editor-rebuild-branch-shared-stack-editor).
+<a id="m-001"></a>
+## M-001 — Clean source-control checkpoint
+
+**Completed.** Generated build/test files are ignored, and accepted increments are
+committed/pushed to main. This historical cleanup is not an ongoing feature.
+
+<a id="m-002"></a>
+## M-002 — CI/release maintenance
+
+**Partly complete.** Action SHA pinning, scoped permissions, runner resolution,
+absolute build directories and release regression tests are in place. Missing KDE
+QML runtime dependencies were fixed in both workflows; see the
+[successful CI repair](TESTING_AND_STATUS.md#ci-qml-runtime-dependencies).
+
+**Still planned:** a maintainer release checklist in Deployment: update project and
+both widget metadata versions together, confirm green CI, tag the merged commit,
+push the tag and verify release assets. This does not imply a release is authorized.
+
+## Verification, not new features
+
+[Testing and status](TESTING_AND_STATUS.md) owns review follow-ups and remaining
+manual checks. Optional vertical-panel, screen-edge, grouped-cascade, and
+cross-machine combinations should not reopen features already accepted in normal
+use. Record new failures as bugs with a reproducible case.

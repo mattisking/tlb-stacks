@@ -5,6 +5,77 @@ import "../../package-group/contents/ui/GroupItems.js" as Items
 TestCase {
     name: "GroupStackEditor"
     Group.ConfigGeneral { id: editor; width: 800; height: 650 }
+    function test_group_size_inheritance_and_stack_override() {
+        let items = Items.addStack(Items.add([], "app.desktop"))
+        editor.cfg_items = Items.encode(items)
+        editor.cfg_panelIconSize = 40
+        compare(Items.panelSize(editor.decoded.items[0], editor.cfg_panelIconSize), 40)
+        editor.updateLauncherAppearance(items[1].id, {panelIconSize: 24})
+        compare(Items.panelSize(editor.decoded.items[1], editor.cfg_panelIconSize), 24)
+        editor.cfg_panelIconSize = 48
+        compare(Items.panelSize(editor.decoded.items[0], editor.cfg_panelIconSize), 48)
+        compare(Items.panelSize(editor.decoded.items[1], editor.cfg_panelIconSize), 24)
+        editor.updateLauncherAppearance(items[1].id, {panelIconSize: 0})
+        compare(Items.panelSize(editor.decoded.items[1], editor.cfg_panelIconSize), 48)
+        editor.cfg_panelIconSize = 0
+        compare(Items.panelSize(editor.decoded.items[1], 0), 0)
+        verify(!Items.decode(editor.cfg_items).error)
+    }
+    function test_launcher_icon_size_for_both_types() {
+        let items = Items.add([], "regular.desktop")
+        items = Items.saveCommand(items, "", {name: "Command", executable: "/bin/echo", arguments: []})
+        editor.cfg_items = Items.encode(items)
+        for (let i = 0; i < 2; ++i) {
+            editor.selectedIndex = i
+            const id = editor.selectedItem.id
+            editor.updateLauncherAppearance(id, {panelIconSize: 24})
+            compare(editor.selectedItem.panelIconSize, 24)
+            const field = findChild(editor, "launcherIconSize")
+            compare(field.value, 24)
+            field.increase()
+            compare(editor.selectedItem.panelIconSize, 25)
+            editor.updateLauncherAppearance(id, {panelIconSize: 0})
+            verify(!field.enabled)
+        }
+        const bad = JSON.parse(editor.cfg_items)
+        bad.items[0].panelIconSize = 65
+        verify(Items.decode(JSON.stringify(bad)).error)
+    }
+    function test_direct_custom_launcher_edits_and_order() {
+        editor.cfg_items = Items.encode(Items.add([], "regular.desktop"))
+        editor.savePanelCommand("", "Assistant", "/usr/bin/konsole", "-e /usr/bin/pwsh -NoExit")
+        compare(editor.selectedItem.type, "command")
+        compare(JSON.parse(editor.cfg_items).version, 6)
+        const id = editor.selectedItem.id
+        compare(editor.selectedItem.command.arguments, ["-e", "/usr/bin/pwsh", "-NoExit"])
+        compare(editor.selectedItemName, "Assistant")
+        editor.updateLauncherAppearance(id, {icon: "utilities-terminal", label: "Work"})
+        editor.savePanelCommand(id, "Assistant 2", "/usr/bin/konsole", "")
+        compare(editor.selectedItem.icon, "utilities-terminal")
+        compare(editor.selectedItemName, "Work")
+        editor.updateLauncherAppearance(id, {icon: "", label: ""})
+        compare(editor.selectedItemName, "Assistant 2")
+        editor.moveSelected(-1)
+        compare(editor.selectedItem.id, id)
+        verify(!Items.decode(editor.cfg_items).error)
+        const original = editor.cfg_items
+        editor.savePanelCommand(id, "Invalid", "relative", "")
+        compare(editor.cfg_items, original)
+    }
+    function test_custom_launcher_group_schema_roundtrip() {
+        let items = Items.addStack([])
+        const id = "tlbstacks-command:1"
+        items = Items.updateStack(items, items[0].id, {applications: [id], customLaunchers: {
+            [id]: {name: "Custom", executable: "/opt/program", arguments: ["two words", ""]}
+        }})
+        const encoded = Items.encode(items)
+        compare(JSON.parse(encoded).version, 5)
+        const decoded = Items.decode(encoded)
+        verify(!decoded.error)
+        compare(decoded.items[0].settings.customLaunchers[id].arguments, ["two words", ""])
+        decoded.items[0].settings.customLaunchers[id].executable = "relative"
+        verify(Items.decode(Items.encode(decoded.items)).error)
+    }
     function test_member_selection_and_icon_edits_are_scoped() {
         let items = Items.addStack(Items.addStack([]))
         items = Items.updateStack(items, items[0].id, {applications: ["same.desktop", "tlbstacks-separator:1"]})

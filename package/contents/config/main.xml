@@ -36,6 +36,7 @@
             <max>64</max>
         </entry>
 
+        <entry name="customLaunchers" type="String"><default>{}</default></entry>
         <entry name="applicationIcons" type="String">
             <label>Custom icons by desktop application ID</label>
             <default>{}</default>

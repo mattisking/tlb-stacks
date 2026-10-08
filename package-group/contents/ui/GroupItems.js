@@ -5,13 +5,21 @@
 function decode(value) {
     try {
         const data = JSON.parse(value)
-        if (!data || ![1, 2, 3, 4].includes(data.version) || !Array.isArray(data.items) || data.items.length > 500)
+        if (!data || ![1, 2, 3, 4, 5, 6].includes(data.version) || !Array.isArray(data.items) || data.items.length > 500)
             throw new Error("Unsupported group format")
         const ids = new Set()
         for (const item of data.items) {
             if (!item || typeof item.id !== "string" || !item.id || ids.has(item.id))
                 throw new Error("Invalid entry identity")
-            if (item.type === "application") {
+            if (["application", "command", "stack"].includes(item.type) && item.panelIconSize !== undefined
+                && (!Number.isInteger(item.panelIconSize) || (item.panelIconSize !== 0 && (item.panelIconSize < 16 || item.panelIconSize > 64))))
+                throw new Error("Invalid panel icon size")
+            if (item.type === "command") {
+                if (data.version < 6 || !validCommand(item.command)
+                    || (item.icon !== undefined && typeof item.icon !== "string")
+                    || (item.label !== undefined && (typeof item.label !== "string" || item.label.length > 256)))
+                    throw new Error("Invalid custom launcher")
+            } else if (item.type === "application") {
                 if ((item.label !== undefined && (typeof item.label !== "string" || item.label.length > 256))
                     || (item.icon !== undefined && typeof item.icon !== "string")) throw new Error("Invalid launcher appearance")
                 if (typeof item.desktopId !== "string" || !item.desktopId) throw new Error("Invalid application")
@@ -26,6 +34,15 @@ function decode(value) {
                     || !Number.isInteger(cfg.hoverDelay) || cfg.hoverDelay < 0 || cfg.hoverDelay > 2000)
                     throw new Error("Invalid stack")
                 const settings = sourceDefaults(cfg)
+                const commands = settings.customLaunchers
+                if (!commands || typeof commands !== "object" || Array.isArray(commands)
+                    || Object.keys(commands).length > 2000
+                    || Object.entries(commands).some(([id, c]) => !id.startsWith("tlbstacks-command:")
+                        || !c || typeof c.name !== "string" || !c.name.trim() || c.name.length > 256 || c.name.includes("\0")
+                        || typeof c.executable !== "string" || !c.executable.startsWith("/") || c.executable.length > 4096 || c.executable.includes("\0")
+                        || !Array.isArray(c.arguments) || c.arguments.length > 256
+                        || c.arguments.some(a => typeof a !== "string" || a.length > 4096 || a.includes("\0"))))
+                    throw new Error("Invalid custom launcher")
                 if (!settings.applicationIcons || typeof settings.applicationIcons !== "object"
                     || Array.isArray(settings.applicationIcons)
                     || Object.values(settings.applicationIcons).some(value => typeof value !== "string")
@@ -49,10 +66,12 @@ function decode(value) {
 }
 function sourceDefaults(settings) {
     return Object.assign({applicationCategories: [], activityOrder: "recent", activityLimit: 10,
-        activityCurrent: false, applicationIcons: {}, folderUrl: "", folderFilters: "*"}, settings)
+        activityCurrent: false, applicationIcons: {}, customLaunchers: {}, folderUrl: "", folderFilters: "*"}, settings)
 }
 function encode(items) {
-    const version = items.some(item => item.type === "application" && (item.label || item.icon)) ? 4
+    const version = items.some(item => item.type === "command" || item.panelIconSize) ? 6
+        : items.some(item => item.type === "stack" && Object.keys(item.settings.customLaunchers || {}).length) ? 5
+        : items.some(item => item.type === "application" && (item.label || item.icon)) ? 4
         : items.some(item => item.type === "stack" && item.settings.menuSource !== "applications") ? 3
         : items.some(item => item.type === "stack") ? 2 : 1
     return JSON.stringify({version: version, items: items})
@@ -116,6 +135,25 @@ function replaceLauncher(items, id, desktopId) {
 }
 
 function updateLauncherAppearance(items, id, changes) {
-    return items.map(item => item.id === id && item.type === "application"
+    return items.map(item => item.id === id && (item.type === "application" || item.type === "command" || item.type === "stack")
         ? Object.assign({}, item, changes) : item)
+}
+
+function validCommand(c) {
+    return c && typeof c.name === "string" && c.name.trim().length > 0 && c.name.length <= 256 && !c.name.includes("\0")
+        && typeof c.executable === "string" && c.executable.startsWith("/") && c.executable.length <= 4096 && !c.executable.includes("\0")
+        && Array.isArray(c.arguments) && c.arguments.length <= 256
+        && c.arguments.every(a => typeof a === "string" && a.length <= 4096 && !a.includes("\0"))
+}
+function saveCommand(items, id, command) {
+    if (!validCommand(command)) return items
+    if (id) return items.map(item => item.id === id && item.type === "command" ? Object.assign({}, item, {command: command}) : item)
+    if (items.length >= 500) return items
+    let number = 1
+    while (items.some(item => item.id === "item-" + number)) ++number
+    return items.concat([{id: "item-" + number, type: "command", command: command}])
+}
+
+function panelSize(item, groupSize) {
+    return item.panelIconSize || groupSize || 0
 }
