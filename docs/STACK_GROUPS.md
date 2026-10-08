@@ -406,3 +406,24 @@ The user accepted this increment on October 7, 2026, explicitly confirming icon
 change and Reset. The group runtime suite passed all 27 tests, including scoped
 member edits and delayed icon results. Other desktop checklist cases were not
 separately reported.
+
+## Drag panel items into order — desktop test
+
+Use the move handle at the left of a top-level launcher or stack in the editor
+tree. A highlighted insertion line shows its destination. Expanded stacks move
+as a whole; their children are not drop targets for membership changes. The tree
+scrolls when dragging near its top or bottom edge. Release outside the tree or
+press Escape to cancel. Existing Up/Down controls remain available.
+
+Reordering updates the preview and staged configuration on release. Apply saves
+it; Cancel discards un-applied edits. Selection, stack expansion, settings, and
+custom icons follow stable IDs. No storage or archive format changes.
+
+Validation: all 34 group runtime checks passed, including mouse gestures in both
+directions, Escape/outside cancellation, edge scrolling, and preserved member
+selection. The user accepted desktop behavior on October 7, 2026 ("works great").
+Regression checklist: move a launcher past a stack, move an expanded stack, check
+the preview, then Apply and reopen. Also check Cancel; individual checklist cases
+were not separately reported.
+Dragging applications and separators inside a Selected Applications stack is
+the next separate increment.

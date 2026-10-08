@@ -63,4 +63,6 @@ Stack Groups.
 Direct-launcher label/icon appearance is implemented and desktop-accepted; see
 [Stack Groups](STACK_GROUPS.md#direct-launcher-appearance).
 Selectable application rows in the group tree were accepted on October 7, 2026;
-the user confirmed icon changes and Reset. Inherited group defaults and drag reordering remain future increments.
+the user confirmed icon changes and Reset. Top-level drag ordering is implemented
+and desktop-accepted; see [the test checklist](STACK_GROUPS.md#drag-panel-items-into-order--desktop-test).
+Dragging members within a stack and inherited group defaults remain future increments.
