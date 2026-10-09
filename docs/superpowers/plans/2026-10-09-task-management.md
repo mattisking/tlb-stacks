@@ -45,15 +45,15 @@
   - `Q_PROPERTY(QStringList desktopIds READ desktopIds WRITE setDesktopIds NOTIFY changed)`
   - `Q_PROPERTY(int revision READ revision NOTIFY changed)` — bump on every model change and property swap; QML bindings reference it to refresh.
   - `Q_INVOKABLE QVariantMap taskState(const QString &desktopId) const` → `{running: bool, active: bool, minimized: bool, count: int, iconName: QString}` (defaults: all false / `0` / `"application-x-executable"` when not running).
-- Role names read by name via `model->roleNames()`: `isWindow`, `isActive`, `isMinimized`, `isLauncher`, `IsGroupParent`, `LauncherUrl`, `AppId`, `display`, `icon`. Missing roles are tolerated (treated absent).
+- Role names read by name via `model->roleNames()`, verified against plasma-workspace source (`libtaskmanager/abstracttasksmodel.h`): `IsWindow`, `IsActive`, `IsMinimized`, `IsLauncher`, `IsGroupParent`, `LauncherUrl`, `AppId`, `display`, and `decoration` (Qt::DecorationRole — the icon role; there is no `icon` role). Missing roles are tolerated (treated absent).
 - Test mock: `MockTasksModel` in `tests/task-index/mocktasksmodel.h` with invokable `setRows(QVariantList)` where each row map carries those role names as keys; also invokables `activateCalls`, `Q_INVOKABLE void requestActivate(const QModelIndex &)`, `requestToggleMinimized(const QModelIndex &)`, `requestNewInstance(const QModelIndex &)` recording calls (mocks the real `TasksModel` invokables for Task 2).
 
 - [ ] **Step 1: Write failing tests** in `tests/task-index/tst_taskindex.cpp` for:
   1. `taskState("org.kde.konsole.desktop")` on empty model → `{running:false, active:false, minimized:false, count:0}`.
-  2. One window row (`isWindow:true`, `LauncherUrl:"file:///usr/share/applications/org.kde.konsole.desktop"`, `isActive:true`) → `{running:true, active:true, count:1}`.
-  3. Grouped app: two rows, one `IsGroupParent:true` group row + one window row → single `count` aggregate from group parent row (`count` from window rows under it is Task 2's concern if needed; phase 1: match **group-parent and standalone-window rows only**, i.e. rows where `isWindow && !IsGroupParent`, or `IsGroupParent`).
+  2. One window row (`IsWindow:true`, `LauncherUrl:"file:///usr/share/applications/org.kde.konsole.desktop"`, `IsActive:true`) → `{running:true, active:true, count:1}`.
+  3. Grouped app: two rows, one `IsGroupParent:true` group row + one window row → single `count` aggregate from group parent row (real TasksModel grouping is hierarchical — group parent rows with child window rows; `IsGroupParent` is the group-parent boolean) (`count` from window rows under it is Task 2's concern if needed; phase 1: match **group-parent and standalone-window rows only**, i.e. rows where `isWindow && !IsGroupParent`, or `IsGroupParent`).
   4. `LauncherUrl` normalization: `"applications:org.kde.konsole.desktop"`, `"file:///usr/share/applications/org.kde.konsole.desktop"`, `"/usr/share/applications/org.kde.konsole.desktop"`, and a URL with `.desktop` stripped-in-desktopIds form (`desktopIds` entries are desktop-file IDs like `org.kde.konsole.desktop`, exactly as `GroupItems.js:26` stores them) all match the same desktop ID. Rows with an empty/unresolvable `LauncherUrl` but `AppId == desktopId` also match.
-  5. Launcher-only row (`isLauncher:true`, `isWindow:false`) never counts as running.
+  5. Launcher-only row (`IsLauncher:true`, `IsWindow:false`) never counts as running.
   6. Revision bumps on `rowsInserted`, `rowsRemoved`, `dataChanged`, `modelReset`; `taskState` under an appended row via new `setRows` reflects the change (query `revision` before/after).
   7. Swapping `model`/`desktopIds` properties bumps revision; old rows no longer match.
 
