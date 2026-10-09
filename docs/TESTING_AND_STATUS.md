@@ -202,3 +202,15 @@ to the C++ build dependencies. Development packages alone did not supply
 Plasma Components and Kirigami in the minimal container. The dependency fix
 in `f5b921e` passed [the full Actions run](https://github.com/mattisking/tlb-stacks/actions/runs/37734823287),
 including release-pipeline regression checks.
+
+### CI schema-version regression — October 9, 2026
+
+Both failed runs after the custom-launcher work compiled successfully, then stopped
+on a navigation test that still classified group settings version 5 as unsupported.
+Versions 5–7 are now valid. The rejection fixture uses version 999, and a separate
+check explicitly accepts every supported version (1–7). Icon regression tests are
+now included in the shared CI script as well.
+
+The full `scripts/ci-run.sh` gate passed locally after this correction. Run this
+complete gate before pushing schema changes; focused editor/profile suites alone
+do not cover the navigation suite's compatibility expectations.

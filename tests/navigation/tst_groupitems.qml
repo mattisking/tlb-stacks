@@ -96,8 +96,13 @@ TestCase {
             verify(GroupItems.decode(GroupItems.encode(GroupItems.updateLauncherAppearance(initial, initial[0].id, invalid))).error)
         }
     }
+    function test_supported_versions_accept_empty_groups() {
+        for (const version of [1, 2, 3, 4, 5, 6, 7]) {
+            verify(!GroupItems.decode(JSON.stringify({version: version, items: []})).error)
+        }
+    }
     function test_future_and_malformed_settings_preserved_as_error() {
-        for (const raw of ["bad", '{"version":5,"items":[]}',
+        for (const raw of ["bad", '{"version":999,"items":[]}',
                            '{"version":1,"items":[{"id":"a","type":"stack"}]}',
                            '{"version":1,"items":[{"id":"a","type":"application","desktopId":"x"},{"id":"a","type":"application","desktopId":"y"}]}']) {
             verify(GroupItems.decode(raw).error)

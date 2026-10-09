@@ -45,7 +45,7 @@ cmake --build build-tests/native-menus -j "$(nproc)"
 QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
     ./build-tests/native-menus/folder-popup-test
 
-echo '== QML suites (folder-source, categories, navigation, stack-editor, stack-group-runtime) =='
+echo '== QML suites (folder-source, categories, navigation, icons, stack-editor, stack-group-runtime) =='
 if [[ ! -f "${MODULE_DIR}/libtlbstacksplugin.so" ]]; then
     echo "ERROR: expected ${MODULE_DIR}/libtlbstacksplugin.so after the build" >&2
     exit 1
@@ -54,6 +54,7 @@ export QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QML_IMPORT_PATH="${QM
 "${QML_RUNNER}" -input tests/folder-source -o -,txt
 "${QML_RUNNER}" -input tests/categories -o -,txt
 "${QML_RUNNER}" -input tests/navigation -o -,txt
+"${QML_RUNNER}" -input tests/icons -o -,txt
 "${QML_RUNNER}" -input tests/stack-editor -o -,txt
 "${QML_RUNNER}" -input tests/stack-group-runtime -o -,txt
 
