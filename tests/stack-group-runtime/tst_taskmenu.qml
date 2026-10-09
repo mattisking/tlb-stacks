@@ -23,9 +23,9 @@ TestCase {
     }
 
     // Mirrors TaskArea's contract (see tst_tasks.qml): stateFor is a pure
-    // query with safe defaults, activate returns false when the app is not
-    // running so the caller falls back to launching, and calls are recorded
-    // so tests can pin the routing.
+    // query with safe defaults, activate and newInstance return false when
+    // the app is not running so the caller falls back to launching, and
+    // calls are recorded so tests can pin the routing.
     QtObject {
         id: area
         property int revision: 0
@@ -37,6 +37,10 @@ TestCase {
         }
         function activate(desktopId) {
             calls.push("activate " + desktopId)
+            return stateFor(desktopId).running
+        }
+        function newInstance(desktopId) {
+            calls.push("newInstance " + desktopId)
             return stateFor(desktopId).running
         }
     }
@@ -89,6 +93,42 @@ TestCase {
         compare(backend.calls, ["launch idle.desktop"])
         compare(activatingSpy.count, 1)
         compare(activatedSpy.count, 1)
+    }
+
+    // The click matrix's popup row: middle-click launches a new window for
+    // a running app, launches an idle one, and stays a no-op without a
+    // taskArea — ItemDelegate itself never fires on middle press.
+    function test_middle_click_on_running_entry_opens_a_new_window() {
+        area.states = {"org.kde.konsole.desktop": {running: true, active: false, minimized: false, count: 2}}
+        area.revision++
+        const entry = entryDelegate("org.kde.konsole.desktop")
+        verify(entry)
+        mouseClick(entry, entry.width / 2, entry.height / 2, Qt.MiddleButton)
+        compare(area.calls, ["newInstance org.kde.konsole.desktop"])
+        compare(backend.calls, [])
+        compare(activatingSpy.count, 1)
+        compare(activatedSpy.count, 1)
+    }
+
+    function test_middle_click_on_idle_entry_launches() {
+        const entry = entryDelegate("idle.desktop")
+        verify(entry)
+        mouseClick(entry, entry.width / 2, entry.height / 2, Qt.MiddleButton)
+        compare(area.calls, ["newInstance idle.desktop"])
+        compare(backend.calls, ["launch idle.desktop"])
+        compare(activatingSpy.count, 1)
+        compare(activatedSpy.count, 1)
+    }
+
+    function test_middle_click_without_task_area_is_a_no_op() {
+        menu.taskArea = null
+        const entry = entryDelegate("org.kde.konsole.desktop")
+        verify(entry)
+        mouseClick(entry, entry.width / 2, entry.height / 2, Qt.MiddleButton)
+        compare(area.calls, [])
+        compare(backend.calls, [])
+        compare(activatingSpy.count, 0)
+        compare(activatedSpy.count, 0)
     }
 
     function test_null_task_area_keeps_the_pure_launcher_menu() {

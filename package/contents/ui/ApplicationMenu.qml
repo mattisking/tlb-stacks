@@ -215,6 +215,27 @@ PlasmaComponents.ScrollView {
                         applicationScroll.launcher.showEntryContextMenu(launcherItem, launcherItem.modelData)
                     }
                 }
+                // Consume only middle-clicks — ItemDelegate never fires on
+                // them: a running app opens a new window, an idle one
+                // launches. Without a taskArea the area stays disabled, so
+                // launcher-only consumers keep the middle-click no-op.
+                MouseArea {
+                    anchors.fill: parent
+                    enabled: applicationScroll.taskArea !== null
+                        && launcherItem.modelData.isSeparator !== true
+                    acceptedButtons: Qt.MiddleButton
+                    onClicked: {
+                        applicationScroll.activating()
+                        const area = applicationScroll.taskArea
+                        if (area && area.newInstance(launcherItem.modelData.id)) {
+                            applicationScroll.activated()
+                            return
+                        }
+                        if (applicationScroll.launcher.activateEntry(launcherItem.modelData)) {
+                            applicationScroll.activated()
+                        }
+                    }
+                }
                 Keys.onMenuPressed: event => {
                     if (launcherItem.modelData.actions.length > 0) {
                         applicationToolTip.hideToolTip()
