@@ -21,7 +21,24 @@ PlasmoidItem {
     property bool taskAreaAvailable: true
     readonly property var taskArea: taskLoader.status === Loader.Ready ? taskLoader.item : null
     // Configured items plus live task buttons for windows no group item claims.
-    readonly property var panelItems: decoded.items.concat(taskArea ? taskArea.unclaimed : [])
+    // Every task revision re-evaluates the concat into a fresh array; writing
+    // that straight to the Repeater would rebuild every panel button on each
+    // system-wide window event, dangle the open popup's anchor button, and
+    // re-run every activity query. The handler below hands the buttons the
+    // same array unless the content actually changed.
+    readonly property var panelItemsSource: decoded.items.concat(taskArea ? taskArea.unclaimed : [])
+    property var panelItems: []
+    onPanelItemsSourceChanged: {
+        if (ClickMatrix.samePanelItems(panelItems, panelItemsSource)) return
+        panelItems = panelItemsSource
+    }
+    onPanelItemsChanged: {
+        // A real content change rebuilds every panel button, so an open
+        // popup's anchor is about to be destroyed — close it like a decoded
+        // change does and drop the reference before the rebuild lands.
+        if (stackPopup) stackPopup.visible = false
+        activeButton = null
+    }
     property var activityIds: ({})  // activity stack id → materialized desktop ids
     property int catalogRevision: 0
     property var catalog: []
