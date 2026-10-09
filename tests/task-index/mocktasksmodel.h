@@ -84,6 +84,12 @@ public:
     Q_INVOKABLE QVariantList activateCalls() const { return m_activateCalls; }
     Q_INVOKABLE QVariantList toggleMinimizedCalls() const { return m_toggleCalls; }
     Q_INVOKABLE QVariantList newInstanceCalls() const { return m_newInstanceCalls; }
+    Q_INVOKABLE void clearCalls() // forget every recorded request* call
+    {
+        m_activateCalls.clear();
+        m_toggleCalls.clear();
+        m_newInstanceCalls.clear();
+    }
     Q_INVOKABLE void requestActivate(const QModelIndex &index) { m_activateCalls << index.row(); }
     Q_INVOKABLE void requestToggleMinimized(const QModelIndex &index) { m_toggleCalls << index.row(); }
     Q_INVOKABLE void requestNewInstance(const QModelIndex &index) { m_newInstanceCalls << index.row(); }

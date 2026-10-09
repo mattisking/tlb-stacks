@@ -13,10 +13,18 @@
 namespace {
 const QString Konsole = QStringLiteral("org.kde.konsole.desktop");
 const QString KonsoleUrl = QStringLiteral("file:///usr/share/applications/org.kde.konsole.desktop");
+const QString DolphinUrl = QStringLiteral("file:///usr/share/applications/org.kde.dolphin.desktop");
 
 QVariantMap window(const QString &url, bool active = false, bool minimized = false)
 {
     return {{"IsWindow", true}, {"IsActive", active}, {"IsMinimized", minimized}, {"LauncherUrl", url}};
+}
+
+QVariantMap titledWindow(const QString &url, const QString &title, bool active = false, bool minimized = false)
+{
+    QVariantMap row = window(url, active, minimized);
+    row.insert("display", title);
+    return row;
 }
 }
 
@@ -47,6 +55,7 @@ private slots:
     void init()
     {
         model.setRows({});
+        model.clearCalls();
         index.setModel(&model);
         index.setDesktopIds({Konsole});
     }
@@ -159,6 +168,186 @@ private slots:
         QCOMPARE(state.value("count").toInt(), 0);
     }
 
+    void activateWhenIdleReturnsFalse()
+    {
+        QVERIFY(!index.activate(Konsole));
+        model.setRows({window(DolphinUrl)});
+        QVERIFY(!index.activate(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{});
+        QCOMPARE(model.toggleMinimizedCalls(), QVariantList{});
+    }
+
+    void activateUnfocusedWindowRequestsActivation()
+    {
+        model.setRows({window(DolphinUrl), window(KonsoleUrl, false, true)});
+        QVERIFY(index.activate(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{1});
+        QCOMPARE(model.toggleMinimizedCalls(), QVariantList{});
+    }
+
+    void activateFocusedWindowTogglesMinimized()
+    {
+        model.setRows({window(KonsoleUrl, true)});
+        QVERIFY(index.activate(Konsole));
+        QCOMPARE(model.toggleMinimizedCalls(), QVariantList{0});
+        QCOMPARE(model.activateCalls(), QVariantList{});
+    }
+
+    void activateTogglesTheActiveRowAmongMatches()
+    {
+        model.setRows({window(KonsoleUrl), window(KonsoleUrl, true)});
+        QVERIFY(index.activate(Konsole));
+        QCOMPARE(model.toggleMinimizedCalls(), QVariantList{1});
+        QCOMPARE(model.activateCalls(), QVariantList{});
+    }
+
+    void activatePicksTheFirstVisibleWindow()
+    {
+        model.setRows({window(KonsoleUrl, false, true), window(KonsoleUrl), window(KonsoleUrl, false, true)});
+        QVERIFY(index.activate(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{1});
+    }
+
+    void activatePicksTheFirstWindowWhenAllAreMinimized()
+    {
+        model.setRows({window(KonsoleUrl, false, true), window(KonsoleUrl, false, true)});
+        QVERIFY(index.activate(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{0});
+    }
+
+    void cycleAdvancesToTheRowAfterTheActiveOne()
+    {
+        model.setRows({window(KonsoleUrl, true), window(KonsoleUrl)});
+        QVERIFY(index.cycle(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{1});
+    }
+
+    void cycleWrapsFromTheLastRow()
+    {
+        model.setRows({window(KonsoleUrl), window(KonsoleUrl, true)});
+        QVERIFY(index.cycle(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{0});
+    }
+
+    void cycleWithoutAnActiveWindowBehavesLikeActivate()
+    {
+        model.setRows({window(KonsoleUrl, false, true), window(KonsoleUrl)});
+        QVERIFY(index.cycle(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{1});
+    }
+
+    void cycleWhenIdleReturnsFalse()
+    {
+        QVERIFY(!index.cycle(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{});
+    }
+
+    void stepMovesForwardFromTheActiveRow()
+    {
+        model.setRows({window(KonsoleUrl, true), window(KonsoleUrl)});
+        index.step(Konsole, 1);
+        QCOMPARE(model.activateCalls(), QVariantList{1});
+    }
+
+    void stepWrapsForwardPastTheLastRow()
+    {
+        model.setRows({window(KonsoleUrl), window(KonsoleUrl, true)});
+        index.step(Konsole, 1);
+        QCOMPARE(model.activateCalls(), QVariantList{0});
+    }
+
+    void stepWrapsBackwardBeforeTheFirstRow()
+    {
+        model.setRows({window(KonsoleUrl, true), window(KonsoleUrl)});
+        index.step(Konsole, -1);
+        QCOMPARE(model.activateCalls(), QVariantList{1});
+    }
+
+    void stepWithoutAnActiveRowStartsAtTheFirstRow()
+    {
+        model.setRows({window(KonsoleUrl), window(KonsoleUrl)});
+        index.step(Konsole, 1);
+        QCOMPARE(model.activateCalls(), QVariantList{0});
+    }
+
+    void stepWithoutRowsIsANoOp()
+    {
+        index.step(Konsole, 1);
+        QCOMPARE(model.activateCalls(), QVariantList{});
+    }
+
+    void newInstanceRequestsOnTheFirstMatchedRow()
+    {
+        model.setRows({window(DolphinUrl), window(KonsoleUrl), window(KonsoleUrl)});
+        QVERIFY(index.newInstance(Konsole));
+        QCOMPARE(model.newInstanceCalls(), QVariantList{1});
+    }
+
+    void newInstanceWhenIdleReturnsFalse()
+    {
+        QVERIFY(!index.newInstance(Konsole));
+        QCOMPARE(model.newInstanceCalls(), QVariantList{});
+    }
+
+    void unclaimedTasksListRowsMissingFromDesktopIds()
+    {
+        QVariantMap dolphin = titledWindow(DolphinUrl, "Dolphin", true);
+        dolphin.insert("decoration", QIcon::fromTheme("utilities-terminal"));
+        model.setRows({window(KonsoleUrl, true), dolphin,
+                       titledWindow("file:///usr/share/applications/org.kde.kate.desktop", "Kate", false, true)});
+        const QVariantList tasks = index.unclaimedTasks();
+        QCOMPARE(tasks.size(), 2);
+
+        const QVariantMap first = tasks.at(0).toMap();
+        QCOMPARE(first.value("desktopId").toString(), QStringLiteral("org.kde.dolphin"));
+        QCOMPARE(first.value("name").toString(), QStringLiteral("Dolphin"));
+        QCOMPARE(first.value("icon").toString(), QStringLiteral("utilities-terminal"));
+        QCOMPARE(first.value("active").toBool(), true);
+        QCOMPARE(first.value("minimized").toBool(), false);
+        QCOMPARE(first.value("count").toInt(), 1);
+
+        const QVariantMap second = tasks.at(1).toMap();
+        QCOMPARE(second.value("desktopId").toString(), QStringLiteral("org.kde.kate"));
+        QCOMPARE(second.value("minimized").toBool(), true);
+    }
+
+    void unclaimedTasksEmptyWhenAllClaimed()
+    {
+        // desktopIds stores the .desktop-suffixed form; the row's URL carries none.
+        model.setRows({window(QStringLiteral("applications:org.kde.konsole"))});
+        QCOMPARE(index.unclaimedTasks(), QVariantList{});
+
+        // The stripped form claims the suffixed URL too.
+        index.setDesktopIds({QStringLiteral("org.kde.konsole")});
+        model.setRows({window(KonsoleUrl)});
+        QCOMPARE(index.unclaimedTasks(), QVariantList{});
+    }
+
+    void unclaimedTasksCountAGroupRowByItsWindows()
+    {
+        QVariantMap group{{"IsGroupParent", true}, {"IsActive", true}, {"LauncherUrl", DolphinUrl},
+                          {"display", "Dolphin"},
+                          {"children", QVariantList{window(DolphinUrl), window(DolphinUrl)}}};
+        model.setRows({group});
+        const QVariantList tasks = index.unclaimedTasks();
+        QCOMPARE(tasks.size(), 1);
+        const QVariantMap task = tasks.at(0).toMap();
+        QCOMPARE(task.value("desktopId").toString(), QStringLiteral("org.kde.dolphin"));
+        QCOMPARE(task.value("active").toBool(), true);
+        QCOMPARE(task.value("count").toInt(), 2);
+        QCOMPARE(task.value("icon").toString(), QStringLiteral("application-x-executable"));
+    }
+
+    void unclaimedTasksSkipLauncherAndIdlessRows()
+    {
+        model.setRows({QVariantMap{{"IsLauncher", true}, {"LauncherUrl", DolphinUrl}},
+                       QVariantMap{{"IsWindow", true}, {"display", "Mystery"}},
+                       titledWindow(DolphinUrl, "Dolphin")});
+        const QVariantList tasks = index.unclaimedTasks();
+        QCOMPARE(tasks.size(), 1);
+        QCOMPARE(tasks.at(0).toMap().value("desktopId").toString(), QStringLiteral("org.kde.dolphin"));
+    }
+
     void revisionBumpsOnEveryModelChange()
     {
         QSignalSpy spy(&index, &TaskIndex::changed);
@@ -219,6 +408,8 @@ private slots:
     {
         index.setModel(nullptr);
         QCOMPARE(index.taskState(Konsole).value("running").toBool(), false);
+        QCOMPARE(index.unclaimedTasks(), QVariantList{});
+        QVERIFY(!index.activate(Konsole));
     }
 
     void missingRolesAreTolerated()
