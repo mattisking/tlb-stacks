@@ -215,6 +215,14 @@ private slots:
         QCOMPARE(model.activateCalls(), QVariantList{0});
     }
 
+    void activateRoutesRowsWithoutADesktopEntry()
+    {
+        model.setRows({window({}, false, true), window({})});
+        QVERIFY(index.activate(QString()));
+        QCOMPARE(model.activateCalls(), QVariantList{1});
+        QCOMPARE(model.toggleMinimizedCalls(), QVariantList{});
+    }
+
     void cycleAdvancesToTheRowAfterTheActiveOne()
     {
         model.setRows({window(KonsoleUrl, true), window(KonsoleUrl)});
@@ -338,10 +346,28 @@ private slots:
         QCOMPARE(task.value("icon").toString(), QStringLiteral("application-x-executable"));
     }
 
-    void unclaimedTasksSkipLauncherAndIdlessRows()
+    void unclaimedTasksIncludeRowsWithoutADesktopEntry()
+    {
+        model.setRows({window(KonsoleUrl, true),
+                       QVariantMap{{"IsWindow", true}, {"IsMinimized", true}, {"display", "Mystery"}},
+                       titledWindow(DolphinUrl, "Dolphin")});
+        const QVariantList tasks = index.unclaimedTasks();
+        QCOMPARE(tasks.size(), 2);
+
+        const QVariantMap first = tasks.at(0).toMap();
+        QCOMPARE(first.value("desktopId").toString(), QString());
+        QCOMPARE(first.value("name").toString(), QStringLiteral("Mystery"));
+        QCOMPARE(first.value("icon").toString(), QStringLiteral("application-x-executable"));
+        QCOMPARE(first.value("active").toBool(), false);
+        QCOMPARE(first.value("minimized").toBool(), true);
+        QCOMPARE(first.value("count").toInt(), 1);
+
+        QCOMPARE(tasks.at(1).toMap().value("desktopId").toString(), QStringLiteral("org.kde.dolphin"));
+    }
+
+    void unclaimedTasksSkipLauncherRows()
     {
         model.setRows({QVariantMap{{"IsLauncher", true}, {"LauncherUrl", DolphinUrl}},
-                       QVariantMap{{"IsWindow", true}, {"display", "Mystery"}},
                        titledWindow(DolphinUrl, "Dolphin")});
         const QVariantList tasks = index.unclaimedTasks();
         QCOMPARE(tasks.size(), 1);

@@ -165,7 +165,7 @@ QVariantList TaskIndex::unclaimedTasks() const
 
     QVariantList tasks;
     for (const TaskRow &row : taskRows(m_model)) {
-        if (row.desktopId.isEmpty() || claimed.contains(row.desktopId))
+        if (claimed.contains(row.desktopId))
             continue;
         tasks.append(QVariantMap{{"desktopId", row.desktopId},
                                  {"name", row.name},
