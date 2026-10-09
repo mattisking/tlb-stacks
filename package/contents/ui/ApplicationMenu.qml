@@ -14,6 +14,9 @@ PlasmaComponents.ScrollView {
     property bool iconsOnly: false
     property int iconSize: 22
     property bool popupOpen: false
+    // Live window bridge (null when unavailable or degraded): running
+    // entries mirror their window state and activate it instead of launching.
+    property var taskArea: null
     readonly property real menuContentHeight: applicationColumn.implicitHeight
     signal activating()
     signal activated()
@@ -76,11 +79,24 @@ PlasmaComponents.ScrollView {
                 required property int index
                 required property var modelData
 
+                objectName: "menuEntry-" + modelData.id
+
                 readonly property string applicationName:
                     modelData.isSeparator === true ? "" : modelData.name
 
                 readonly property string applicationIcon:
                     modelData.isSeparator === true ? "" : modelData.icon
+
+                // Live task state for this entry (idle defaults without a
+                // taskArea). Touching taskArea.revision keeps it fresh —
+                // stateFor walks the live tasks model on every call.
+                readonly property var taskState: {
+                    const area = applicationScroll.taskArea
+                    if (!area || modelData.isSeparator === true)
+                        return {running: false, active: false, minimized: false, count: 0}
+                    area.revision
+                    return area.stateFor(modelData.id)
+                }
 
                 visible: modelData.available
 
@@ -136,12 +152,31 @@ PlasmaComponents.ScrollView {
                         Layout.alignment: Qt.AlignCenter
                         Layout.fillWidth: applicationScroll.iconsOnly
                     }
+                    // Running dot beside the icon: an active window lights it up.
+                    Rectangle {
+                        objectName: "runningDot"
+                        visible: launcherItem.taskState.running
+                        Layout.preferredWidth: Math.max(4, Math.round(applicationScroll.iconSize / 4))
+                        Layout.preferredHeight: Math.max(4, Math.round(applicationScroll.iconSize / 4))
+                        radius: width / 2
+                        color: launcherItem.taskState.active
+                            ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.highlightColor
+                    }
                     PlasmaComponents.Label {
                         visible: !applicationScroll.iconsOnly && launcherItem.modelData.isSeparator !== true
                         Layout.fillWidth: true
                         Layout.minimumWidth: 0
                         text: launcherItem.applicationName
                         elide: Text.ElideRight
+                    }
+                    // Window count for apps with grouped windows.
+                    PlasmaComponents.Label {
+                        objectName: "countBadge"
+                        visible: launcherItem.taskState.count > 1
+                        text: launcherItem.taskState.count
+                        font.pixelSize: Math.max(1, Math.round(Kirigami.Units.gridUnit * 0.5))
+                        font.bold: true
+                        color: Kirigami.Theme.textColor
                     }
                 }
                 Keys.onUpPressed: applicationScroll.moveApplicationSelection(-1)
@@ -191,6 +226,13 @@ PlasmaComponents.ScrollView {
                 onClicked: {
                     if (modelData.isSeparator === true) return
                     applicationScroll.activating()
+                    // A running app activates its window instead of launching;
+                    // commands never match a desktop id, so they stay launch-only.
+                    const area = applicationScroll.taskArea
+                    if (area && area.activate(modelData.id)) {
+                        applicationScroll.activated()
+                        return
+                    }
                     if (applicationScroll.launcher.activateEntry(modelData)) {
                         applicationScroll.activated()
                     }

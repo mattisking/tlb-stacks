@@ -84,6 +84,7 @@ ColumnLayout {
     ApplicationMenu {
         id: menu
         launcher: content.launcher
+        taskArea: content.taskArea
         entries: content.entries
         iconsOnly: content.iconsOnly
         iconSize: content.iconSize
