@@ -65,6 +65,8 @@ qt_add_qml_module(tlbstacksplugin
         foldersource.cpp
         foldersource.h
         stackentry.h
+        taskindex.cpp
+        taskindex.h
         folderpopup.cpp
         folderpopup.h
         launcher.cpp
