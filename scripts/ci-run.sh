@@ -45,6 +45,12 @@ cmake --build build-tests/native-menus -j "$(nproc)"
 QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
     ./build-tests/native-menus/folder-popup-test
 
+echo '== Native QtTest suite (tests/task-index) =='
+cmake -S tests/task-index -B build-tests/task-index
+cmake --build build-tests/task-index -j "$(nproc)"
+QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software \
+    ./build-tests/task-index/task-index-test
+
 echo '== QML suites (folder-source, categories, navigation, icons, stack-editor, stack-group-runtime) =='
 if [[ ! -f "${MODULE_DIR}/libtlbstacksplugin.so" ]]; then
     echo "ERROR: expected ${MODULE_DIR}/libtlbstacksplugin.so after the build" >&2

@@ -19,10 +19,10 @@ A TLBStacks Group can combine entries such as:
 
 Each stack behaves the same way whether it is used by itself or inside a group.
 
-**TLBStacks is a launcher, not a task manager.** It does not display or manage
-running windows. It is designed to work alongside Plasma's task manager if you
-want one. For example, TLBStacks Groups can hold your launchers while
-**Icons Only Task Manager** displays running applications.
+Launchers can also show and switch their applications' running windows; see
+[Running windows](#running-windows) below. Prefer a dedicated task manager?
+Task tracking can be switched off per group, and TLBStacks still works
+alongside Plasma's **Icons Only Task Manager**.
 
 Inspired by the original Windows True Launch Bar, TLBStacks is an independent
 Linux project for KDE Plasma 6. It is not affiliated with TORDEX or the original
@@ -59,7 +59,40 @@ A group can contain any mixture of:
 Items can be reordered within the group, and the entire group configuration can
 be exported or imported.
 
-TLBStacks Groups does not manage running windows or replace Plasma's task manager.
+With task tracking enabled (the default), a group can also show and switch
+running windows; see [Running windows](#running-windows) below.
+
+### Running windows
+
+TLBStacks Groups can show and switch running windows, so a single launcher bar
+can replace a separate task manager widget. Task tracking is enabled by default
+and can be turned off per group with **Show running windows (task tracking)**
+in the group configuration; the group then behaves as a pure launcher again.
+
+- **Configured launchers merge with their windows:** an application launcher
+  shows its own running windows instead of a duplicate task button: a running
+  indicator appears, along with the window count when the application has
+  several windows. A stack button shows a dimmed indicator while any of its
+  member applications runs.
+- **Append zone:** applications that are not part of the group appear as extra
+  buttons while they run and disappear again once their last window closes.
+  Windows without an installed desktop entry keep their window title and icon.
+  Custom command launchers never claim windows, so their windows show up in
+  the append zone too.
+- **Click matrix:** left-click an idle application to launch it, a running one
+  to activate its most recent window, and a focused one to minimize it —
+  except when it has several windows, where the click cycles to its next
+  window instead. Middle-click a running application to open a new window.
+  Scrolling the wheel over a button steps through that application's windows.
+- **Running state in stacks:** stack menus show a running dot beside entries
+  whose application is running, highlighted while active. Clicking a running
+  entry activates its window instead of launching a new copy; middle-clicking
+  it opens another window. A standalone TLBStacks button shows the same dot
+  while any of its member applications runs.
+
+Task tracking uses Plasma's taskmanager QML module. Wherever that module is
+missing, TLBStacks degrades gracefully: the widget still loads and works as a
+pure launcher, without running indicators or window switching.
 
 ### Stack types
 
