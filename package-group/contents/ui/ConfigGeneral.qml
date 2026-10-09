@@ -135,6 +135,10 @@ ColumnLayout {
     function updateStack(changes) {
         if (selectedStack) cfg_items = GroupItems.encode(GroupItems.updateStack(decoded.items, selectedStack.id, changes))
     }
+    ApplicationArgumentsDialog {
+        id: panelApplicationDialog
+        onSaved: (id, name, args) => root.updateLauncherAppearance(id, {label: name, arguments: args})
+    }
     Launcher {
         id: launcher
         onApplicationsChanged: root.catalog = launcher.applications()
@@ -280,7 +284,7 @@ ColumnLayout {
             icon.name: "list-add"
             enabled: !root.decoded.error && root.decoded.items.length < 500
             onTriggered: {
-                launcherPicker.exclude = root.decoded.items.map(item => item.desktopId).filter(Boolean)
+                launcherPicker.exclude = root.decoded.items.filter(item => !(item.arguments || []).length).map(item => item.desktopId).filter(Boolean)
                 launcherPicker.openPicker()
             }
         }
@@ -637,6 +641,12 @@ ColumnLayout {
                         onActivated: root.replaceLauncherApp(root.catalog[currentIndex].desktopId)
                     }
                     PlasmaComponents.Button {
+                        text: i18n("Edit launch options…")
+                        visible: root.selectedItem && root.selectedItem.type === "application"
+                        onClicked: panelApplicationDialog.edit(root.selectedItem.id,
+                            root.selectedItem.label || root.nameFor(root.selectedItem.desktopId), root.selectedItem.arguments || [])
+                    }
+                    PlasmaComponents.Button {
                         text: i18n("Edit custom launcher…")
                         visible: root.selectedItem && root.selectedItem.type === "command"
                         onClicked: panelCommandDialog.edit(root.selectedItem.id, root.selectedItem.command)
@@ -709,8 +719,8 @@ ColumnLayout {
                             Layout.preferredWidth: Kirigami.Units.iconSizes.medium
                             Layout.preferredHeight: Kirigami.Units.iconSizes.medium
                             source: root.memberSelected ? IconOverrides.get(root.selectedStack.settings.applicationIcons || {}, root.selectedMemberId)
-                                || launcher.icon(root.selectedMemberId) || "application-x-executable" : ""
-                            fallbackSource: root.memberSelected ? launcher.icon(root.selectedMemberId) || "application-x-executable" : ""
+                                || launcher.icon(((root.selectedStack.settings.customLaunchers || {})[root.selectedMemberId] || {}).desktopId || root.selectedMemberId) || "application-x-executable" : ""
+                            fallbackSource: root.memberSelected ? launcher.icon(((root.selectedStack.settings.customLaunchers || {})[root.selectedMemberId] || {}).desktopId || root.selectedMemberId) || "application-x-executable" : ""
                             sourceAvailable: launcher.themeIconAvailable(source)
                         }
                         PlasmaComponents.Button { text: i18n("Choose icon…"); onClicked: root.chooseMemberIcon(false) }

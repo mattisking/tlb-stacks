@@ -245,7 +245,7 @@ PlasmoidItem {
                             stackPopup.visible = false
                             if (modelData.type === "command") launcher.activateEntry({source: "applications", action: "launchCommand",
                                 target: modelData.command.executable, arguments: modelData.command.arguments})
-                            else launcher.launch(modelData.desktopId)
+                            else launcher.launch(modelData.desktopId, modelData.arguments || [])
                         }
                     }
                     hoverEnabled: true

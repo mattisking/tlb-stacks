@@ -23,6 +23,27 @@ class Profiles(unittest.TestCase):
             iconsOnly=True, menuIconSize=32, menuSource='applications', folderUrl='', folderFilters='*', applicationCategories=[], hoverDelay=250)
         self.archive = self.root / 'menu.zip'
 
+    def test_application_argument_variants_roundtrip(self):
+        key = 'tlbstacks-command:1'
+        variant = dict(name='Work', desktopId='test.editor', arguments=['--profile', 'two words', '', '%U'])
+        self.settings['applications'].append(key)
+        self.settings['customLaunchers'] = {key: variant}
+        profile.export_profile(dict(file=str(self.archive), settings=self.settings))
+        with zipfile.ZipFile(self.archive) as archive:
+            self.assertEqual(json.loads(archive.read('profile.json'))['version'], 7)
+        self.assertEqual(profile.import_profile(dict(file=str(self.archive)))['settings']['customLaunchers'][key], variant)
+        items = [dict(id='app', type='application', desktopId='test.editor', arguments=variant['arguments']),
+                 dict(id='stack', type='stack', settings=self.settings)]
+        profile.export_group(dict(file=str(self.archive), group=dict(items=items)))
+        with zipfile.ZipFile(self.archive) as archive:
+            self.assertEqual(json.loads(archive.read('profile.json'))['version'], 5)
+        result = profile.import_profile(dict(file=str(self.archive)), allow_group=True)['group']['items']
+        self.assertEqual(result[0]['arguments'], variant['arguments'])
+        self.assertEqual(result[1]['settings']['customLaunchers'][key], variant)
+        for bad in ([1], ['bad\0arg'], 'not a list'):
+            items[0]['arguments'] = bad
+            with self.assertRaises(ValueError): profile.validate_group(dict(items=items))
+
     def test_direct_custom_launcher_group_roundtrip(self):
         command = dict(name='Assistant', executable='/usr/bin/konsole', arguments=['-e', '/usr/bin/pwsh', '-NoExit'])
         item = dict(id='command-1', type='command', command=command, icon=str(self.image), label='Work', panelIconSize=24)

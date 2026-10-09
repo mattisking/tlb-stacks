@@ -27,7 +27,7 @@ public:
     Q_INVOKABLE void closeFolderMenu();
     Q_INVOKABLE QPoint pointerPosition() const;
 
-    Q_INVOKABLE void showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool removable = true, bool desktopActions = true);
+    Q_INVOKABLE void showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool removable = true, bool desktopActions = true, const QString &applicationId = {});
     Q_INVOKABLE void closeApplicationContextMenu();
 
     Q_INVOKABLE QVariantList applicationEntries(const QStringList &ids, const QVariantMap &icons, const QString &source, const QVariantMap &customLaunchers = {}) const;
@@ -39,7 +39,7 @@ public:
     Q_INVOKABLE QString name(const QString &desktopId) const;
     Q_INVOKABLE QString icon(const QString &desktopId) const;
     Q_INVOKABLE bool themeIconAvailable(const QString &name) const;
-    Q_INVOKABLE bool launch(const QString &desktopId);
+    Q_INVOKABLE bool launch(const QString &desktopId, const QStringList &arguments = {});
 
     Q_INVOKABLE QVariantList applications() const;
     Q_INVOKABLE bool folderAvailable(const QUrl &url) const;

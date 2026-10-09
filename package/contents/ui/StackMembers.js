@@ -56,3 +56,8 @@ function parseCustomLaunchers(value) {
         return result && typeof result === "object" && !Array.isArray(result) ? result : {}
     } catch (error) { return {} }
 }
+
+function validArguments(args) {
+    return Array.isArray(args) && args.length <= 256
+        && args.every(a => typeof a === "string" && a.length <= 4096 && !a.includes("\0"))
+}

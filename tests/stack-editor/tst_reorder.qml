@@ -48,6 +48,33 @@ TestCase {
         compare(editor.activeMemberId, "first.desktop")
         verify(findChild(list.itemAtIndex(1), "member-up-first.desktop").visible)
     }
+    function test_application_variants_keep_order_icon_and_arguments() {
+        editor.catalog = [{desktopId: "first.desktop", name: "First", icon: "original-icon"}]
+        editor.editApplicationArguments("first.desktop")
+        const dialog = findChild(editor, "applicationArgumentsDialog")
+        verify(dialog.visible)
+        findChild(dialog, "applicationArgumentsField").text = '--profile "two words" ""'
+        dialog.reject()
+        compare(editor.settings.applications[0], "first.desktop")
+        editor.editApplicationArguments("first.desktop")
+        findChild(dialog, "applicationArgumentsField").text = '--profile "two words" ""'
+        dialog.accept()
+        const id = editor.settings.applications[0]
+        verify(id !== "first.desktop")
+        compare(editor.settings.applications[1], separator)
+        compare(editor.settings.customLaunchers[id].desktopId, "first.desktop")
+        compare(editor.settings.applicationIcons[id], "custom-icon")
+        compare(editor.memberName(id), "First")
+        compare(editor.settings.customLaunchers[id].arguments, ["--profile", "two words", ""])
+        editor.addMember("first.desktop")
+        verify(editor.settings.applications.includes("first.desktop"))
+        verify(editor.saveApplicationArguments(id, "Normal", []))
+        compare(editor.settings.applications[0], id)
+        compare(editor.settings.customLaunchers[id].arguments.length, 0)
+        editor.removeMember(0)
+        verify(!editor.settings.customLaunchers[id])
+        verify(editor.settings.applications.includes("first.desktop"))
+    }
     function test_custom_launcher_create_edit_remove() {
         editor.editCustomLauncher("")
         const dialog = findChild(editor, "customLauncherDialog")

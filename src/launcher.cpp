@@ -1,4 +1,5 @@
 #include "launcher.h"
+#include "applicationlaunch.h"
 #include "stackentry.h"
 #include "folderpopup.h"
 #include <QApplication>
@@ -103,7 +104,7 @@ QVariantList Launcher::applications() const
     return result;
 }
 
-bool Launcher::launch(const QString &desktopId)
+bool Launcher::launch(const QString &desktopId, const QStringList &arguments)
 {
     const auto generation = ++m_activationGeneration;
     const KService::Ptr service = KService::serviceByDesktopName(desktopId);
@@ -113,7 +114,13 @@ bool Launcher::launch(const QString &desktopId)
         return false;
     }
 
-    auto *job = new KIO::ApplicationLauncherJob(service, this);
+    if (arguments.size() > 256 || std::any_of(arguments.begin(), arguments.end(), [](const QString &arg) {
+            return arg.size() > 4096 || arg.contains(QChar::Null);
+        }) || (!arguments.isEmpty() && service->exec().isEmpty())) {
+        Q_EMIT activationFailed(tr("Invalid application arguments or missing launch command."));
+        return false;
+    }
+    auto *job = new KIO::ApplicationLauncherJob(ApplicationLaunch::withArguments(service, arguments), this);
     connect(job, &KJob::result, this, [this, job, generation]() {
         if (generation == m_activationGeneration && job->error()) Q_EMIT activationFailed(job->errorString());
     });
@@ -308,14 +315,14 @@ void Launcher::closeApplicationContextMenu()
     if (m_applicationContextMenu) m_applicationContextMenu->close();
 }
 
-void Launcher::showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool removable, bool desktopActions)
+void Launcher::showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool removable, bool desktopActions, const QString &applicationId)
 {
     if (!anchor || !anchor->window() || desktopId.isEmpty() ||
         !qobject_cast<QApplication *>(QCoreApplication::instance())) return;
     closeApplicationContextMenu();
     QObject::disconnect(m_contextAnchorDestroyed);
     m_applicationContextMenu = std::make_unique<QMenu>();
-    const auto service = desktopActions ? KService::serviceByDesktopName(desktopId) : KService::Ptr();
+    const auto service = desktopActions ? KService::serviceByDesktopName(applicationId.isEmpty() ? desktopId : applicationId) : KService::Ptr();
     if (service) {
         for (const auto &serviceAction : service->actions()) {
             if (serviceAction.noDisplay() || serviceAction.isSeparator()) continue;
@@ -412,6 +419,14 @@ QVariantList Launcher::applicationEntries(const QStringList &ids, const QVariant
     for (const auto &id : ids) {
         if (source == "applications" && id.startsWith("tlbstacks-command:")) {
             const auto command = customLaunchers.value(id).toMap();
+            if (command.contains("desktopId")) {
+                auto entry = StackEntry::application(command.value("desktopId").toString(), source, icons.value(id).toString());
+                entry["id"] = id;
+                entry["name"] = command.value("name");
+                entry["arguments"] = command.value("arguments");
+                entries.append(entry);
+                continue;
+            }
             const QString executable = command.value("executable").toString();
             const QFileInfo info(executable);
             auto entry = StackEntry::make(id, command.value("name", id).toString(),
@@ -464,7 +479,7 @@ bool Launcher::activateEntry(const QVariantMap &entry)
         return true;
     }
     if (action == "launchApplication" && (source == "applications" || source == "categories" || source == "activity"))
-        return launch(entry.value("target").toString());
+        return launch(entry.value("target").toString(), entry.value("arguments").toStringList());
     if (action == "openFile" && source == "folder") return openFile(QUrl(entry.value("target").toString()));
     if (action == "moveToTrash" && source == "folder" &&
         entry.value("actions").toStringList().contains("moveToTrash")) {
@@ -506,5 +521,5 @@ void Launcher::showEntryContextMenu(QQuickItem *anchor, const QVariantMap &entry
     if (source == "applications" || source == "categories" || source == "activity")
         showApplicationContextMenu(anchor, entry.value("id").toString(),
             source == "applications" && entry.value("actions").toStringList().contains("removeFromStack"),
-            entry.value("actions").toStringList().contains("desktopActions"));
+            entry.value("actions").toStringList().contains("desktopActions"), entry.value("target").toString());
 }

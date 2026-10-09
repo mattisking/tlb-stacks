@@ -3,6 +3,9 @@
 #include "../../src/foldersource.h"
 #include "../../src/folderreader.h"
 #include "../../src/launcher.h"
+#include "../../src/applicationlaunch.h"
+#include <KIO/DesktopExecParser>
+#include <QProcess>
 #include <QQuickWindow>
 #include <QQuickItem>
 #include <QMouseEvent>
@@ -22,6 +25,45 @@ class FolderPopupTest : public QObject {
     Q_OBJECT
 private slots:
     void initTestCase() { qRegisterMetaType<QQuickItem *>("QQuickItem*"); }
+    void applicationArgumentsPreserveDesktopLaunch() {
+        QTemporaryDir dir;
+        const QString desktopPath = dir.filePath("org.example.Test.desktop");
+        const QByteArray contents = "[Desktop Entry]\nType=Application\nName=Test App\nIcon=test-icon\nDBusActivatable=true\nExec=/usr/bin/env TLB_TEST=original /usr/bin/printf %c %k %i %U\nPath=/tmp\n";
+        QFile desktop(desktopPath);
+        QVERIFY(desktop.open(QIODevice::WriteOnly)); desktop.write(contents); desktop.close();
+        const KService::Ptr original(new KService(desktopPath));
+        const QStringList args{"two words", "", "$HOME", ";echo nope", "%U", "a\"b", "a\\b"};
+        const auto modified = ApplicationLaunch::withArguments(original, args);
+        QCOMPARE(modified->workingDirectory(), original->workingDirectory());
+        QCOMPARE(modified->icon(), original->icon());
+        QVERIFY(!modified->property<bool>("DBusActivatable"));
+        QVERIFY(original->property<bool>("DBusActivatable"));
+        KIO::DesktopExecParser parser(*modified, {});
+        const auto actual = parser.resultingArguments();
+        QVERIFY2(parser.errorMessage().isEmpty(), qPrintable(parser.errorMessage()));
+        QStringList expected{"/usr/bin/env", "TLB_TEST=original", "/usr/bin/printf", "Test App", desktopPath, "--icon", "test-icon"};
+        expected.append(args);
+        QCOMPARE(actual, expected);
+        QCOMPARE(ApplicationLaunch::withArguments(original, {}), original);
+        QVERIFY(desktop.open(QIODevice::ReadOnly)); QCOMPARE(desktop.readAll(), contents);
+    }
+    void applicationVariantRetainsTargetAndIdentity() {
+        Launcher launcher;
+        const QString id = "tlbstacks-command:1";
+        const QString desktopId = "org.example.UninstalledApplication";
+        const QStringList args{"--profile", "work space"};
+        const QVariantMap variants{{id, QVariantMap{{"name", "Work"}, {"desktopId", desktopId}, {"arguments", args}}}};
+        const auto entry = launcher.applicationEntries({id}, {{id, "custom-icon"}}, "applications", variants).first().toMap();
+        QCOMPARE(entry.value("id").toString(), id);
+        QCOMPARE(entry.value("target").toString(), desktopId);
+        QCOMPARE(entry.value("action").toString(), QString("launchApplication"));
+        QCOMPARE(entry.value("arguments").toStringList(), args);
+        QCOMPARE(entry.value("icon").toString(), QString("custom-icon"));
+        QVERIFY(entry.value("actions").toStringList().contains("removeFromStack"));
+        QSignalSpy errors(&launcher, &Launcher::activationFailed);
+        QVERIFY(!launcher.activateEntry(entry));
+        QCOMPARE(errors.count(), 1);
+    }
     void customLauncherPassesLiteralArguments() {
         QTemporaryDir dir;
         const QString output = dir.filePath("result");

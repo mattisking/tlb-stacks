@@ -1,3 +1,5 @@
+set_source_files_properties("../package/contents/ui/ApplicationArgumentsDialog.qml" PROPERTIES
+    QT_RESOURCE_ALIAS "ApplicationArgumentsDialog.qml" QT_QML_SKIP_CACHEGEN TRUE)
 set_source_files_properties("../package/contents/ui/CustomLauncherDialog.qml" PROPERTIES
     QT_RESOURCE_ALIAS "CustomLauncherDialog.qml" QT_QML_SKIP_CACHEGEN TRUE)
 set_source_files_properties("../package/contents/ui/ListReorderHandle.qml" PROPERTIES
@@ -39,6 +41,7 @@ qt_add_qml_module(tlbstacksplugin
         "${CMAKE_BINARY_DIR}/qml/com/mattphilmon/tlbstacks"
 
     QML_FILES
+        ../package/contents/ui/ApplicationArgumentsDialog.qml
         ../package/contents/ui/CustomLauncherDialog.qml
         ../package/contents/ui/ListReorderHandle.qml
         ../package/contents/ui/ListReorderController.qml

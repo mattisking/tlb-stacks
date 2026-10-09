@@ -176,11 +176,14 @@ ColumnLayout {
     }
 
     function refreshMissingApplications() {
+        const commands = StackMembers.parseCustomLaunchers(root.cfg_customLaunchers)
         root.missingApplications = Array.from(root.cfg_applications || [])
+            .map(id => (commands[id] || {}).desktopId || id)
             .filter(id => !id.startsWith("tlbstacks-command:") && !StackMembers.isSeparator(id) && !launcher.exists(id))
     }
 
     onCfg_applicationsChanged: refreshMissingApplications()
+    onCfg_customLaunchersChanged: refreshMissingApplications()
 
     ListModel {
         id: applicationsModel

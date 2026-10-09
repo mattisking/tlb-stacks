@@ -12,8 +12,8 @@ record. Desktop acceptance does not mean every optional test combination was run
 | ID | Request | Current status |
 |---|---|---|
 | [F-003](#f-003) | Drag ordering and editor controls | Dragging accepted; selected-row arrow polish awaiting desktop test |
-| [F-015](#f-015) | Stack Groups | Delivered increments accepted; panel icon defaults await desktop testing |
-| [F-009](#f-009) | App arguments and custom/terminal commands | Custom executables implemented; desktop test pending |
+| [F-015](#f-015) | Stack Groups | Delivered increments accepted; panel icon defaults desktop-accepted |
+| [F-009](#f-009) | App arguments and custom/terminal commands | Custom executables and application arguments desktop-accepted |
 | [M-002](#m-002) | Release maintenance | CI fixed; maintainer release checklist still planned |
 | [F-002](#f-002) | Original launcher/mixed-folder request | Superseded by F-015; mixed folders deferred |
 | [F-006](#f-006) | Application actions and recent documents | Actions implemented; documents planned |
@@ -115,17 +115,19 @@ must follow backend capabilities; do not assume remote Trash support.
 <a id="f-009"></a>
 ## F-009 — Custom launch commands and terminal entries
 
-**First increment implemented, awaiting desktop acceptance; independent of mixed folders.**
+**Custom executable launchers desktop-accepted; independent of mixed folders.**
 Selected Contents supports custom executable launchers with a name, absolute path,
 quoted arguments, and the existing icon controls. The group Add menu also supports
 direct panel custom launchers using the same editor. Commands execute directly without
 a shell; paths remain explicit in archives. See [custom launchers](DEPLOYMENT.md#custom-executable-launchers).
 
-Remaining scope:
+**Application arguments implemented and desktop-accepted.** Search-added
+applications can have optional arguments and independent labels/icons, in Selected
+stacks and direct group launchers. Multiple variants retain distinct identities.
+Clearing arguments restores ordinary desktop launch behavior. Installed desktop
+files remain unchanged; application-provided actions retain their own commands.
 
-- Select an installed application through search, then optionally supply arguments
-  without editing its installed desktop file. Multiple entries may target the same
-  application with different arguments, labels, or icons.
+Remaining scope:
 - Extend custom entries with working directory and optional terminal behavior. Explicit shell scripts and direct
   execution are separate choices; preferred-terminal/keep-open behavior needs design.
 
@@ -191,7 +193,7 @@ Includes direct launchers, all four stack sources, ordering, shared settings,
 individual-stack/group import/export, launcher appearance, member icon editing,
 and dragging. See [checkpoints and remaining test combinations](STACK_GROUPS.md).
 
-**Implemented, awaiting desktop acceptance:** a group panel icon-size default with
+**Implemented and desktop-accepted:** a group panel icon-size default with
 per-item overrides for stacks, applications and custom launchers. Compact automatic
 remains the default; existing explicit sizes are preserved. Group archives retain
 these choices. Broader inheritance (such as hover delay and popup appearance)

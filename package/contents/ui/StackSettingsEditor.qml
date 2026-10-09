@@ -57,9 +57,40 @@ ColumnLayout {
         const app = catalog.find(entry => entry.desktopId === desktopId)
         return app ? app.name : i18n("%1 (unavailable)", desktopId)
     }
+    function applicationId(id) {
+        return ((settings.customLaunchers || {})[id] || {}).desktopId || id
+    }
+    function editApplicationArguments(id) {
+        const entry = (settings.customLaunchers || {})[id] || {}
+        applicationDialog.edit(id, memberName(id), entry.arguments || [])
+    }
+    function saveApplicationArguments(id, name, args) {
+        if (!(settings.applications || []).includes(id) || !name.trim() || name.length > 256
+            || name.includes("\0") || !StackMembers.validArguments(args)) return false
+        const commands = Object.assign({}, settings.customLaunchers || {})
+        if (commands[id] && !commands[id].desktopId) return false
+        const desktopId = applicationId(id)
+        let key = id
+        if (!commands[id]) {
+            let number = 1
+            while (commands["tlbstacks-command:" + number] || (settings.applications || []).includes("tlbstacks-command:" + number)
+                || applicationIcons["tlbstacks-command:" + number]) ++number
+            key = "tlbstacks-command:" + number
+        }
+        commands[key] = {desktopId: desktopId, name: name.trim(), arguments: args}
+        const icons = Object.assign({}, applicationIcons)
+        if (key !== id && icons[id]) { icons[key] = icons[id]; delete icons[id] }
+        settingsEdited({applications: settings.applications.map(value => value === id ? key : value),
+            customLaunchers: commands, applicationIcons: icons})
+        return true
+    }
+    ApplicationArgumentsDialog {
+        id: applicationDialog
+        onSaved: (id, name, args) => root.saveApplicationArguments(id, name, args)
+    }
     function memberIcon(desktopId) {
         return IconOverrides.get(applicationIcons, desktopId) ||
-            (catalog.find(entry => entry.desktopId === desktopId) || {}).icon ||
+            (catalog.find(entry => entry.desktopId === applicationId(desktopId)) || {}).icon ||
             "application-x-executable"
     }
     function emitApplications(next) { settingsEdited({applications: next}) }
@@ -410,7 +441,7 @@ ColumnLayout {
                                 ApplicationIcon {
                                     visible: !memberRow.isSeparator
                                     source: root.memberIcon(memberRow.modelData)
-                                    fallbackSource: (root.catalog.find(app => app.desktopId === memberRow.modelData) || {}).icon || "application-x-executable"
+                                    fallbackSource: (root.catalog.find(app => app.desktopId === root.applicationId(memberRow.modelData)) || {}).icon || "application-x-executable"
                                     sourceAvailable: root.launcher ? root.launcher.themeIconAvailable(source) : true
                                     Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
                                     Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
@@ -475,10 +506,14 @@ ColumnLayout {
                                     onClicked: root.removeMember(memberRow.index)
                                 }
                                 PlasmaComponents.ToolButton {
-                                    visible: !!(root.settings.customLaunchers || {})[memberRow.modelData]
+                                    visible: !memberRow.isSeparator
                                     icon.name: "document-edit"
-                                    Accessible.name: i18n("Edit custom launcher")
-                                    onClicked: root.editCustomLauncher(memberRow.modelData)
+                                    Accessible.name: i18n("Edit launch options")
+                                    onClicked: {
+                                        const entry = (root.settings.customLaunchers || {})[memberRow.modelData]
+                                        if (entry && !entry.desktopId) root.editCustomLauncher(memberRow.modelData)
+                                        else root.editApplicationArguments(memberRow.modelData)
+                                    }
                                 }
                                 PlasmaComponents.ToolButton {
                                     visible: !memberRow.isSeparator

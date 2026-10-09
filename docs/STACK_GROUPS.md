@@ -520,3 +520,23 @@ standard size. Explicit sizes now use the full available cell and disable theme
 size rounding, including fallback icons. Compact automatic retains its existing
 padding and rounding. A requested 40 remains bounded to 36 in that panel; 24 and
 32 should render distinctly. Desktop retest pending.
+
+## Application arguments — desktop accepted
+
+Implemented shared launch-option editing for searched applications in Selected
+stacks and direct group launchers. Selected variants have independent reserved
+entry IDs, store their underlying desktop ID in `customLaunchers`, and retain
+application icon fallback and desktop actions. Native launch uses an in-memory
+copy of the installed desktop entry when arguments are present. KDE field-code
+escaping is preserved and D-Bus activation is disabled for that launch so it cannot
+bypass the arguments; no installed file is edited.
+
+Desktop checks: add Chrome with `--incognito`; check both a Selected entry and a
+direct group launcher. Add a second variant, change its label/icon, and ensure removing
+one leaves the other. Clear arguments, Apply and reopen; check ordinary launching.
+Cancel a pending edit and verify the saved stack remains unchanged. Export/import a
+group containing both kinds and verify arguments persist.
+
+The preceding compact/explicit panel-size correction was desktop-accepted.
+
+Application-arguments checkpoint accepted by the user on October 8, 2026 (“worked great”). Automated verification: 57 shared-editor, 39 group, 24 native and 44 profile checks passed. The checks above remain useful regression scenarios; acceptance does not assert that every optional combination was manually tested.

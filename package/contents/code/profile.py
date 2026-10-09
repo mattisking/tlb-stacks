@@ -88,12 +88,15 @@ def validate_settings(settings):
         if not text(key, 'launcher ID').startswith('tlbstacks-command:') or not isinstance(command, dict):
             raise ValueError('Invalid custom launcher.')
         name = text(command.get('name'), 'launcher name', 256)
-        executable = text(command.get('executable'), 'executable', 4096)
+        app_id = command.get('desktopId')
+        executable = text(command.get('executable'), 'executable', 4096) if app_id is None else ''
+        if app_id is not None and (not text(app_id, 'application ID', 4096) or 'executable' in command):
+            raise ValueError('Invalid application launcher.')
         args = command.get('arguments', [])
-        if not name.strip() or not executable.startswith('/') or not isinstance(args, list) or len(args) > 256:
+        if not name.strip() or (app_id is None and not executable.startswith('/')) or not isinstance(args, list) or len(args) > 256:
             raise ValueError('Invalid custom launcher.')
-        cleaned_commands[key] = dict(name=name, executable=executable,
-            arguments=[text(arg, 'argument', 4096) for arg in args])
+        cleaned_commands[key] = dict(name=name, arguments=[text(arg, 'argument', 4096) for arg in args])
+        cleaned_commands[key]['desktopId' if app_id is not None else 'executable'] = app_id if app_id is not None else executable
     icons = settings.get('applicationIcons', {})
     if not isinstance(icons, dict) or len(icons) > 2000:
         raise ValueError('Invalid application icon settings.')
@@ -215,12 +218,19 @@ def validate_group(group, allow_references=False):
         item = dict(id=identity, type=kind)
         if kind == 'application':
             item['desktopId'] = text(value.get('desktopId'), 'application ID')
+            if 'arguments' in value:
+                args = value['arguments']
+                if not isinstance(args, list) or len(args) > 256:
+                    raise ValueError('Invalid application arguments.')
+                item['arguments'] = [text(arg, 'argument', 4096) for arg in args]
             for field in ('label', 'icon'):
                 if field in value:
                     item[field] = text(value[field], 'launcher ' + field, 256 if field == 'label' else 4096)
             if not item['desktopId']:
                 raise ValueError('Missing application ID.')
         elif kind == 'command':
+            if isinstance(value.get('command'), dict) and 'desktopId' in value['command']:
+                raise ValueError('Direct application launchers must use the application type.')
             item['command'] = validate_settings(dict(applications=[], customLaunchers={
                 'tlbstacks-command:1': value.get('command')}))['customLaunchers']['tlbstacks-command:1']
             for field in ('label', 'icon'):
@@ -296,7 +306,7 @@ def export_profile(request):
     if settings['menuSource'] != 'categories':
         settings['applicationIcons'] = {key: value for key, value in settings['applicationIcons'].items()
                                         if key in settings['applications']}
-    document = dict(format='TLBStacks', version=6 if settings['customLaunchers'] else 5, settings=settings)
+    document = dict(format='TLBStacks', version=7 if any(c.get('desktopId') for c in settings['customLaunchers'].values()) else 6 if settings['customLaunchers'] else 5, settings=settings)
     pack_folder(settings, document, request)
     return write_archive(request, document, [settings])
 
@@ -310,7 +320,17 @@ def export_group(request):
             settings_list.append(item['settings'])
         else:
             settings_list.append(item)
-    version = 4 if group.get('panelIconSize') or any(item['type'] == 'command' or item.get('panelIconSize') for item in group['items']) else 3 if any(item['type'] == 'stack' and item['settings'].get('customLaunchers') for item in group['items']) else 2 if any(item['type'] == 'application' and (item.get('label') or item.get('icon')) for item in group['items']) else 1
+    if any('arguments' in item or (item['type'] == 'stack' and any(
+            c.get('desktopId') for c in item['settings']['customLaunchers'].values())) for item in group['items']):
+        version = 5
+    elif group.get('panelIconSize') or any(item['type'] == 'command' or item.get('panelIconSize') for item in group['items']):
+        version = 4
+    elif any(item['type'] == 'stack' and item['settings'].get('customLaunchers') for item in group['items']):
+        version = 3
+    elif any(item['type'] == 'application' and (item.get('label') or item.get('icon')) for item in group['items']):
+        version = 2
+    else:
+        version = 1
     return write_archive(request, dict(format='TLBStacksGroup', version=version, group=group), settings_list)
 
 
@@ -335,7 +355,7 @@ def import_profile(request, allow_group=False):
         if not isinstance(manifest, dict) or type(manifest.get('version')) is not int:
             raise ValueError('Unsupported TLBStacks profile format or version.')
         if manifest.get('format') == 'TLBStacksGroup':
-            if not allow_group or manifest['version'] not in (1, 2, 3, 4):
+            if not allow_group or manifest['version'] not in (1, 2, 3, 4, 5):
                 raise ValueError('This archive requires a compatible TLBStacks Group widget.')
             group = validate_group(manifest.get('group'), allow_references=True)
             settings_list = []
@@ -346,9 +366,9 @@ def import_profile(request, allow_group=False):
                 else:
                     settings_list.append(item)
             result = dict(ok=True, kind='group', group=group)
-        elif manifest.get('format') in ('TLBStacks', 'TrueLaunchBar') and manifest['version'] in (1, 2, 3, 4, 5, 6):
+        elif manifest.get('format') in ('TLBStacks', 'TrueLaunchBar') and manifest['version'] in (1, 2, 3, 4, 5, 6, 7):
             settings = validate_settings(manifest.get('settings'))
-            if 'folderLocation' in manifest and manifest['version'] not in (5, 6):
+            if 'folderLocation' in manifest and manifest['version'] not in (5, 6, 7):
                 raise ValueError('Conflicting portable folder settings.')
             unpack_folder(settings, manifest, request)
             settings_list = [settings]

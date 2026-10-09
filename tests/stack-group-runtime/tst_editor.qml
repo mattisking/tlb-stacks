@@ -5,6 +5,23 @@ import "../../package-group/contents/ui/GroupItems.js" as Items
 TestCase {
     name: "GroupStackEditor"
     Group.ConfigGeneral { id: editor; width: 800; height: 650 }
+    function test_application_arguments_and_duplicate_variants() {
+        let items = Items.add([], "example.desktop")
+        items = Items.updateLauncherAppearance(items, items[0].id, {arguments: ["--profile", "two words"]})
+        items = Items.add(items, "example.desktop")
+        compare(items.length, 2)
+        verify(items[0].id !== items[1].id)
+        const encoded = Items.encode(items)
+        compare(JSON.parse(encoded).version, 7)
+        verify(!Items.decode(encoded).error)
+        compare(Items.decode(encoded).items[0].arguments, ["--profile", "two words"])
+        items[0].arguments = [42]
+        verify(Items.decode(Items.encode(items)).error)
+        items = Items.addStack([])
+        items[0].settings.customLaunchers = {"tlbstacks-command:1": {desktopId: "example.desktop", name: "Work", arguments: ["--work"]}}
+        items[0].settings.applications = ["tlbstacks-command:1"]
+        verify(!Items.decode(Items.encode(items)).error)
+    }
     function test_group_size_inheritance_and_stack_override() {
         let items = Items.addStack(Items.add([], "app.desktop"))
         editor.cfg_items = Items.encode(items)

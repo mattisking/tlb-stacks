@@ -406,3 +406,27 @@ keeps the existing compact sizing. **Popup item icon size** controls entries
 inside a stack and does not change its panel button. Group export/import includes
 the default and per-item overrides; individual stack exports retain their existing
 popup settings and do not carry group-level panel presentation.
+
+### Arguments for installed applications
+
+Add an application through search as usual. In Selected Contents, use its pencil
+button (**Edit launch options**). For a direct group launcher, select it in the
+editor and choose **Edit launch options…**. Supply a name and optional additional
+arguments, for example `--incognito` for Chrome. Quote arguments containing spaces.
+Shell variables, pipes, redirects, and command substitutions are literal arguments.
+
+The original desktop launch command is preserved, including wrappers and existing
+arguments. Extra arguments are appended. Clearing them uses normal desktop activation
+again. Application-specific behavior (including reuse of an existing process) is
+still controlled by the application. Desktop actions such as New Window retain
+their original action commands, without these extra arguments.
+
+Once a Selected entry has launch options, the original application becomes available
+in search again, allowing another variant. Direct panel launchers can likewise be
+added again after assigning arguments to the first. Each has independent naming,
+icons and removal. Apply/Cancel follows the normal settings dialog behavior.
+
+Application variants use stack ZIP version 7, group ZIP version 5 and group settings
+version 7. Older profiles remain readable; older releases must not import the new
+versions. Profiles store application IDs and arguments, not executables or desktop
+file copies. Missing applications require installation on the destination computer.
