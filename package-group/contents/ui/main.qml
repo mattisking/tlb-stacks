@@ -9,6 +9,7 @@ import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.plasmoid
 import com.mattphilmon.tlbstacks
 import "GroupItems.js" as GroupItems
+import "ClickMatrix.js" as ClickMatrix
 
 PlasmoidItem {
     id: root
@@ -17,6 +18,11 @@ PlasmoidItem {
     readonly property bool onPanel: vertical || Plasmoid.formFactor === PlasmaCore.Types.Horizontal
     readonly property string displayName: Plasmoid.configuration.groupName || i18n("TLBStacks Group")
     readonly property var decoded: GroupItems.decode(Plasmoid.configuration.items)
+    property bool taskAreaAvailable: true
+    readonly property var taskArea: taskLoader.status === Loader.Ready ? taskLoader.item : null
+    // Configured items plus live task buttons for windows no group item claims.
+    readonly property var panelItems: decoded.items.concat(taskArea ? taskArea.unclaimed : [])
+    property var activityIds: ({})  // activity stack id → materialized desktop ids
     property int catalogRevision: 0
     property var catalog: []
     property var folderHeights: ({})
@@ -46,6 +52,68 @@ PlasmoidItem {
         if (cfg.menuSource === "categories") return cfg.applicationCategories.length
             ? i18n("No matching applications.") : i18n("Choose categories in configuration.")
         return i18n("Add applications in group configuration.")
+    }
+
+    // Desktop IDs the group claims, per the ownership rule: panel-direct
+    // applications plus every stack's members — stack member lists, category
+    // matches, and materialized activity entries. Custom launchers are never
+    // collected: command items stay launch-only, so their windows auto-append.
+    // The catalog/activityIds reads below are otherwise invisible to this
+    // binding (stackDesktopIds hides them); touching them keeps it fresh.
+    readonly property var desktopIds: {
+        catalog
+        activityIds
+        const seen = new Set()
+        const ids = []
+        const add = id => { if (id && !seen.has(id)) { seen.add(id); ids.push(id) } }
+        for (const item of decoded.items) {
+            if (item.type === "application") add(item.desktopId)
+            else if (item.type === "stack") for (const id of stackDesktopIds(item)) add(id)
+        }
+        return ids
+    }
+    function stackDesktopIds(item) {
+        const cfg = item.settings
+        const commands = cfg.customLaunchers || {}
+        const ids = []
+        for (const id of cfg.applications || [])
+            if (!commands[id] && !StackMembers.isSeparator(id)) ids.push(id)
+        if (cfg.menuSource === "categories")
+            for (const app of ApplicationCategories.matching(catalog, cfg.applicationCategories)) ids.push(app.desktopId)
+        if (cfg.menuSource === "activity")
+            for (const id of activityIds[item.id] || []) ids.push(id)
+        return ids
+    }
+    // Activity stacks claim ids only once their entries have materialized; the
+    // collected ids persist across button rebuilds so the claim set never
+    // flickers empty while an activity query reloads.
+    function rememberActivityIds(stackId, ids) {
+        activityIds = Object.assign({}, activityIds, {[stackId]: ids})
+    }
+    // The left-click matrix: an idle app launches, a running one activates
+    // its most recent window, the focused one minimizes — except a focused
+    // group of windows, which cycles to its next member. Appended task
+    // buttons have no launch fallback.
+    function clickTask(item) {
+        const decision = ClickMatrix.decideClick(item.desktopId, taskArea)
+        const launch = () => {
+            if (item.type === "application") launcher.launch(item.desktopId, item.arguments || [])
+        }
+        if (decision === "launch") {
+            launch()
+            return
+        }
+        const area = taskArea
+        if (decision === "minimize" && area.stateFor(item.desktopId).count > 1) {
+            if (!area.cycle(item.desktopId)) launch()
+            return
+        }
+        if (!area.activate(item.desktopId)) launch()
+    }
+    // Middle-click: a new window when the app is running, otherwise launch.
+    function newTaskInstance(item) {
+        if (taskArea && taskArea.newInstance(item.desktopId)) return
+        if (item.type === "application") launcher.launch(item.desktopId, item.arguments || [])
     }
 
     onDecodedChanged: {
@@ -92,6 +160,7 @@ PlasmoidItem {
         mainItem: GroupStackContent {
             id: stackMenu
             launcher: root.menuLauncher
+            taskArea: root.taskArea
             entries: root.stackEntries
             iconsOnly: root.activeStack ? root.activeStack.settings.iconsOnly : false
             iconSize: root.activeStack ? root.activeStack.settings.menuIconSize : 22
@@ -137,12 +206,20 @@ PlasmoidItem {
         const action = Plasmoid.internalAction("configure")
         if (action) action.trigger()
     }
+    // TaskArea brings the live window database; loading it dynamically
+    // degrades to launcher-only mode wherever its module is unavailable.
+    Loader {
+        id: taskLoader
+        active: Plasmoid.configuration.taskTrackingEnabled
+        sourceComponent: Component { TaskArea { desktopIds: root.desktopIds } }
+        onStatusChanged: if (status === Loader.Error) root.taskAreaAvailable = false
+    }
     fullRepresentation: Item {
         id: content
         readonly property real cellSize: root.onPanel
             ? Math.max(1, root.vertical ? root.width : root.height)
             : Kirigami.Units.gridUnit * 2
-        readonly property int count: Math.max(1, root.decoded.items.length)
+        readonly property int count: Math.max(1, root.panelItems.length)
         implicitWidth: root.vertical ? cellSize : count * cellSize
         implicitHeight: root.vertical ? count * cellSize : cellSize
         // Only constrain the panel's long axis; Plasma owns its thickness.
@@ -163,7 +240,7 @@ PlasmoidItem {
             rowSpacing: 0
             columnSpacing: 0
             PlasmaComponents.ToolButton {
-                visible: root.decoded.items.length === 0
+                visible: root.panelItems.length === 0
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 icon.name: root.decoded.error ? "dialog-warning" : "view-grid"
@@ -174,7 +251,7 @@ PlasmoidItem {
             }
             Repeater {
                 id: buttons
-                model: root.decoded.items
+                model: root.panelItems
                 PlasmaComponents.ToolButton {
                     id: button
                     required property var modelData
@@ -185,6 +262,8 @@ PlasmoidItem {
                     readonly property string activityMessage: activityLoader.item ? activityLoader.item.message : ""
                     readonly property string activityKey: activityStack ? JSON.stringify(modelData.settings) : ""
                     onActivityKeyChanged: refreshActivity()
+                    onActivityEntriesChanged: if (activityEntries.length)
+                        root.rememberActivityIds(modelData.id, activityEntries.map(entry => entry.id))
                     function refreshActivity() {
                         if (!activityStack || !activityLoader.item) return
                         const cfg = modelData.settings
@@ -197,9 +276,33 @@ PlasmoidItem {
                         sourceComponent: ActivitySource {}
                         onLoaded: button.refreshActivity()
                     }
+                    // Live window state for application and task buttons
+                    // (idle defaults otherwise); touching taskArea.revision
+                    // keeps it fresh — stateFor walks the model on every call.
+                    readonly property var taskState: {
+                        if (!root.taskArea || (modelData.type !== "application" && modelData.type !== "task"))
+                            return {running: false, active: false, minimized: false, count: 0}
+                        root.taskArea.revision
+                        return root.taskArea.stateFor(modelData.desktopId)
+                    }
+                    // Stack button: true when any member app is running. The
+                    // touches below refresh it when the member list or task
+                    // state changes; stackDesktopIds and stateFor hide their
+                    // reads from the binding.
+                    readonly property bool memberRunning: {
+                        if (modelData.type !== "stack" || !root.taskArea) return false
+                        root.taskArea.revision
+                        root.catalog
+                        root.activityIds
+                        for (const id of root.stackDesktopIds(modelData)) {
+                            if (root.taskArea.stateFor(id).running) return true
+                        }
+                        return false
+                    }
                     readonly property string appName: {
                         const revision = root.catalogRevision
                         return modelData.type === "stack" ? modelData.settings.groupName || i18n("Stack")
+                            : modelData.type === "task" ? modelData.name
                             : modelData.label || (modelData.type === "command" ? modelData.command.name : launcher.name(modelData.desktopId) || modelData.desktopId)
                     }
                     Layout.fillWidth: true
@@ -216,6 +319,7 @@ PlasmoidItem {
                     readonly property string resolvedIcon: {
                         const revision = root.catalogRevision
                         return modelData.type === "stack" ? modelData.settings.groupIcon || "applications-all"
+                            : modelData.type === "task" ? modelData.icon || "application-x-executable"
                             : modelData.icon || (modelData.type === "command" ? "application-x-executable" : launcher.icon(modelData.desktopId) || "application-x-executable")
                     }
                     icon.name: IconOverrides.isFile(resolvedIcon) ? "" : resolvedIcon
@@ -230,13 +334,14 @@ PlasmoidItem {
                             height: Math.min(button.requestedIconSize ? button.height : parent.height, button.launcherIconSize)
                             roundToIconSize: button.requestedIconSize === 0
                             source: button.resolvedIcon
-                            fallbackSource: button.modelData.type === "application" ? launcher.icon(button.modelData.desktopId) || "application-x-executable" : button.modelData.type === "command" ? "application-x-executable" : "applications-all"
+                            fallbackSource: button.modelData.type === "application" ? launcher.icon(button.modelData.desktopId) || "application-x-executable"
+                                : button.modelData.type === "command" || button.modelData.type === "task" ? "application-x-executable" : "applications-all"
                             sourceAvailable: { const revision = root.catalogRevision; return launcher.themeIconAvailable(source) }
                         }
                     }
                     icon.width: button.launcherIconSize
                     icon.height: button.launcherIconSize
-                    highlighted: stackPopup.visible && root.activeStackId === modelData.id
+                    highlighted: (stackPopup.visible && root.activeStackId === modelData.id) || taskState.active
                     Accessible.name: appName
                     onClicked: {
                         root.launchError = ""
@@ -245,7 +350,7 @@ PlasmoidItem {
                             stackPopup.visible = false
                             if (modelData.type === "command") launcher.activateEntry({source: "applications", action: "launchCommand",
                                 target: modelData.command.executable, arguments: modelData.command.arguments})
-                            else launcher.launch(modelData.desktopId, modelData.arguments || [])
+                            else root.clickTask(modelData)
                         }
                     }
                     hoverEnabled: true
@@ -257,6 +362,42 @@ PlasmoidItem {
                         id: hoverOpen
                         interval: button.modelData.type === "stack" ? button.modelData.settings.hoverDelay : 250
                         onTriggered: if (button.hovered) root.showStack(button, false)
+                    }
+                    // Middle-click opens a new window (or launches an idle
+                    // app); the wheel steps through the app's windows. Stacks
+                    // and commands keep their plain behavior.
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: root.taskArea !== null
+                            && (button.modelData.type === "application" || button.modelData.type === "task")
+                        acceptedButtons: Qt.MiddleButton
+                        onClicked: root.newTaskInstance(button.modelData)
+                        onWheel: wheel => root.taskArea.step(button.modelData.desktopId,
+                            wheel.angleDelta.y > 0 ? 1 : -1)
+                    }
+                    // Running indicator: active windows light the dot up;
+                    // stack buttons show it dimmed when any member app runs.
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: Math.max(1, Math.round(parent.height / 24))
+                        width: Math.max(3, Math.round(parent.height / 10))
+                        height: width
+                        radius: width / 2
+                        visible: button.modelData.type === "stack" ? button.memberRunning : button.taskState.running
+                        color: button.taskState.active ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.highlightColor
+                        opacity: button.modelData.type === "stack" ? 0.7 : 1
+                    }
+                    // Window count for apps with grouped windows.
+                    PlasmaComponents.Label {
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.margins: Math.max(1, Math.round(parent.height / 24))
+                        visible: button.taskState.count > 1
+                        text: button.taskState.count
+                        font.pixelSize: Math.max(1, Math.round(Kirigami.Units.gridUnit * 0.5))
+                        font.bold: true
+                        color: Kirigami.Theme.textColor
                     }
                     Keys.onLeftPressed: content.focusEntry(index - 1)
                     Keys.onRightPressed: content.focusEntry(index + 1)

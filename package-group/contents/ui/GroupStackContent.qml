@@ -7,6 +7,9 @@ import com.mattphilmon.tlbstacks
 ColumnLayout {
     id: content
     required property var launcher
+    // Live window bridge (null when disabled or degraded); forwarded to the
+    // application menu.
+    property var taskArea: null
     property var entries: []
     property bool iconsOnly: false
     property int iconSize: 22
