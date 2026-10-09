@@ -178,6 +178,16 @@ Note: `TaskArea` itself cannot run in the offscreen CI env (no plasma-workspace)
 
 ---
 
+### Task 7: Hover-opened stack popup must close on outside click
+
+Appended after plan approval from user report (2026-10-09, mid-execution): with the group widget on the panel, hover a stack so its popup opens via the hover timer, then click elsewhere (desktop, another window, panel). Expected: popup closes and the click reaches its target. Actual: the click is swallowed (mouse is "captured") and the popup stays open — only Esc closes it. Not introduced by Tasks 1–5 (pre-existing `stackPopup` lifecycle); phase-1 scope because task management makes popup interactions far more frequent.
+
+**Files:** `package-group/contents/ui/main.qml` (stackPopup `PlasmaCore.Dialog` ~lines 163-176 pre-Task-4, `hoverOpen` Timer), possibly `package-group/contents/ui/GroupStackContent.qml`; standalone `package/contents/ui/main.qml` may share the same popup lifecycle — check and fix both if the same defect exists.
+
+**Approach:** diagnose first (reproduce on the dev box; observe Dialog flags/type/location — `Qt.Popup` grabs + `hideOnWindowDeactivate` on Wayland is the suspected interaction); fix so an outside click dismisses the popup and passes through where the platform allows. Keep click-opened popups' toggle behavior intact. Verify via the manual checklist addition: hover-open → click elsewhere → closes without Esc.
+
+---
+
 ## Verification (whole plan)
 
 - `scripts/ci-run.sh` green after every task that changes code or tests.
