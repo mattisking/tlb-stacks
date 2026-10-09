@@ -94,7 +94,7 @@ QVariantMap TaskIndex::taskState(const QString &desktopId) const
         for (int row = 0; row < m_model->rowCount(); ++row) {
             const QModelIndex index = m_model->index(row, 0);
             const bool isGroup = reader.flag(index, "IsGroupParent");
-            if (!isGroup && !reader.flag(index, "isWindow"))
+            if (!isGroup && !reader.flag(index, "IsWindow"))
                 continue;
             QString id = desktopIdFromUrl(reader.value(index, "LauncherUrl").toUrl());
             if (id.isEmpty())
@@ -103,11 +103,11 @@ QVariantMap TaskIndex::taskState(const QString &desktopId) const
                 continue;
 
             running = true;
-            active = active || reader.flag(index, "isActive");
-            allMinimized = allMinimized && reader.flag(index, "isMinimized");
+            active = active || reader.flag(index, "IsActive");
+            allMinimized = allMinimized && reader.flag(index, "IsMinimized");
             count += isGroup ? qMax(1, m_model->rowCount(index)) : 1;
             if (iconName.isEmpty())
-                iconName = iconNameOf(reader.value(index, "icon"));
+                iconName = iconNameOf(reader.value(index, "decoration"));
         }
     }
 

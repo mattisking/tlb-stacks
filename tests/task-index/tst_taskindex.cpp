@@ -16,7 +16,7 @@ const QString KonsoleUrl = QStringLiteral("file:///usr/share/applications/org.kd
 
 QVariantMap window(const QString &url, bool active = false, bool minimized = false)
 {
-    return {{"isWindow", true}, {"isActive", active}, {"isMinimized", minimized}, {"LauncherUrl", url}};
+    return {{"IsWindow", true}, {"IsActive", active}, {"IsMinimized", minimized}, {"LauncherUrl", url}};
 }
 }
 
@@ -82,14 +82,14 @@ private slots:
     void iconNameComesFromTheIconRole()
     {
         QVariantMap row = window(KonsoleUrl);
-        row.insert("icon", QIcon::fromTheme("utilities-terminal"));
+        row.insert("decoration", QIcon::fromTheme("utilities-terminal"));
         model.setRows({row});
         QCOMPARE(index.taskState(Konsole).value("iconName").toString(), QStringLiteral("utilities-terminal"));
     }
 
     void groupParentCountsItsChildWindowsOnce()
     {
-        QVariantMap group{{"IsGroupParent", true}, {"isActive", true}, {"LauncherUrl", KonsoleUrl},
+        QVariantMap group{{"IsGroupParent", true}, {"IsActive", true}, {"LauncherUrl", KonsoleUrl},
                           {"children", QVariantList{window(KonsoleUrl, true), window(KonsoleUrl)}}};
         model.setRows({group});
         QVariantMap state = index.taskState(Konsole);
@@ -153,7 +153,7 @@ private slots:
 
     void launcherOnlyRowIsNeverRunning()
     {
-        model.setRows({QVariantMap{{"isLauncher", true}, {"isWindow", false}, {"LauncherUrl", KonsoleUrl}}});
+        model.setRows({QVariantMap{{"IsLauncher", true}, {"IsWindow", false}, {"LauncherUrl", KonsoleUrl}}});
         const QVariantMap state = index.taskState(Konsole);
         QCOMPARE(state.value("running").toBool(), false);
         QCOMPARE(state.value("count").toInt(), 0);
@@ -169,7 +169,7 @@ private slots:
         QCOMPARE(index.taskState(Konsole).value("count").toInt(), 1);
         revision = index.revision();
 
-        model.updateRow(0, {{"isActive", true}});
+        model.updateRow(0, {{"IsActive", true}});
         QVERIFY(index.revision() > revision);
         QCOMPARE(index.taskState(Konsole).value("active").toBool(), true);
         revision = index.revision();

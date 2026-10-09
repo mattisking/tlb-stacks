@@ -17,8 +17,8 @@ class MockTasksModel : public QAbstractItemModel {
 public:
     explicit MockTasksModel(QObject *parent = nullptr) : QAbstractItemModel(parent)
     {
-        const QStringList names{"isWindow", "isActive", "isMinimized", "isLauncher", "IsGroupParent",
-                                "LauncherUrl", "AppId", "display", "icon"};
+        const QStringList names{"IsWindow", "IsActive", "IsMinimized", "IsLauncher", "IsGroupParent",
+                                "LauncherUrl", "AppId", "display", "decoration"};
         int role = Qt::UserRole + 1;
         for (const QString &name : names) {
             m_roles.insert(role++, name.toUtf8());
