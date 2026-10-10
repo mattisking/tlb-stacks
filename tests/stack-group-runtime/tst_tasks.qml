@@ -101,9 +101,13 @@ TestCase {
     function test_same_panel_items_content_changes() {
         const rows = [{type: "task", desktopId: "a", name: "A", icon: "ic"}]
         const same = {type: "task", desktopId: "a", name: "A", icon: "ic"}
-        for (const changed of [{desktopId: "b"}, {name: "B"}, {icon: "other"}])
-            verify(!ClickMatrix.samePanelItems(rows, [Object.assign({}, same, changed)]))
-        // A window closed or opened changes the panel.
+        // Title/icon churn on a task row is NOT a content change: the panel
+        // buttons are icon-only and name feeds only tooltip/accessible text,
+        // so a row may go stale until its membership changes.
+        for (const churned of [{name: "New title"}, {icon: "other-icon"}, {name: "N", icon: "ni"}])
+            compare(ClickMatrix.samePanelItems(rows, [Object.assign({}, same, churned)]), true)
+        // A different window (desktop ID) or a closed/opened one changes the panel.
+        verify(!ClickMatrix.samePanelItems(rows, [Object.assign({}, same, {desktopId: "b"})]))
         verify(!ClickMatrix.samePanelItems(rows, []))
         verify(!ClickMatrix.samePanelItems(rows, rows.concat([Object.assign({}, same)])))
         // Order is content: the append zone follows model order.
@@ -162,6 +166,34 @@ TestCase {
         compare(patternItems === before, true)   // same array reference held
         compare(patternCreated, created)         // no delegate rebuild
         // A real content change rebuilds the buttons.
+        taskRows = [{type: "task", desktopId: "a", name: "A", icon: "ic"},
+            {type: "task", desktopId: "b", name: "B", icon: "ic"}]
+        taskRevision++
+        tryCompare(root, "patternCreated", created + 3)  // 2 destroyed, 3 created
+    }
+
+    // Runs after keeps_buttons_across_revisions (QML tests run alphabetically)
+    // so its patternCreated == 2 startup assumption stays intact; this test's
+    // own assertions are relative, so it also runs standalone.
+    function test_panel_model_wiring_title_churn_holds_identity() {
+        // An unclaimed single-window app's name is the WINDOW TITLE — it churns
+        // on every tab switch/navigation, and TaskArea re-maps the unclaimed
+        // rows on every revision. Title/icon churn must hold the same array
+        // (no popup close, no delegate rebuild); only membership changes may.
+        taskRows = [{type: "task", desktopId: "a", name: "A", icon: "ic"}]
+        taskRevision++
+        wait(50)   // let the membership rebuild settle before capturing the baseline
+        const before = patternItems
+        const created = patternCreated
+        for (let i = 0; i < 3; ++i) {
+            taskRows = [{type: "task", desktopId: "a", name: "Title " + i, icon: "icon-" + i,
+                active: !!(i % 2), minimized: !(i % 2), count: 1 + i}]
+            taskRevision++
+            wait(10)
+        }
+        compare(patternItems === before, true)   // same array reference held
+        compare(patternCreated, created)         // no delegate rebuild
+        // A membership change (another unclaimed app appears) rebuilds.
         taskRows = [{type: "task", desktopId: "a", name: "A", icon: "ic"},
             {type: "task", desktopId: "b", name: "B", icon: "ic"}]
         taskRevision++

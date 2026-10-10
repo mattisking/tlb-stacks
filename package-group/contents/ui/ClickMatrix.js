@@ -18,9 +18,13 @@ function decideClick(desktopId, taskArea) {
 // Do two panel arrays render the same buttons? Cheap content comparison for
 // the identity-stabilized panel model: a reference match is always equal, and
 // fresh unclaimed rows (TaskArea re-maps them on every revision) compare by
-// their identity/appearance fields. Live state (active/minimized/count) is
-// deliberately excluded — delegates read that live through taskArea.stateFor —
-// so an unrelated focus change never rebuilds the buttons. Configured items
+// desktopId + position. Live state (active/minimized/count) is deliberately
+// excluded — delegates read that live through taskArea.stateFor — so an
+// unrelated focus change never rebuilds the buttons. name and icon are
+// excluded too: a single-window app's name is its WINDOW TITLE, churning on
+// every tab switch, and name/icon feed only tooltip/accessible text on the
+// icon-only buttons — a stale-until-membership-change title is accepted so
+// title churn never closes a popup or rebuilds the panel. Configured items
 // only get fresh identities on a re-decode, which is a real change, so they
 // compare by reference alone.
 function samePanelItems(a, b) {
@@ -32,8 +36,7 @@ function samePanelItems(a, b) {
         const x = a[i], y = b[i]
         if (x === y)
             continue
-        if (!x || !y || x.type !== "task" || y.type !== "task"
-            || x.desktopId !== y.desktopId || x.name !== y.name || x.icon !== y.icon)
+        if (!x || !y || x.type !== "task" || y.type !== "task" || x.desktopId !== y.desktopId)
             return false
     }
     return true
