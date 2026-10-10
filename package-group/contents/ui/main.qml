@@ -163,11 +163,22 @@ PlasmoidItem {
         id: stackPopup
         visualParent: root.activeButton
         location: Plasmoid.location
-        type: PlasmaCore.Dialog.PopupMenu
-        flags: Qt.Popup | Qt.FramelessWindowHint
+        // Match Plasma's own panel popups (systemtray, kicker submenus):
+        // AppletPopup type, no Qt.Popup flags, hideOnWindowDeactivate, and
+        // keyboard focus taken on show. Qt.Popup must stay off: on Wayland it
+        // turns the dialog into a grabbed xdg_popup, whose compositor grab
+        // never dismisses for presses on plasmashell's own surfaces (panel
+        // and desktop are the same Wayland client), so no outside click
+        // could close it — only Esc, which KWin forwards to grabbed popups.
+        type: PlasmaCore.Dialog.AppletPopup
         hideOnWindowDeactivate: true
         onVisibleChanged: {
-            if (!visible) {
+            if (visible) {
+                // Taking keyboard focus on show (systemtray pattern) makes
+                // keyboard navigation work and lets hideOnWindowDeactivate
+                // close the popup when another window takes the focus.
+                requestActivate()
+            } else {
                 activityRefresh.stop()
                 launcher.closeApplicationContextMenu()
                 if (root.activeButton) root.activeButton.forceActiveFocus()
