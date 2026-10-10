@@ -18,7 +18,6 @@ PlasmoidItem {
     readonly property bool onPanel: vertical || Plasmoid.formFactor === PlasmaCore.Types.Horizontal
     readonly property string displayName: Plasmoid.configuration.groupName || i18n("TLBStacks Group")
     readonly property var decoded: GroupItems.decode(Plasmoid.configuration.items)
-    property bool taskAreaAvailable: true
     readonly property var taskArea: taskLoader.status === Loader.Ready ? taskLoader.item : null
     // Configured items plus live task buttons for windows no group item claims.
     // Every task revision re-evaluates the concat into a fresh array; writing
@@ -240,7 +239,6 @@ PlasmoidItem {
         id: taskLoader
         active: Plasmoid.configuration.taskTrackingEnabled
         sourceComponent: Component { TaskArea { desktopIds: root.desktopIds } }
-        onStatusChanged: if (status === Loader.Error) root.taskAreaAvailable = false
     }
     fullRepresentation: Item {
         id: content

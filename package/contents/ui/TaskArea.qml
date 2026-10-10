@@ -34,7 +34,8 @@ Item {
         return index.unclaimedTasks().map(task => Object.assign({ type: "task" }, task))
     }
 
-    // {running, active, minimized, count}; safe defaults when nothing matches.
+    // {running, active, minimized, count, iconName}; safe defaults when
+    // nothing matches.
     function stateFor(desktopId) {
         return index.taskState(desktopId)
     }
