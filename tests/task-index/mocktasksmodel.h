@@ -11,14 +11,17 @@
 #include <vector>
 
 // Stand-in for Plasma's TasksModel: a tree of rows whose role names match the real model.
-// A row map may carry a "children" list of nested row maps (a group parent's windows).
+// A row map may carry a "children" list of nested row maps (a group parent's windows) —
+// the topology TasksModel's GroupApplications mode produces, which the action tests
+// drive (through the child rows), not just the count tests. "LastActivated" recency is
+// optional in the real model; TaskIndex falls back to window order when it is absent.
 class MockTasksModel : public QAbstractItemModel {
     Q_OBJECT
 public:
     explicit MockTasksModel(QObject *parent = nullptr) : QAbstractItemModel(parent)
     {
         const QStringList names{"IsWindow", "IsActive", "IsMinimized", "IsLauncher", "IsGroupParent",
-                                "LauncherUrl", "AppId", "display", "decoration"};
+                                "LauncherUrl", "AppId", "display", "decoration", "LastActivated"};
         int role = Qt::UserRole + 1;
         for (const QString &name : names) {
             m_roles.insert(role++, name.toUtf8());

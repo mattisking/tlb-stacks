@@ -1,6 +1,13 @@
+// TaskIndex coverage: per-app state, unclaimed tasks, and the four actions —
+// pinned against BOTH topologies the real grouped TasksModel produces: flat
+// standalone rows (one row per window) and grouped apps (a single group-parent
+// row with child window rows). request* on a group parent is a no-op upstream,
+// so grouped apps must be driven through their CHILD rows; requestNewInstance
+// is the exception — upstream passes group parents through.
 #include "../../src/taskindex.h"
 #include "mocktasksmodel.h"
 
+#include <QDateTime>
 #include <QDir>
 #include <QIcon>
 #include <QImage>
@@ -24,6 +31,27 @@ QVariantMap titledWindow(const QString &url, const QString &title, bool active =
 {
     QVariantMap row = window(url, active, minimized);
     row.insert("display", title);
+    return row;
+}
+
+// A group parent row wrapping `children` window maps (GroupApplications topology).
+QVariantMap groupRow(const QString &url, const QVariantList &children, bool active = false)
+{
+    return {{"IsGroupParent", true}, {"IsActive", active}, {"LauncherUrl", url}, {"children", children}};
+}
+
+// A window carrying "LastActivated" recency (optional in the real model).
+QVariantMap recentWindow(const QString &url, qint64 lastActivated, bool minimized = false)
+{
+    QVariantMap row = window(url, false, minimized);
+    row.insert("LastActivated", lastActivated);
+    return row;
+}
+
+QVariantMap recentWindow(const QString &url, const QDateTime &lastActivated)
+{
+    QVariantMap row = window(url);
+    row.insert("LastActivated", lastActivated);
     return row;
 }
 }
@@ -295,6 +323,133 @@ private slots:
     {
         QVERIFY(!index.newInstance(Konsole));
         QCOMPARE(model.newInstanceCalls(), QVariantList{});
+    }
+
+    // ---- Grouped topology (one group-parent row with child window rows) ----
+    // Every grouped test puts a dolphin row at top-level 0 so the konsole
+    // group sits at top-level 1: recorded child rows (0..2) then can never be
+    // confused with the group-parent row the pre-fix code would have driven.
+
+    void activateUnfocusedGroupedAppActivatesAChild()
+    {
+        const QVariantList children{window(KonsoleUrl, false, true), window(KonsoleUrl, false, true),
+                                    window(KonsoleUrl)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children)});
+        QVERIFY(index.activate(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{2}); // first visible child
+        QCOMPARE(model.toggleMinimizedCalls(), QVariantList{});
+    }
+
+    void activateFocusedGroupedAppTogglesTheActiveChild()
+    {
+        // The group parent carries IsActive too (the real model mirrors the
+        // focused child); the toggle must land on the ACTIVE CHILD.
+        const QVariantList children{window(KonsoleUrl, true), window(KonsoleUrl), window(KonsoleUrl)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children, true)});
+        QVERIFY(index.activate(Konsole));
+        QCOMPARE(model.toggleMinimizedCalls(), QVariantList{0});
+        QCOMPARE(model.activateCalls(), QVariantList{});
+    }
+
+    void activatePicksTheMostRecentlyActivatedVisibleWindow()
+    {
+        // "LastActivated" recency (when the model exposes it) beats window
+        // order; a minimized window is never the pick.
+        QVariantList children{recentWindow(KonsoleUrl, 300), recentWindow(KonsoleUrl, 100),
+                              recentWindow(KonsoleUrl, 200)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children)});
+        QVERIFY(index.activate(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{0});
+
+        children = QVariantList{recentWindow(KonsoleUrl, 200), recentWindow(KonsoleUrl, 999, true),
+                                 recentWindow(KonsoleUrl, 300)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children)});
+        model.clearCalls();
+        QVERIFY(index.activate(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{2});
+
+        // QDateTime recency reads the same way as numeric recency.
+        children = QVariantList{recentWindow(KonsoleUrl, 500), recentWindow(KonsoleUrl, 100),
+                                recentWindow(KonsoleUrl, QDateTime(QDate(2026, 1, 1), QTime(0, 0)))};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children)});
+        model.clearCalls();
+        QVERIFY(index.activate(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{2});
+    }
+
+    void cycleAdvancesToTheGroupedChildAfterTheActiveOne()
+    {
+        const QVariantList children{window(KonsoleUrl), window(KonsoleUrl, true), window(KonsoleUrl)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children, true)});
+        QVERIFY(index.cycle(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{2});
+    }
+
+    void cycleWrapsFromTheLastGroupedChild()
+    {
+        const QVariantList children{window(KonsoleUrl), window(KonsoleUrl), window(KonsoleUrl, true)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children, true)});
+        QVERIFY(index.cycle(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{0});
+    }
+
+    void cycleOnAGroupedAppWithoutAnActiveChildBehavesLikeActivate()
+    {
+        const QVariantList children{window(KonsoleUrl, false, true), window(KonsoleUrl, false, true),
+                                    window(KonsoleUrl)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children)});
+        QVERIFY(index.cycle(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{2}); // first visible child, like activate
+    }
+
+    void stepMovesForwardFromTheActiveGroupedChild()
+    {
+        const QVariantList children{window(KonsoleUrl), window(KonsoleUrl, true), window(KonsoleUrl)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children, true)});
+        index.step(Konsole, 1);
+        QCOMPARE(model.activateCalls(), QVariantList{2});
+    }
+
+    void stepWrapsBothWaysAcrossGroupedChildren()
+    {
+        QVariantList children{window(KonsoleUrl, true), window(KonsoleUrl), window(KonsoleUrl)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children, true)});
+        index.step(Konsole, -1);
+        QCOMPARE(model.activateCalls(), QVariantList{2});
+
+        children = QVariantList{window(KonsoleUrl), window(KonsoleUrl), window(KonsoleUrl, true)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children, true)});
+        model.clearCalls();
+        index.step(Konsole, 1);
+        QCOMPARE(model.activateCalls(), QVariantList{0});
+    }
+
+    void newInstanceOnAGroupedRowKeepsTheGroupParent()
+    {
+        // Upstream passes group parents through requestNewInstance (unlike the
+        // other request* actions), so the group row stays the target.
+        const QVariantList children{window(KonsoleUrl), window(KonsoleUrl)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children)});
+        QVERIFY(index.newInstance(Konsole));
+        QCOMPARE(model.newInstanceCalls(), QVariantList{1}); // the group-parent row
+    }
+
+    void groupedAndStandaloneRowsOperateAcrossAllWindows()
+    {
+        // Defensive topology the grouped model never produces: a group parent
+        // AND a standalone window with the same desktop ID. Every matched row
+        // contributes its windows — the group expands to children, the
+        // standalone row rides along — so no window is unreachable.
+        QVariantList children{window(KonsoleUrl, true), window(KonsoleUrl), window(KonsoleUrl)};
+        model.setRows({groupRow(KonsoleUrl, children, true), window(DolphinUrl), window(KonsoleUrl)});
+        QVERIFY(index.cycle(Konsole));
+        QCOMPARE(model.activateCalls(), QVariantList{1}); // cycles within the children
+
+        children = QVariantList{window(KonsoleUrl), window(KonsoleUrl), window(KonsoleUrl)};
+        model.setRows({groupRow(KonsoleUrl, children), window(DolphinUrl), window(KonsoleUrl, true)});
+        model.clearCalls();
+        index.step(Konsole, -1);
+        QCOMPARE(model.activateCalls(), QVariantList{2}); // the standalone window is a step target too
     }
 
     void unclaimedTasksListRowsMissingFromDesktopIds()
