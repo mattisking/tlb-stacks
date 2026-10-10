@@ -56,6 +56,11 @@ ColumnLayout {
     Flow {
         objectName: "chipFlow"
         Layout.fillWidth: true
+        // Live-render check: the count line ("Categories (N selected)") sat
+        // only a few pixels above the first chip row — tight enough to read
+        // as accidental crowding. An explicit top margin stacks with the
+        // column spacing so the gap reads as intended breathing room.
+        Layout.topMargin: Kirigami.Units.smallSpacing
         // The wrapped chips are content the bar must actually reserve: a
         // Flow's default Layout minimum is 0, so in a natural-height bar it
         // was the only compressible item — whenever the page could not fit

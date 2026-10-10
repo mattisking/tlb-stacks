@@ -284,4 +284,147 @@ Rectangle {
             return true
         }
     }
+
+    // ---- nested category filter (live-verification follow-up)
+    // A kwin-mcp live render of the shared editor left one open question:
+    // typing "game" into the category filter visibly changed the field, yet
+    // the chip cloud did not narrow — while tst_chipbar.qml's filter test
+    // on a STANDALONE bar passes. The difference between the two contexts
+    // is nesting: in the real editor the bar sits under StackSettingsEditor
+    // → Categories page (QQC2.ScrollView) → ColumnLayout → CategoryChipBar,
+    // and BOTH the Categories and the Activity pages instantiate a bar
+    // (identical "chipFilter" objectName on both fields). This instance
+    // drives the filter through exactly that real nesting; the standalone
+    // test cannot, because it never leaves the component's own scope.
+    StackSettingsEditor {
+        id: nestedEditor
+        // Just outside the window (the scene is at most 760 wide) but fully
+        // visible as far as the property chain is concerned — off-window
+        // items keep visible: true — so delegate `.visible` assertions read
+        // exactly like the live editor's, while no geometry ever overlaps
+        // the shared `editor` above (whose tests click by coordinates).
+        x: 800
+        width: 760; height: 560
+        settings: ({menuSource: "categories", applicationCategories: []})
+        // The same host-persistence loop the shared editor and the real
+        // hosts play: toggleCategory's emitted change must be fed back into
+        // `settings` for the bar's `selected` binding to observe it.
+        onSettingsEdited: changes => settings = Object.assign({}, settings, changes)
+        catalog: [
+            {desktopId: "code.desktop", name: "Visual Studio Code", icon: "code", categories: ["Development"]},
+            {desktopId: "kpat.desktop", name: "Patience", icon: "games-card", categories: ["ActionGame", "ArcadeGame"]},
+            {desktopId: "juk.desktop", name: "JuK", icon: "audio-player", categories: ["Audio"]}
+        ]
+    }
+    TestCase {
+        name: "StackSettingsEditorNestedFilter"
+        when: windowShown
+
+        // Decides the live question headlessly: if this passes, the filter
+        // binding is proven through the real editor nesting and the live
+        // anomaly was an input-tool artifact; if it fails, the nesting
+        // broke the binding and this failure IS the bug report.
+        function test_filter_narrows_chips_through_real_nesting() {
+            // Select a non-matching category first, through the public API:
+            // selected chips must survive any filter text (the bar's core
+            // invariant), and the selection must persist via the host loop.
+            nestedEditor.toggleCategory("Development", true)
+            compare(nestedEditor.settings.applicationCategories, ["Development"])
+            // Disambiguation: both category-filter pages carry a
+            // "chipFilter" field. findChild returns the first declared —
+            // the Categories page's, because the contents pages are
+            // declared applications, folder, categories, activity — but
+            // rather than trusting traversal order, each page's field is
+            // picked by its ancestor scroll view ("categoryScroll" and
+            // "activityScroll" are page-unique objectNames), and the
+            // first-declared fact is asserted on top so it stays documented.
+            const categoryField = filterFieldOf("categoryScroll")
+            const activityField = filterFieldOf("activityScroll")
+            verify(categoryField !== activityField)
+            verify(findChild(nestedEditor, "chipFilter") === categoryField)
+            // The bar that owns the field (its Repeater model binds to the
+            // field's text). Delegate presence is asserted per-bar, not per-
+            // editor: the OTHER page's bar lists the same category names
+            // with its own unfiltered model, so an editor-wide lookup would
+            // find its chips no matter what this bar's filter hides.
+            const bar = chipBarOf(categoryField)
+            const activityBar = chipBarOf(activityField)
+            // Baseline: with no filter text every chip is present.
+            verify(findLive(bar, "chip-Development") !== null)
+            verify(findLive(bar, "chip-ActionGame") !== null)
+            verify(findLive(bar, "chip-Audio") !== null)
+
+            categoryField.text = "game"
+
+            // Unselected non-matching chip: GONE from this bar (the Repeater
+            // destroyed the delegate — narrowed, not hidden), mirroring
+            // tst_chipbar's assertions.
+            verify(findLive(bar, "chip-Audio") === null)
+            // Unselected matching chip: present and visible through the
+            // whole nesting chain (the categories page is current).
+            const game = findLive(bar, "chip-ActionGame")
+            verify(game !== null)
+            verify(game.visible)
+            // Selected non-matching chip: still present — selected chips
+            // lead the flow and are never filtered out.
+            verify(findLive(bar, "chip-Development") !== null)
+            // The Activity page's bar is a separate instance with its own
+            // field: typing into the Categories page's field must not leak.
+            compare(activityField.text, "")
+            verify(findLive(activityBar, "chip-Audio") !== null)
+            // Model level, same invariants as tst_chipbar:
+            const model = bar.chipModel("game")
+            verify(model.indexOf("Audio") < 0)
+            verify(model.indexOf("ActionGame") >= 0)
+            verify(model.indexOf("Development") >= 0)
+            verify(model.indexOf("Development") < model.indexOf("ActionGame"))
+        }
+
+        // The "chipFilter" field of one category-filter page, identified by
+        // the page's scroll view (page-unique objectName) — robust against
+        // findChild traversal order and the duplicated objectName.
+        function filterFieldOf(scrollName) {
+            const scroll = findChild(nestedEditor, scrollName)
+            verify(scroll !== null)
+            const fields = []
+            collectNamed(nestedEditor, "chipFilter", fields)
+            compare(fields.length, 2)   // exactly the two pages' bars
+            const own = fields.filter(field => isDescendantOf(field, scroll))
+            compare(own.length, 1)
+            return own[0]
+        }
+        // The CategoryChipBar containing a given field: the first ancestor
+        // exposing chipModel (the bar's assertable model builder).
+        function chipBarOf(field) {
+            let item = field.parent
+            while (item !== null && typeof item.chipModel !== "function") item = item.parent
+            verify(item !== null)
+            return item
+        }
+        // Live visual children only: Repeater model resets can leave removed
+        // delegates unparented-but-findable, so presence and absence must be
+        // checked through a fresh traversal (same helper as tst_chipbar.qml).
+        function findLive(item, name) {
+            if (item.objectName === name) return item
+            const kids = item.children
+            for (let i = 0; i < kids.length; i++) {
+                const found = findLive(kids[i], name)
+                if (found) return found
+            }
+            return null
+        }
+        function collectNamed(item, name, acc) {
+            if (item.objectName === name) acc.push(item)
+            const kids = item.children
+            for (let i = 0; i < kids.length; i++) collectNamed(kids[i], name, acc)
+        }
+        function isDescendantOf(item, ancestor) {
+            let current = item
+            while (current !== null) {
+                if (current === ancestor) return true
+                current = current.parent
+            }
+            return false
+        }
+    }
 }
