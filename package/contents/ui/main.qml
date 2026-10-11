@@ -5,6 +5,7 @@ import QtQuick.Window
 import "IconOverrides.js" as IconOverrides
 import "ApplicationCategories.js" as Categories
 import QtQuick.Layouts
+import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents
 import org.kde.plasma.plasmoid
 import com.mattphilmon.tlbstacks
@@ -12,6 +13,9 @@ import com.mattphilmon.tlbstacks
 PlasmoidItem {
     id: root
     readonly property var menuLauncher: launcher
+    // Live window bridge (null when its module is unavailable); the shared
+    // menu delegates and the panel indicator degrade without it.
+    readonly property var taskArea: taskLoader.status === Loader.Ready ? taskLoader.item : null
 
     Plasmoid.icon: Plasmoid.configuration.groupIcon || "applications-all"
 
@@ -35,6 +39,15 @@ PlasmoidItem {
             Plasmoid.configuration.applications = remaining
             if (remaining.length === 0) root.expanded = false
         }
+    }
+
+    // TaskArea brings the live window database for the shared menu delegates
+    // and the panel indicator (always on — the standalone has no task-tracking
+    // config, per spec); loading it dynamically degrades to launcher-only
+    // mode wherever its module is unavailable.
+    Loader {
+        id: taskLoader
+        sourceComponent: Component { TaskArea { desktopIds: root.desktopIds } }
     }
 
     readonly property var applicationIcons: IconOverrides.parse(Plasmoid.configuration.applicationIcons)
@@ -76,6 +89,27 @@ PlasmoidItem {
     property var applications: menuSource === "categories"
         ? Categories.matching(categoryApplications, selectedCategories).map(app => app.desktopId)
         : Plasmoid.configuration.applications
+    // Desktop IDs this widget claims: its applications list (already the
+    // category matches in categories mode) plus materialized activity
+    // entries. Custom launcher commands and separators are never collected —
+    // commands stay launch-only, so their windows surface as unclaimed tasks
+    // in groups instead.
+    readonly property var desktopIds: {
+        const commands = StackMembers.parseCustomLaunchers(Plasmoid.configuration.customLaunchers)
+        const ids = (applications || []).filter(id => id && !commands[id] && !StackMembers.isSeparator(id))
+        if (menuSource === "activity")
+            for (const entry of activitySource.entries)
+                if (entry.id && entry.isSeparator !== true) ids.push(entry.id)
+        return ids
+    }
+    // True when any member app is running; touching taskArea.revision keeps
+    // it fresh, like the group's stack-button indicator.
+    readonly property bool memberRunning: {
+        if (!taskArea) return false
+        taskArea.revision
+        for (const id of desktopIds) if (taskArea.stateFor(id).running) return true
+        return false
+    }
     readonly property string activationContextKey: JSON.stringify([menuSource, applications])
     onActivationContextKeyChanged: {
         if (launcher) launcher.invalidateActivations()
@@ -91,7 +125,7 @@ PlasmoidItem {
         refreshCategoryApplications()
         refreshActivity()
     }
-    Component.onCompleted: { refreshCategoryApplications(); refreshActivity(); attachPanelHover() }
+    Component.onCompleted: { refreshCategoryApplications(); refreshActivity(); attachPanelHover(); attachRunningDot() }
 
     // Attach to Plasma's existing panel button so its sizing, icon and
     // click/keyboard behavior stay managed by the shell.
@@ -105,10 +139,34 @@ PlasmoidItem {
         if (panelHover) panelHover.destroy()
         panelHover = panelHoverComponent.createObject(item)
     }
-    onCompactRepresentationItemChanged: attachPanelHover()
+    onCompactRepresentationItemChanged: { attachPanelHover(); attachRunningDot() }
     Component {
         id: panelHoverComponent
         HoverHandler {}
+    }
+    // The panel button's running-member dot, attached to Plasma's compact
+    // item like the hover handler above: dimmed while any member app runs,
+    // like the group's stack buttons.
+    property var runningDot: null
+    function attachRunningDot() {
+        const item = root.compactRepresentationItem
+        if (!item || (runningDot && runningDot.parent === item)) return
+        if (runningDot) runningDot.destroy()
+        runningDot = runningDotComponent.createObject(item)
+    }
+    Component {
+        id: runningDotComponent
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: Math.max(1, Math.round(parent.height / 24))
+            width: Math.max(3, Math.round(parent.height / 10))
+            height: width
+            radius: width / 2
+            visible: root.memberRunning
+            color: Kirigami.Theme.highlightColor
+            opacity: 0.7
+        }
     }
     onPanelHoveredChanged: {
         if (panelHovered && !expanded) {
@@ -255,6 +313,7 @@ PlasmoidItem {
         ApplicationMenu {
             id: applicationMenu
             launcher: root.menuLauncher
+            taskArea: root.taskArea
             entries: root.visibleEntries
             iconsOnly: root.iconsOnly
             iconSize: root.menuIconSize

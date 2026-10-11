@@ -45,15 +45,15 @@
   - `Q_PROPERTY(QStringList desktopIds READ desktopIds WRITE setDesktopIds NOTIFY changed)`
   - `Q_PROPERTY(int revision READ revision NOTIFY changed)` — bump on every model change and property swap; QML bindings reference it to refresh.
   - `Q_INVOKABLE QVariantMap taskState(const QString &desktopId) const` → `{running: bool, active: bool, minimized: bool, count: int, iconName: QString}` (defaults: all false / `0` / `"application-x-executable"` when not running).
-- Role names read by name via `model->roleNames()`: `isWindow`, `isActive`, `isMinimized`, `isLauncher`, `IsGroupParent`, `LauncherUrl`, `AppId`, `display`, `icon`. Missing roles are tolerated (treated absent).
+- Role names read by name via `model->roleNames()`, verified against plasma-workspace source (`libtaskmanager/abstracttasksmodel.h`): `IsWindow`, `IsActive`, `IsMinimized`, `IsLauncher`, `IsGroupParent`, `LauncherUrl`, `AppId`, `display`, and `decoration` (Qt::DecorationRole — the icon role; there is no `icon` role). Missing roles are tolerated (treated absent).
 - Test mock: `MockTasksModel` in `tests/task-index/mocktasksmodel.h` with invokable `setRows(QVariantList)` where each row map carries those role names as keys; also invokables `activateCalls`, `Q_INVOKABLE void requestActivate(const QModelIndex &)`, `requestToggleMinimized(const QModelIndex &)`, `requestNewInstance(const QModelIndex &)` recording calls (mocks the real `TasksModel` invokables for Task 2).
 
 - [ ] **Step 1: Write failing tests** in `tests/task-index/tst_taskindex.cpp` for:
   1. `taskState("org.kde.konsole.desktop")` on empty model → `{running:false, active:false, minimized:false, count:0}`.
-  2. One window row (`isWindow:true`, `LauncherUrl:"file:///usr/share/applications/org.kde.konsole.desktop"`, `isActive:true`) → `{running:true, active:true, count:1}`.
-  3. Grouped app: two rows, one `IsGroupParent:true` group row + one window row → single `count` aggregate from group parent row (`count` from window rows under it is Task 2's concern if needed; phase 1: match **group-parent and standalone-window rows only**, i.e. rows where `isWindow && !IsGroupParent`, or `IsGroupParent`).
+  2. One window row (`IsWindow:true`, `LauncherUrl:"file:///usr/share/applications/org.kde.konsole.desktop"`, `IsActive:true`) → `{running:true, active:true, count:1}`.
+  3. Grouped app: two rows, one `IsGroupParent:true` group row + one window row → single `count` aggregate from group parent row (real TasksModel grouping is hierarchical — group parent rows with child window rows; `IsGroupParent` is the group-parent boolean) (`count` from window rows under it is Task 2's concern if needed; phase 1: match **group-parent and standalone-window rows only**, i.e. rows where `IsWindow && !IsGroupParent`, or `IsGroupParent`).
   4. `LauncherUrl` normalization: `"applications:org.kde.konsole.desktop"`, `"file:///usr/share/applications/org.kde.konsole.desktop"`, `"/usr/share/applications/org.kde.konsole.desktop"`, and a URL with `.desktop` stripped-in-desktopIds form (`desktopIds` entries are desktop-file IDs like `org.kde.konsole.desktop`, exactly as `GroupItems.js:26` stores them) all match the same desktop ID. Rows with an empty/unresolvable `LauncherUrl` but `AppId == desktopId` also match.
-  5. Launcher-only row (`isLauncher:true`, `isWindow:false`) never counts as running.
+  5. Launcher-only row (`IsLauncher:true`, `IsWindow:false`) never counts as running.
   6. Revision bumps on `rowsInserted`, `rowsRemoved`, `dataChanged`, `modelReset`; `taskState` under an appended row via new `setRows` reflects the change (query `revision` before/after).
   7. Swapping `model`/`desktopIds` properties bumps revision; old rows no longer match.
 
@@ -80,7 +80,7 @@ Expected: FAIL — taskindex.h does not exist (compile error).
 **Interfaces:**
 - Produces:
   - `Q_INVOKABLE QVariantList unclaimedTasks() const` → list of `{desktopId, name, icon, active, minimized, count}` for every group-parent/window row whose normalized desktop ID is **not** in `desktopIds`, in model order.
-  - `Q_INVOKABLE bool activate(const QString &desktopId)` — no matching rows → `false` (caller launches). Exactly one matched row → `requestActivate` it. Multiple → `requestActivate` the first non-minimized, else the first. Any matched row `isActive` → `requestToggleMinimized` on that row (click-on-focused minimizes).
+  - `Q_INVOKABLE bool activate(const QString &desktopId)` — no matching rows → `false` (caller launches). Exactly one matched row → `requestActivate` it. Multiple → `requestActivate` the first non-minimized, else the first. Any matched row `IsActive` → `requestToggleMinimized` on that row (click-on-focused minimizes).
   - `Q_INVOKABLE bool cycle(const QString &desktopId)` — matched rows with active window → `requestActivate` the row after the active one (wrap); no active window → behave as `activate`. No rows → `false`.
   - `Q_INVOKABLE void step(const QString &desktopId, int direction)` — `requestActivate` the row `direction` steps from the active one (wrap; if none active, first row). No-op when no rows.
   - `Q_INVOKABLE bool newInstance(const QString &desktopId)` — `requestNewInstance` first matched row; `false` when no rows.
@@ -175,6 +175,16 @@ Note: `TaskArea` itself cannot run in the offscreen CI env (no plasma-workspace)
 - [ ] **Step 2: Run the full gate locally** — `scripts/ci-run.sh`; expected: ALL CHECKS PASSED (includes every new suite).
 - [ ] **Step 3: Update docs** — README gains a short "Running windows" section describing click matrix, append zone, and the degraded mode; FEATURE_TRACKER marks phase 1 done with future-phase list; TESTING_AND_STATUS documents the two suites and the manual checklist: launch → activate → minimize → grouped cycling → scroll stepping → middle-click new instance → append on launch / disappear on close → popup running dots → standalone button dot → (degradation) uninstall plasma-workspace QML module presence can't be tested on the dev box, so verify by temporarily renaming the installed `org.kde/taskmanager` dir and confirming the widget still loads as a launcher, then restore.
 - [ ] **Step 4: Commit** `git commit -m "feat: task tracking docs, CI wiring, and feel-test checklist"`
+
+---
+
+### Task 7: Hover-opened stack popup must close on outside click
+
+Appended after plan approval from user report (2026-10-09, mid-execution): with the group widget on the panel, hover a stack so its popup opens via the hover timer, then click elsewhere (desktop, another window, panel). Expected: popup closes and the click reaches its target. Actual: the click is swallowed (mouse is "captured") and the popup stays open — only Esc closes it. Not introduced by Tasks 1–5 (pre-existing `stackPopup` lifecycle); phase-1 scope because task management makes popup interactions far more frequent.
+
+**Files:** `package-group/contents/ui/main.qml` (stackPopup `PlasmaCore.Dialog` ~lines 163-176 pre-Task-4, `hoverOpen` Timer), possibly `package-group/contents/ui/GroupStackContent.qml`; standalone `package/contents/ui/main.qml` may share the same popup lifecycle — check and fix both if the same defect exists.
+
+**Approach:** diagnose first (reproduce on the dev box; observe Dialog flags/type/location — `Qt.Popup` grabs + `hideOnWindowDeactivate` on Wayland is the suspected interaction); fix so an outside click dismisses the popup and passes through where the platform allows. Keep click-opened popups' toggle behavior intact. Verify via the manual checklist addition: hover-open → click elsewhere → closes without Esc.
 
 ---
 

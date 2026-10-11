@@ -3,7 +3,7 @@
 [Project guide](README.md) · [Feature tracker](FEATURE_TRACKER.md)
 
 
-**Updated:** October 5, 2026. Covers the current working implementation, not just
+**Updated:** October 9, 2026. Covers the current working implementation, not just
 Git HEAD. The October 5 source checkpoint removes generated build products from
 version control while keeping local build files on disk. `.gitignore` excludes
 build/test output, local `lib64` staging, and Python caches. Source, tests, docs,
@@ -42,12 +42,17 @@ variables below apply only to that terminal; do not use it to launch the desktop
 Python profile tests require Python 3. C++ tests need the same Qt/KDE development
 packages as the plugin; see [Deployment](DEPLOYMENT.md).
 
-`scripts/ci-run.sh` runs the same sequence in bash from the repo root: it accepts
+`scripts/ci-run.sh` runs the full gate in bash from the repo root: it accepts
 an optional build directory (relative or absolute) and resolves the Qt6 test
 runner across distributions (Fedora's `qmltestrunner-qt6`, then `qmltestrunner`
 and `/usr/lib/qt6/bin/qmltestrunner` on Debian/Ubuntu; override with
-`QML_TEST_RUNNER`). `tests/test_release_scripts.sh` adds regression coverage for
-the release scripts and also runs in CI after the gate.
+`QML_TEST_RUNNER`). After building the plugin it builds and runs both native
+QtTest suites offscreen — `tests/native-menus` and the task-tracking
+`tests/task-index` — then the QML suites (`folder-source`, `categories`,
+`navigation`, `icons`, `stack-editor`, and `stack-group-runtime`, which includes
+the `tst_tasks`/`tst_taskmenu` task cases), then the Python profile tests.
+`tests/test_release_scripts.sh` adds regression coverage for the release
+scripts and also runs in CI after the gate.
 
 ```powershell
 cmake -S tests/native-menus -B build-tests/native-menus
@@ -55,6 +60,10 @@ cmake --build build-tests/native-menus
 $env:QT_QPA_PLATFORM = 'offscreen'
 $env:QT_QUICK_BACKEND = 'software'
 ./build-tests/native-menus/folder-popup-test
+
+cmake -S tests/task-index -B build-tests/task-index
+cmake --build build-tests/task-index
+./build-tests/task-index/task-index-test
 
 # Build the plugin first so the tests load current native types.
 cmake -S . -B build
@@ -76,6 +85,7 @@ No automated test here should trash real user files or restart Plasma.
 | Suite | Current responsibility |
 |---|---|
 | `tests/native-menus` | Native cascade/bridge lifecycle, pointer and keyboard handoffs, async loading, capabilities, right-click dispatch, async profiles, reader bounds |
+| `tests/task-index` | TaskIndex against a mock tasks model: per-app window state, the ownership rule, append-zone filtering, activate/cycle/step/new-instance |
 | `tests/folder-source` | Real FolderSource data reaching QML, filtering and file capabilities |
 | `tests/categories` | Category matching, deduplication, ordering |
 | `tests/navigation` | Shared root selection, hover handoff, wrapping, empty/stale indexes |
@@ -214,3 +224,60 @@ now included in the shared CI script as well.
 The full `scripts/ci-run.sh` gate passed locally after this correction. Run this
 complete gate before pushing schema changes; focused editor/profile suites alone
 do not cover the navigation suite's compatibility expectations.
+
+### Task tracking verification — October 9, 2026
+
+Running-window tracking ([F-017](FEATURE_TRACKER.md#f-017)) is covered by two
+suites in the gate:
+
+- `tests/task-index` (native QtTest, now built and run by `scripts/ci-run.sh`
+  beside `tests/native-menus`): TaskIndex window matching and per-app state
+  against a mock tasks model — the ownership rule, append-zone filtering of
+  unclaimed windows (including windows with no resolvable desktop entry), and
+  activate/cycle/step/new-instance, including the request invokables the real
+  TasksModel provides.
+- `tst_tasks.qml` and `tst_taskmenu.qml` in `tests/stack-group-runtime` (QML,
+  offscreen, already run by the gate's existing suite line): the panel
+  click-matrix decisions and panel-button identity across task revision
+  bumps, plus popup running state with activate-on-click and
+  middle-click-new-instance — including exact pre-change behavior whenever
+  the task area is null (tracking off or degraded).
+
+Automated passes do not confirm the live desktop: the click matrix and append
+zone need a compositor. Work through the manual feel-test checklist below in
+the environment of record (Fedora + Wayland) on the installed widget — a
+TLBStacks Group containing application launchers and at least one stack, plus
+at least one standalone stack:
+
+1. **Launch:** left-click an idle configured application; it starts, and its
+   button gains the running indicator.
+2. **Activate:** focus another window, then left-click the application's
+   button; its most recent window activates.
+3. **Minimize:** left-click again while that single window is focused; it
+   minimizes.
+4. **Grouped cycling:** middle-click the application for a second window,
+   then left-click while it is focused; the click cycles to the next window
+   instead of minimizing.
+5. **Scroll stepping:** scroll the wheel over the application's button; each
+   notch steps to its next or previous window.
+6. **Middle-click new instance:** middle-click a running application; a new
+   window opens. Middle-click an idle application; it launches.
+7. **Append zone:** launch an application that is not configured in the
+   group; its button appears in the append zone, and disappears again once
+   its last window closes.
+8. **Popup running dots:** open a stack containing a running application; its
+   entry shows the running dot (highlighted while active); clicking the entry
+   activates the window; middle-clicking it opens a new one.
+9. **Standalone dot:** a standalone TLBStacks stack whose member application
+   runs shows the running dot on its panel button.
+10. **Degradation check:** the dev box cannot uninstall the plasma-workspace
+    QML module, so simulate its absence instead — temporarily rename the
+    installed `org.kde/taskmanager` QML directory (Fedora:
+    `/usr/lib64/qt6/qml/org/kde/taskmanager`) with root rights, restart Plasma
+    (`systemctl --user restart plasma-plasmashell.service`), and confirm both
+    widgets still load and behave as pure launchers: no running dots, no
+    append zone, and left-click launches. Rename the directory back and
+    restart Plasma again to restore task tracking.
+
+Record each step's result here once run; keep failures as bugs with a
+reproducible case rather than reopening the feature.

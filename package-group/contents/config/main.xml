@@ -13,5 +13,9 @@
             <label>Ordered group entries</label>
             <default>{"version":1,"items":[]}</default>
         </entry>
+        <entry name="taskTrackingEnabled" type="Bool">
+            <label>Show running windows (task tracking)</label>
+            <default>true</default>
+        </entry>
     </group>
 </kcfg>

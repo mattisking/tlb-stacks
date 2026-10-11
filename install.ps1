@@ -4,6 +4,7 @@ param(
     [string] $InstallPrefix = (Join-Path $HOME '.local'),
     [string] $QmlDirectory = 'lib64/qt6/qml',
     [switch] $WithGroup,
+    [switch] $SkipGroup,
     [switch] $NoRestart
 )
 
@@ -40,9 +41,12 @@ if ((Get-FileHash $installedPlugin).Hash -ne (Get-FileHash $builtPlugin).Hash) {
 }
 Write-Host "Verified plugin: $installedPlugin"
 
-# Group development is opt-in; existing stacks keep their package and settings.
+# The group widget ships the task-management features, so it deploys by default;
+# -SkipGroup omits it (e.g. a panel that only uses the standalone widget).
+# -WithGroup is accepted as a legacy no-op now that the group is the default.
+if ($WithGroup -and $SkipGroup) { throw 'Pass only one of -WithGroup / -SkipGroup.' }
 $packageNames = @('package')
-if ($WithGroup) { $packageNames += 'package-group' }
+if (-not $SkipGroup) { $packageNames += 'package-group' }
 $dataRoot = if ($env:XDG_DATA_HOME) { $env:XDG_DATA_HOME } else { Join-Path $HOME '.local/share' }
 foreach ($packageName in $packageNames) {
     $package = Join-Path $PSScriptRoot $packageName

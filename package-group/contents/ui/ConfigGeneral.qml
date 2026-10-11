@@ -92,6 +92,8 @@ ColumnLayout {
     property string cfg_groupNameDefault: ""
     property string cfg_items: '{"version":1,"items":[]}'
     property string cfg_itemsDefault: '{"version":1,"items":[]}'
+    property bool cfg_taskTrackingEnabled: true
+    property bool cfg_taskTrackingEnabledDefault: true
     onCfg_itemsChanged: cancelItemDrag()
     readonly property var decoded: GroupItems.decode(cfg_items)
     property var catalog: []
@@ -617,6 +619,12 @@ ColumnLayout {
                         automaticLabel: i18n("Compact automatic")
                         value: root.cfg_panelIconSize
                         onEdited: size => root.cfg_panelIconSize = size
+                    }
+                    PlasmaComponents.CheckBox {
+                        Kirigami.FormData.label: i18n("Task tracking:")
+                        text: i18n("Show running windows (task tracking)")
+                        checked: root.cfg_taskTrackingEnabled
+                        onToggled: root.cfg_taskTrackingEnabled = checked
                     }
                     PlasmaComponents.Label {
                         Layout.fillWidth: true

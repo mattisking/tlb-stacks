@@ -2,7 +2,7 @@
 
 [Project guide](README.md) · [Current model](STACK_ENTRY_MODEL.md) · [Verification](TESTING_AND_STATUS.md) · [Group checkpoints](STACK_GROUPS.md)
 
-**Reviewed:** October 8, 2026. This tracks requested work, not a promise to implement
+**Reviewed:** October 9, 2026. This tracks requested work, not a promise to implement
 all historical ideas. IDs and anchors are retained for existing links. Completed
 features belong in the implementation docs; test gaps belong in the verification
 record. Desktop acceptance does not mean every optional test combination was run.
@@ -13,6 +13,7 @@ record. Desktop acceptance does not mean every optional test combination was run
 |---|---|---|
 | [F-003](#f-003) | Drag ordering and editor controls | Dragging accepted; selected-row arrow polish awaiting desktop test |
 | [F-015](#f-015) | Stack Groups | Delivered increments accepted; panel icon defaults desktop-accepted |
+| [F-017](#f-017) | Running-window task tracking | Phase 1 implemented; manual feel-test checklist pending |
 | [F-009](#f-009) | App arguments and custom/terminal commands | Custom executables and application arguments desktop-accepted |
 | [M-002](#m-002) | Release maintenance | CI fixed; maintainer release checklist still planned |
 | [F-002](#f-002) | Original launcher/mixed-folder request | Superseded by F-015; mixed folders deferred |
@@ -76,8 +77,10 @@ internal foundation, not a public plugin API. See [entry model](STACK_ENTRY_MODE
 provides the chosen collection of stacks and direct launchers, alongside the
 existing standalone widget. A separate competing launcher container is not queued.
 
-A full panel/task-manager replacement remains **deferred**, not part of current
-scope. Extending or forking Icons Only Task Manager was explored, not selected.
+Optional running-window tracking is now part of Stack Groups
+([F-017](#f-017)); a full panel/task-manager replacement remains **deferred**,
+not part of current scope. Extending or forking Icons Only Task Manager was
+explored, not selected.
 
 <a id="f-006"></a>
 ## F-006 — Application actions and recent documents
@@ -180,7 +183,8 @@ See [portable profiles](DEPLOYMENT.md#portable-menu-profiles).
 
 **Delivered within F-015; no separate implementation pending.** Stack Groups hosts
 search-added application launchers alongside popup stacks, with custom labels/icons.
-Icons Only Task Manager remains responsible for running windows.
+These launchers merge with their running windows through [F-017](#f-017)
+task tracking; Icons Only Task Manager remains an alternative, not a requirement.
 
 The alternative of one standalone widget instance per direct launcher was not
 selected and is not queued. Argument customization belongs to F-009.
@@ -215,6 +219,31 @@ requiring the right-click handoff are obsolete.
 
 Future inheritance belongs to F-015; current arrow polish belongs to F-003.
 See [configuration design](CONFIGURATION_DESIGN.md).
+
+<a id="f-017"></a>
+## F-017 — Running-window task tracking
+
+**Phase 1 implemented; manual feel-test checklist pending.** TLBStacks Groups
+shows and switches running windows: configured launchers merge with their own
+windows, an append zone collects unclaimed running applications, panel buttons
+follow the click matrix (launch or activate, minimize on a focused single
+window, cycle on a focused group of windows, middle-click for a new window,
+wheel stepping), and stack menus show running state and activate windows on
+click. Standalone stacks gain the panel running-member dot and the same popup
+running state. Tracking is optional per group (`taskTrackingEnabled`) and
+degrades to launcher-only wherever Plasma's taskmanager module is unavailable.
+Automated suites are recorded in the [verification record](TESTING_AND_STATUS.md);
+desktop acceptance awaits the pending manual feel-test checklist there.
+
+Future phases, in rough order — candidates from the task-tracking design, not
+commitments:
+
+1. Attention states (badge/flash) once live state flows to delegates.
+2. Task context menus (close, minimize/maximize, move to desktop).
+3. Drag-to-pin: drop an appended task into the group as a persisted
+   application item; drag reordering of appended tasks.
+4. Virtual desktop / activity / screen filters, mirroring Icons-Only options.
+5. Hover previews (PipeWire thumbnails) — highest effort, last.
 
 <a id="m-001"></a>
 ## M-001 — Clean source-control checkpoint

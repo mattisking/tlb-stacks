@@ -1,6 +1,7 @@
 #include "launcher.h"
 #include "activitysource.h"
 #include "foldersource.h"
+#include "taskindex.h"
 
 #include <QQmlExtensionPlugin>
 #include <qqml.h>
@@ -16,6 +17,7 @@ public:
         qmlRegisterType<FolderSource>(uri, 1, 0, "FolderSource");
         qmlRegisterType<ActivitySource>(uri, 1, 0, "ActivitySource");
         qmlRegisterType<Launcher>(uri, 1, 0, "Launcher");
+        qmlRegisterType<TaskIndex>(uri, 1, 0, "TaskIndex");
     }
 };
 

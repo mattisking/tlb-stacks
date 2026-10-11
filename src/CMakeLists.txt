@@ -29,6 +29,9 @@ set_source_files_properties("../package/contents/ui/MenuNavigation.js" PROPERTIE
     QT_RESOURCE_ALIAS "MenuNavigation.js" QT_QML_SKIP_CACHEGEN TRUE)
 set_source_files_properties("../package/contents/ui/IconOverrides.js" PROPERTIES
     QT_RESOURCE_ALIAS "IconOverrides.js" QT_QML_SKIP_CACHEGEN TRUE)
+# One source of task-area behavior, available to both widget packages.
+set_source_files_properties("../package/contents/ui/TaskArea.qml" PROPERTIES
+    QT_RESOURCE_ALIAS "TaskArea.qml" QT_QML_SKIP_CACHEGEN TRUE)
 qt_add_qml_module(tlbstacksplugin
     URI com.mattphilmon.tlbstacks
     VERSION 1.0
@@ -56,6 +59,7 @@ qt_add_qml_module(tlbstacksplugin
         ../package/contents/ui/StackToolTip.qml
         ../package/contents/ui/MenuNavigation.js
         ../package/contents/ui/IconOverrides.js
+        ../package/contents/ui/TaskArea.qml
 
     SOURCES
         activitysource.cpp
@@ -65,6 +69,8 @@ qt_add_qml_module(tlbstacksplugin
         foldersource.cpp
         foldersource.h
         stackentry.h
+        taskindex.cpp
+        taskindex.h
         folderpopup.cpp
         folderpopup.h
         launcher.cpp

@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.24)
+project(TaskIndexTests LANGUAGES CXX)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_CXX_STANDARD 20)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Test)
+add_executable(task-index-test tst_taskindex.cpp mocktasksmodel.h ../../src/taskindex.cpp)
+target_link_libraries(task-index-test PRIVATE Qt6::Core Qt6::Gui Qt6::Test)
