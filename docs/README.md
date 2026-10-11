@@ -2,9 +2,11 @@
 
 [Project home](../README.md) · [Feature tracker](FEATURE_TRACKER.md) · [Testing status](TESTING_AND_STATUS.md)
 
-**Updated:** October 5, 2026. This is the entry point for current project work.
-Individual Plasma stack widgets remain the focus. Selected Applications, Categories,
-and Live Folder share navigation rules, with source-specific content and actions.
+**Updated:** October 11, 2026. This is the entry point for current project work.
+**TLBStacks Groups** — launcher bar plus running-window management — is the
+primary widget; standalone stack widgets remain fully supported for a single
+stack. Selected Applications, Categories, and Live Folder share navigation
+rules, with source-specific content and actions.
 
 [Contribution guidance](../CONTRIBUTING.md) · [Third-party notices](../THIRD_PARTY_NOTICES.md)
 
@@ -13,7 +15,7 @@ and Live Folder share navigation rules, with source-specific content and actions
 | Need | Read |
 |---|---|
 | Build, install, or diagnose a stale plugin | [Deployment](DEPLOYMENT.md) and [import-path troubleshooting](DEPLOYMENT.md#import-path-and-restart-troubleshooting) |
-| Develop or test the optional group widget | [Stack Groups checkpoints](STACK_GROUPS.md) |
+| Develop or test the group widget | [Stack Groups checkpoints](STACK_GROUPS.md) |
 | Understand entries and source-specific actions | [Entry model](STACK_ENTRY_MODEL.md#item-description) |
 | Understand keyboard and pointer behavior | [Navigation contract](STACK_ENTRY_MODEL.md#navigation-contract) |
 | Debug with VS Code | [Debugging](DEBUGGING.md) |

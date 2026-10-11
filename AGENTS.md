@@ -15,8 +15,10 @@ Schemas and `cfg_*` contracts are frozen; Apply/Cancel staging belongs to Plasma
 - Extra suites use `QML_IMPORT_PATH="$PWD/build/ci/qml"` (NOT `build/qml` — the
   module lands in `build/ci/qml`; `docs/TESTING_AND_STATUS.md`'s snippet is for
   its own `-B build` flow).
-- Dev install: `pwsh install.ps1 -WithGroup` (restarts plasmashell; `-NoRestart`
-  skips). Group widget is opt-in everywhere.
+- Dev install: `pwsh install.ps1` (restarts plasmashell; `-NoRestart` skips).
+  Installs both widgets by default; `-SkipGroup` excludes the group widget
+  (`-WithGroup` is a legacy no-op). Distribution packaging still excludes the
+  group pending release readiness.
 
 ## kwin-mcp live-render verification rig
 

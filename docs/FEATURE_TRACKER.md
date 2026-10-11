@@ -184,7 +184,8 @@ See [portable profiles](DEPLOYMENT.md#portable-menu-profiles).
 **Delivered within F-015; no separate implementation pending.** Stack Groups hosts
 search-added application launchers alongside popup stacks, with custom labels/icons.
 These launchers merge with their running windows through [F-017](#f-017)
-task tracking; Icons Only Task Manager remains an alternative, not a requirement.
+task tracking, which makes a group a self-contained alternative to a separate
+task manager widget; tracking can also be disabled per group.
 
 The alternative of one standalone widget instance per direct launcher was not
 selected and is not queued. Argument customization belongs to F-009.
@@ -192,7 +193,7 @@ selected and is not queued. Argument customization belongs to F-009.
 <a id="f-015"></a>
 ## F-015 — Stack Groups
 
-**Delivered increments desktop-accepted; experimental widget remains opt-in.**
+**Delivered and desktop-accepted; installed by default with the developer installer.**
 Includes direct launchers, all four stack sources, ordering, shared settings,
 individual-stack/group import/export, launcher appearance, member icon editing,
 and dragging. See [checkpoints and remaining test combinations](STACK_GROUPS.md).

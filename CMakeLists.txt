@@ -36,7 +36,7 @@ endif()
 install(FILES LICENSE DESTINATION "${KDE_INSTALL_DATADIR}/licenses/tlb-stacks")
 
 # Experimental group shell: intentionally excluded from normal release packages.
-option(TLB_INSTALL_GROUP "Install the experimental TLBStacks Group widget" OFF)
+option(TLB_INSTALL_GROUP "Install the TLBStacks Group widget (distribution packaging; the developer installer deploys it regardless)" OFF)
 if(TLB_INSTALL_GROUP)
     file(READ "${CMAKE_CURRENT_SOURCE_DIR}/package-group/metadata.json" tlb_group_metadata)
     string(JSON tlb_group_version GET "${tlb_group_metadata}" KPlugin Version)

@@ -1,13 +1,18 @@
 <h1><img src="docs/images/logo.png" width="64" height="64" alt="TLBStacks logo" align="absmiddle">&nbsp;TLBStacks</h1>
 
-**Application launchers, configurable stacks, and live menus for KDE Plasma 6.**
+**Application launchers, configurable stacks, live menus, and task management for KDE Plasma 6.**
 
-TLBStacks keeps related applications and files together without filling your
-Plasma panel with individual widgets.
+**TLBStacks Groups** is the main widget: one launcher bar containing individual
+application launchers, any mixture of stacks, and — enabled by default —
+running-window management, so it can replace a separate task manager widget
+entirely. It is a different option from Plasma's **Icons Only Task Manager**,
+not a companion to it: launchers merge with their own windows, and windows of
+applications outside the group appear in an append zone while they run.
+Prefer a pure launcher bar or your existing task manager? Task tracking can be
+switched off per group.
 
-Use a standalone **TLBStacks** widget for a single application stack, or use
-**TLBStacks Groups** to build a launcher bar containing both individual
-application launchers and multiple stacks.
+The standalone **TLBStacks** widget remains available when you want a single
+stack on the panel without the rest.
 
 A TLBStacks Group can combine entries such as:
 
@@ -18,11 +23,7 @@ A TLBStacks Group can combine entries such as:
 - live folder stacks
 
 Each stack behaves the same way whether it is used by itself or inside a group.
-
-Launchers can also show and switch their applications' running windows; see
-[Running windows](#running-windows) below. Prefer a dedicated task manager?
-Task tracking can be switched off per group, and TLBStacks still works
-alongside Plasma's **Icons Only Task Manager**.
+See [Running windows](#running-windows) below for the task management details.
 
 Inspired by the original Windows True Launch Bar, TLBStacks is an independent
 Linux project for KDE Plasma 6. It is not affiliated with TORDEX or the original
@@ -46,8 +47,9 @@ True Launch Bar.
 
 ### TLBStacks Groups
 
-**TLBStacks Groups** builds a launcher bar from individual applications and
-TLBStacks menus.
+**TLBStacks Groups** is the primary widget: a launcher bar built from
+individual applications, TLBStacks menus, and — by default — running-window
+management, positioned as an alternative to a separate task manager widget.
 
 A group can contain any mixture of:
 
@@ -130,7 +132,8 @@ item inside TLBStacks Groups.
 
 ### Standalone TLBStacks
 
-Add a TLBStacks widget directly to a Plasma panel when you want a single stack.
+Add a TLBStacks widget directly to a Plasma panel when you want a single stack
+without the rest of a group.
 
 Standalone stacks support the same Selected Applications, Application Categories,
 Recent / Frequent Applications, and Live Folder content sources available inside

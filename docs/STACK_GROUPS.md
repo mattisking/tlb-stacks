@@ -1,6 +1,13 @@
 # Stack Groups — delivery checkpoints
 
-[Project guide](README.md) · [Feature F-015](FEATURE_TRACKER.md#f-015) · [Deployment](DEPLOYMENT.md#experimental-stack-group)
+[Project guide](README.md) · [Feature F-015](FEATURE_TRACKER.md#f-015) · [Deployment](DEPLOYMENT.md#stack-group)
+
+> **Current status (October 11, 2026):** the group widget is the primary product
+> — a launcher bar with running-window management, positioned as an alternative
+> to a separate task manager widget (F-017). The scope notes below record the
+> original first-release agreement and are kept as history: task management has
+> since been delivered, and the developer installer deploys the group by default
+> (`-SkipGroup` excludes it; `-WithGroup` is a legacy no-op).
 
 ## Agreed scope
 
@@ -78,7 +85,9 @@ certify every optional orientation and keyboard check below.
   imports append a new item; whole-group imports replace staged editor contents.
   Apply saves either change; Cancel preserves the saved group. Custom commands
   remain future work. Imported per-application icon overrides are retained and rendered.
-- Developer installation stays opt-in via `-WithGroup`; normal releases exclude it.
+- The developer installer deploys the group by default (`-SkipGroup` excludes
+  it; `-WithGroup` is a legacy no-op); distribution packaging still excludes it
+  pending release readiness.
 
 Validation: group entry tests run in the existing CI navigation suite. Static QML
 checks cannot resolve the manually registered Launcher type or Plasma's `i18n`.
@@ -319,7 +328,7 @@ No blocking issues were reported for this checkpoint. Step 3 can now begin.
 
 ## Step 1 desktop test
 
-Install using the [opt-in command](DEPLOYMENT.md#experimental-stack-group), then:
+Install using the [group install command](DEPLOYMENT.md#stack-group), then:
 
 1. Add **TLBStacks Group** from Plasma's widget chooser. Existing **TLBStacks**
    widgets should behave as before.

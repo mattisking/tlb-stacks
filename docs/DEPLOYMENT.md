@@ -119,7 +119,7 @@ Run the profile checks with `python3 -m unittest discover -s tests -v`.
 
 Exports use format version 5; versions 1–4 are also accepted. Older TLBStacks
 versions cannot import version 5 archives. The archive
-contains one stack. The experimental [Stack Group](#experimental-stack-group) can
+contains one stack. The [Stack Group](#stack-group) can
 also export its own collection using a separate group archive format. Combined
 export of all independent widget instances remains a separate feature.
 
@@ -314,20 +314,23 @@ other rows, can carry an optional label, and are included in profile exports. Li
 Categories, and Recent / frequent applications are unchanged.
 
 
-## Experimental Stack Group
+## Stack Group
 
-[Stack Groups](STACK_GROUPS.md) is a separately identified experimental widget.
-The group supports direct launchers and all four stack sources: Selected Applications,
-Categories, Recent/Frequent Applications, and local Live Folder.
-Install it alongside the existing widget from PowerShell:
+[Stack Groups](STACK_GROUPS.md) is the primary widget: a launcher bar of direct
+launchers and stacks with optional running-window management (an alternative to
+a separate task manager widget). The group supports direct launchers and all
+four stack sources: Selected Applications, Categories, Recent/Frequent
+Applications, and local Live Folder.
+
+The installer deploys it by default:
 
 ```powershell
-./install.ps1 -WithGroup
+./install.ps1
 ```
 
-Then add **TLBStacks Group** through Plasma's widget chooser. Name it and add launchers or stacks through its
-configuration window. The switch can be combined with `-NoRestart`; restart Plasma
-before testing updated code. Subsequent group updates also require `-WithGroup`.
+Pass `-SkipGroup` to install only the standalone widget (`-WithGroup` is a
+legacy no-op). The switch can be combined with `-NoRestart`; restart Plasma
+before testing updated code.
 Omitting the switch does not remove an already installed group.
 
 The group is not included in normal release binaries yet. Explicit CMake staging
