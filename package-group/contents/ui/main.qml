@@ -141,6 +141,10 @@ PlasmoidItem {
             return
         }
         if (stackPopup.visible && activeStackId === button.modelData.id) return
+        // A switch (another popup already open) closes and instantly reopens
+        // this same Dialog window. The close queues a deactivation that is
+        // delivered after the reopen; the grace window in the popup's
+        // onActiveChanged keeps that stale event from killing the new popup.
         stackPopup.visible = false
         launcher.closeApplicationContextMenu()
         launcher.invalidateActivations()
@@ -158,6 +162,42 @@ PlasmoidItem {
             if (stackPopup.visible && root.activeButton) root.activeButton.refreshActivity()
         }
     }
+    // Companion to the popup's deactivation grace: a grace-ignored (stale
+    // switch) deactivation leaves the popup visible but inactive, which would
+    // make it unclosable by focus changes. Once the focus war settles, either
+    // re-assert activation (owner still hovered) or close (owner abandoned).
+    Timer {
+        id: reactivateTimer
+        interval: 350
+        onTriggered: {
+            if (!stackPopup.visible) return
+            if (stackPopup.active) return
+            if (root.activeButton && root.activeButton.hovered) {
+                stackPopup.requestActivate()
+            } else {
+                stackPopup.visible = false
+            }
+        }
+    }
+    // Watchdog: whatever way a popup ends up visible but inactive (stale
+    // switch event, denied re-assert), it will receive no further focus
+    // events and could linger over the desktop forever. Reap it when it is
+    // inactive and the mouse is neither on its owner button nor inside the
+    // menu. Active popups are never touched; the settling age avoids racing
+    // the grace window and KWin's focus transitions after a switch.
+    Timer {
+        id: popupWatchdog
+        interval: 400
+        repeat: true
+        running: stackPopup.visible
+        onTriggered: {
+            if (stackPopup.active) return
+            if (root.activeButton && root.activeButton.hovered) return
+            if (stackMenu.menuHovered) return
+            if (Date.now() - stackPopup.openedAt < 500) return
+            stackPopup.visible = false
+        }
+    }
     PlasmaCore.Dialog {
         id: stackPopup
         visualParent: root.activeButton
@@ -170,13 +210,44 @@ PlasmoidItem {
         // and desktop are the same Wayland client), so no outside click
         // could close it — only Esc, which KWin forwards to grabbed popups.
         type: PlasmaCore.Dialog.AppletPopup
-        hideOnWindowDeactivate: true
+        // Manual, not declarative: this Dialog is a single window reused
+        // across stack switches, and the close half of a switch queues a
+        // deactivation that is delivered AFTER the reopen — hideOnWindowDeactivate
+        // would honor that stale event and kill the new popup. Deactivations
+        // inside the post-open grace window are switch artifacts; later ones
+        // are genuine focus changes (outside click / another window) and close.
+        hideOnWindowDeactivate: false
+        property double openedAt: 0
+        // Deactivation handling lives in onActiveChanged: Plasma only emits
+        // windowDeactivated while hideOnWindowDeactivate is true (which would
+        // also auto-hide on the stale switch event), so the window's own
+        // active property is the reliable detector.
+        onActiveChanged: {
+            if (active) return
+            const age = Date.now() - openedAt
+            if (age < 300) {
+                // The stale event leaves the popup visible but inactive — and
+                // an inactive popup gets no further focus events, so click-away
+                // could never close it. Re-assert (or close) once settled.
+                reactivateTimer.restart()
+                return
+            }
+            if (root.activeButton && root.activeButton.hovered) {
+                requestActivate()
+                return
+            }
+            visible = false
+        }
         onVisibleChanged: {
             if (visible) {
-                // Taking keyboard focus on show (systemtray pattern) makes
-                // keyboard navigation work and lets hideOnWindowDeactivate
-                // close the popup when another window takes the focus.
+                // Always claim activation on show (systemtray pattern): it
+                // makes keyboard navigation work, and an inactive popup would
+                // receive no deactivation when the user clicks elsewhere, so
+                // outside clicks could never close it. The stale-deactivate
+                // artifact from popup switches is handled by the grace
+                // window in onActiveChanged.
                 requestActivate()
+                openedAt = Date.now()
             } else {
                 activityRefresh.stop()
                 launcher.closeApplicationContextMenu()

@@ -6,6 +6,9 @@ import com.mattphilmon.tlbstacks
 
 ColumnLayout {
     id: content
+    // Mouse-over detection for the group host's popup watchdog: a popup that
+    // is inactive and neither hovered here nor on its owner button is reaped.
+    readonly property alias menuHovered: menuHover.hovered
     required property var launcher
     // Live window bridge (null when disabled or degraded); forwarded to the
     // application menu.
@@ -44,6 +47,7 @@ ColumnLayout {
             if (folderLoader.item && popupOpen) folderLoader.item.forceActiveFocus()
         } else menu.resetSelection()
     }
+    HoverHandler { id: menuHover }
     Keys.onEscapePressed: dismissRequested()
     Keys.onLeftPressed: dismissRequested()
     Loader {
