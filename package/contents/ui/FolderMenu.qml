@@ -201,6 +201,14 @@ ColumnLayout {
             Keys.forwardTo: [root]
             model: files.entries
             onCountChanged: { currentIndex = -1; launcher.closeFolderMenu() }
+            // When the async listing lands, the menu grows from its initial
+            // height to the populated height and the host Dialog window
+            // resizes under the view. The ListView instantiates delegates
+            // only for its current viewport and does not always re-layout
+            // from that external growth (a popup then shows only the first
+            // rows until reopened). Force the re-layout when the growth
+            // lands.
+            onHeightChanged: if (root.listingReady) Qt.callLater(fileList.forceLayout)
             onMovementStarted: launcher.closeFolderMenu()
             delegate: PlasmaComponents.ItemDelegate {
                 id: entry
