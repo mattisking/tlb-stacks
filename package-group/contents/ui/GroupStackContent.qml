@@ -52,8 +52,14 @@ ColumnLayout {
     Keys.onLeftPressed: dismissRequested()
     Loader {
         id: folderLoader
-        active: content.isFolder
-        visible: active
+        // Stay loaded once a folder stack has been shown: recreating the
+        // FolderMenu on every switch away leaves a settling window in which
+        // its implicit height is not yet applied while the popup is already
+        // sized — the intermittently truncated folder popup. FolderSource
+        // sleeps while the popup is closed, so a persistent instance is
+        // cheap. Visibility, not lifetime, follows the source type.
+        active: content.isFolder || item !== null
+        visible: content.isFolder
         Layout.fillWidth: true
         Layout.minimumHeight: item ? item.preferredMenuHeight : content.initialFolderHeight
         Layout.maximumHeight: Layout.minimumHeight
