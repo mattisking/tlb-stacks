@@ -325,6 +325,29 @@ private slots:
         QCOMPARE(model.newInstanceCalls(), QVariantList{});
     }
 
+    void closeRequestsOnTheSingleMatchedWindow()
+    {
+        model.setRows({window(DolphinUrl), window(KonsoleUrl)});
+        QVERIFY(index.close(Konsole));
+        QCOMPARE(model.closeCalls(), QVariantList{1});
+    }
+
+    void closeRequestsOnEveryStandaloneWindowOfTheApp()
+    {
+        // Ungrouped windows are separate rows: each one is closed on its own.
+        model.setRows({window(DolphinUrl), window(KonsoleUrl), window(KonsoleUrl, false, true)});
+        QVERIFY(index.close(Konsole));
+        QCOMPARE(model.closeCalls(), (QVariantList{1, 2}));
+    }
+
+    void closeWhenIdleReturnsFalseAndInvokesNothing()
+    {
+        QVERIFY(!index.close(Konsole));
+        model.setRows({window(DolphinUrl)});
+        QVERIFY(!index.close(Konsole));
+        QCOMPARE(model.closeCalls(), QVariantList{});
+    }
+
     // ---- Grouped topology (one group-parent row with child window rows) ----
     // Every grouped test puts a dolphin row at top-level 0 so the konsole
     // group sits at top-level 1: recorded child rows (0..2) then can never be
@@ -432,6 +455,17 @@ private slots:
         model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children)});
         QVERIFY(index.newInstance(Konsole));
         QCOMPARE(model.newInstanceCalls(), QVariantList{1}); // the group-parent row
+    }
+
+    void closeOnAGroupParentTargetsTheParentRow()
+    {
+        // Unlike activate, close does NOT walk the children: upstream's
+        // TaskGroupingProxyModel::requestClose expands the group parent itself,
+        // so driving the parent row closes every child window (parent semantics).
+        const QVariantList children{window(KonsoleUrl), window(KonsoleUrl), window(KonsoleUrl)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children)});
+        QVERIFY(index.close(Konsole));
+        QCOMPARE(model.closeCalls(), QVariantList{1}); // the group-parent row, not its children
     }
 
     void groupedAndStandaloneRowsOperateAcrossAllWindows()

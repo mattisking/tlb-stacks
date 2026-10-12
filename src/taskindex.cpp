@@ -308,3 +308,17 @@ bool TaskIndex::newInstance(const QString &desktopId)
     invokeTaskAction(m_model, "requestNewInstance", rows.first().index);
     return true;
 }
+
+bool TaskIndex::close(const QString &desktopId)
+{
+    const QList<TaskRow> rows = rowsMatching(m_model, desktopId);
+    if (rows.isEmpty())
+        return false;
+
+    // Parent semantics: requestClose on a group parent closes all of its child
+    // windows upstream (TaskGroupingProxyModel), so no child expansion here —
+    // each matched row (group parent or standalone window) is closed as-is.
+    for (const TaskRow &row : rows)
+        invokeTaskAction(m_model, "requestClose", row.index);
+    return true;
+}

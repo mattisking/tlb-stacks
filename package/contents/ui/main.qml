@@ -29,15 +29,11 @@ PlasmoidItem {
             root.refreshCategoryApplications()
         }
         onActivationFailed: message => { root.activationError = message }
-        onRemoveApplicationRequested: desktopId => {
-            if (root.menuSource !== "applications") return
-            const remaining = Array.from(Plasmoid.configuration.applications || [])
-                .filter(id => id !== desktopId)
-            const commands = Object.assign({}, StackMembers.parseCustomLaunchers(Plasmoid.configuration.customLaunchers))
-            delete commands[desktopId]
-            Plasmoid.configuration.customLaunchers = JSON.stringify(commands)
-            Plasmoid.configuration.applications = remaining
-            if (remaining.length === 0) root.expanded = false
+        onCloseWindowRequested: desktopId => {
+            // Polite window close through the live task bridge; a degraded
+            // widget (no taskArea) ignores the request.
+            if (!root.taskArea) return
+            root.taskArea.close(desktopId)
         }
     }
 

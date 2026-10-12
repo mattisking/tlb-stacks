@@ -85,6 +85,18 @@ TestCase {
         compare(area.actionCalls.length, 0)
     }
 
+    // Which panel buttons own a native app context menu (published desktop
+    // actions, plus Close while the app has live windows)? Direct application
+    // launchers and auto-appended running-app buttons do; stacks and custom
+    // command launchers (tlbstacks-command: ids) do not.
+    function test_context_menu_is_offered_for_launchers_and_tasks() {
+        compare(ClickMatrix.offersContextMenu({type: "application", desktopId: "org.kde.konsole.desktop"}), true)
+        compare(ClickMatrix.offersContextMenu({type: "task", desktopId: "org.kde.dolphin.desktop"}), true)
+        verify(!ClickMatrix.offersContextMenu({type: "stack", id: "item-2"}))
+        verify(!ClickMatrix.offersContextMenu({type: "command", desktopId: "tlbstacks-command:1"}))
+        verify(!ClickMatrix.offersContextMenu(null))
+    }
+
     function test_same_panel_items_holds_identity_on_live_state() {
         const rows = [{type: "task", desktopId: "a", name: "A", icon: "ic"}]
         compare(ClickMatrix.samePanelItems(rows, rows), true)

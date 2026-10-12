@@ -207,12 +207,18 @@ PlasmaComponents.ScrollView {
                 // Consume only right-clicks; normal activation stays with the delegate.
                 MouseArea {
                     anchors.fill: parent
+                    // A published action or a live window earns a menu: a running
+                    // app offers Close even when it has no desktop actions.
                     enabled: launcherItem.modelData.isSeparator !== true
-                        && launcherItem.modelData.actions.length > 0
+                        && (launcherItem.modelData.actions.length > 0 || launcherItem.taskState.running)
                     acceptedButtons: Qt.RightButton
                     onClicked: {
                         applicationToolTip.hideToolTip()
-                        applicationScroll.launcher.showEntryContextMenu(launcherItem, launcherItem.modelData)
+                        // taskState.running is the same live state the running
+                        // dot uses: an idle entry (or a null taskArea) offers
+                        // no Close item.
+                        applicationScroll.launcher.showEntryContextMenu(launcherItem, launcherItem.modelData,
+                            launcherItem.taskState.running)
                     }
                 }
                 // Consume only middle-clicks — ItemDelegate never fires on
@@ -237,9 +243,13 @@ PlasmaComponents.ScrollView {
                     }
                 }
                 Keys.onMenuPressed: event => {
-                    if (launcherItem.modelData.actions.length > 0) {
+                    if (launcherItem.modelData.actions.length > 0 || launcherItem.taskState.running) {
                         applicationToolTip.hideToolTip()
-                        applicationScroll.launcher.showEntryContextMenu(launcherItem, launcherItem.modelData)
+                        // taskState.running is the same live state the running
+                        // dot uses: an idle entry (or a null taskArea) offers
+                        // no Close item.
+                        applicationScroll.launcher.showEntryContextMenu(launcherItem, launcherItem.modelData,
+                            launcherItem.taskState.running)
                         event.accepted = true
                     }
                 }

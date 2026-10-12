@@ -38,8 +38,7 @@ Cancellation is cooperative; a blocked filesystem call cannot be interrupted.
 
 | Source/item | Context capability | Effect |
 |---|---|---|
-| Selected application | `removeFromStack` | Remove its ID from this widget; do not uninstall or delete files |
-| Category application | None | Membership is computed from categories |
+| Selected or category application | None | No removal is offered — removing an entry from a widget stays in its configuration page |
 | Available local file | `moveToTrash` | Pass its URL to KDE Trash; no permanent-delete fallback |
 | Directory | None currently | Open children; directory deletion is not exposed |
 
@@ -113,8 +112,9 @@ is independent of menu opening. See [F-001](FEATURE_TRACKER.md#f-001).
 
 Application entries advertise `desktopActions` when their desktop file supplies
 visible actions. The context menu resolves those actions from KService and invokes
-them using KIO::ApplicationLauncherJob. Category entries never offer removal;
-selected entries retain Remove from this stack below the application actions.
+them using KIO::ApplicationLauncherJob. No entry shape advertises removal —
+removing an entry from the stack is a configuration-page action only — and a
+running application's menu carries Close below the application actions.
 No command strings are constructed by QML. Recent documents are not yet included.
 
 ### Activity history source
@@ -123,8 +123,8 @@ No command strings are constructed by QML. Recent documents are not yet included
 It reads KActivities::Stats on a worker and resolves eligible installed desktop IDs
 before limiting results; filtering does not select the top N globally and discard
 nonmatching categories afterward. IDs are deduplicated in ranking order.
-Entries support desktop actions but never Remove from this stack. No document
-resources are queried. Each instance permits one in-flight query and rejects stale
+Entries support desktop actions and never advertise removal (removal lives in the
+configuration page). No document resources are queried. Each instance permits one in-flight query and rejects stale
 results when new options or Activity changes arrive.
 
 ### Selected-application separators

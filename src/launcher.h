@@ -27,13 +27,20 @@ public:
     Q_INVOKABLE void closeFolderMenu();
     Q_INVOKABLE QPoint pointerPosition() const;
 
-    Q_INVOKABLE void showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool removable = true, bool desktopActions = true, const QString &applicationId = {});
+    Q_INVOKABLE void showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool desktopActions = true, const QString &applicationId = {}, bool offerClose = false);
     Q_INVOKABLE void closeApplicationContextMenu();
 
     Q_INVOKABLE QVariantList applicationEntries(const QStringList &ids, const QVariantMap &icons, const QString &source, const QVariantMap &customLaunchers = {}) const;
+    // One application-shaped entry for a desktop id, carrying no removal
+    // capability: the group bar's right-click menu builds its entry through
+    // this, so the native menu only ever shows desktop actions plus Close.
+    Q_INVOKABLE QVariantMap applicationEntry(const QString &desktopId) const;
     Q_INVOKABLE QVariantMap folderEntry(const QUrl &url) const;
     Q_INVOKABLE bool activateEntry(const QVariantMap &entry);
-    Q_INVOKABLE void showEntryContextMenu(QQuickItem *anchor, const QVariantMap &entry);
+    // offerClose is set for entries whose app is running: the menu then carries
+    // a "Close" item that emits closeWindowRequested. Backward compatible — the
+    // folder menu and other call sites omit it.
+    Q_INVOKABLE void showEntryContextMenu(QQuickItem *anchor, const QVariantMap &entry, bool offerClose = false);
 
     Q_INVOKABLE bool exists(const QString &desktopId) const;
     Q_INVOKABLE QString name(const QString &desktopId) const;
@@ -56,7 +63,7 @@ Q_SIGNALS:
     void folderFocusRequested(QQuickItem *anchor);
     void folderAnchorHighlightChanged(QQuickItem *anchor);
     void activationFailed(const QString &message);
-    void removeApplicationRequested(const QString &desktopId);
+    void closeWindowRequested(const QString &desktopId);
     void fileOpenFailed(const QString &message);
 
 public:

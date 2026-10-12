@@ -57,6 +57,12 @@ Item {
         return index.newInstance(desktopId)
     }
 
+    // Politely close every window of the app; false when the app is not
+    // running (nothing to close).
+    function close(desktopId) {
+        return index.close(desktopId)
+    }
+
     TaskManager.TasksModel {
         id: tasksModel
         groupMode: TaskManager.TasksModel.GroupApplications

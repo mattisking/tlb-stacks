@@ -193,11 +193,14 @@ Returning from a native submenu must not restore an earlier, stale mouse-hover r
 One outside click dismisses the whole menu chain. Actual pointer movement resumes
 mouse navigation. Native Qt menus still implement deeper-level navigation.
 
-Selected Applications offers **Remove from this stack**, which changes the saved
-selection without uninstalling or deleting anything. Categories are computed and
-do not offer that removal action. Live Folder files offer **Move to Trash** at both
-root and native submenu levels. This uses KDE's asynchronous trash operation and
-is not permanent deletion. Directory entries do not currently offer Trash.
+Right-click opens the application context menu: published desktop actions for
+every entry, plus **Close** (politely closing the running app's windows) when the
+application is running. Removing an entry from the stack happens only in the
+configuration page — the context menus never change the saved selection, and
+Categories are computed and not removable there either. Live Folder files offer
+**Move to Trash** at both root and native submenu levels. This uses KDE's
+asynchronous trash operation and is not permanent deletion. Directory entries do
+not currently offer Trash.
 Right-click must not launch an item. Root contents refresh through polling; reopen
 a native submenu to refresh its snapshot after a file change. Trash can be checked
 in Dolphin; folders-first sorting can separate items despite deletion-time sorting.

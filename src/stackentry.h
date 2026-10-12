@@ -8,14 +8,16 @@
 
 namespace StackEntry {
 // Source-owned capabilities: renderers must not infer actions from an icon/name.
+// Removing an entry is a configuration-page action only, so no entry shape
+// advertises a removal capability of its own.
 inline QVariantMap make(const QString &id, const QString &name, const QString &icon,
                         const QString &source, const QString &action, const QString &target,
-                        bool available, bool children, bool removable)
+                        bool available, bool children)
 {
     return {{"id", id}, {"name", name}, {"icon", icon}, {"source", source},
             {"action", action}, {"target", target}, {"available", available},
             {"hasChildren", children}, {"isSeparator", false},
-            {"actions", removable ? QStringList{"removeFromStack"} : QStringList{}}};
+            {"actions", QStringList{}}};
 }
 inline QVariantMap applicationData(const QString &id, const QString &source, const QString &overrideIcon,
                                    const KService::Ptr &service)
@@ -23,7 +25,7 @@ inline QVariantMap applicationData(const QString &id, const QString &source, con
     const QString icon = !overrideIcon.isEmpty() ? overrideIcon
         : service && !service->icon().isEmpty() ? service->icon() : QStringLiteral("application-x-executable");
     auto entry = make(id, service ? service->name() : id, icon, source,
-                "launchApplication", id, bool(service), false, source == "applications");
+                "launchApplication", id, bool(service), false);
     entry["defaultIcon"] = service ? service->icon() : QString();
     QString description = service ? service->comment().trimmed() : QString();
     if (description.isEmpty() && service) description = service->genericName().trimmed();
@@ -58,7 +60,7 @@ inline QVariantMap file(const QUrl &url)
     if (icon.isEmpty()) icon = QMimeDatabase().mimeTypeForFile(info, QMimeDatabase::MatchExtension).iconName();
     auto entry = make(url.toString(), info.fileName(), icon, "folder",
                 directory ? "openChildren" : "openFile", url.toString(),
-                url.isLocalFile() && info.exists(), directory, false);
+                url.isLocalFile() && info.exists(), directory);
     if (!directory && entry.value("available").toBool()) entry["actions"] = QStringList{"moveToTrash"};
     return entry;
 }

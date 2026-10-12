@@ -87,15 +87,21 @@ public:
     Q_INVOKABLE QVariantList activateCalls() const { return m_activateCalls; }
     Q_INVOKABLE QVariantList toggleMinimizedCalls() const { return m_toggleCalls; }
     Q_INVOKABLE QVariantList newInstanceCalls() const { return m_newInstanceCalls; }
+    Q_INVOKABLE QVariantList closeCalls() const { return m_closeCalls; }
     Q_INVOKABLE void clearCalls() // forget every recorded request* call
     {
         m_activateCalls.clear();
         m_toggleCalls.clear();
         m_newInstanceCalls.clear();
+        m_closeCalls.clear();
     }
     Q_INVOKABLE void requestActivate(const QModelIndex &index) { m_activateCalls << index.row(); }
     Q_INVOKABLE void requestToggleMinimized(const QModelIndex &index) { m_toggleCalls << index.row(); }
     Q_INVOKABLE void requestNewInstance(const QModelIndex &index) { m_newInstanceCalls << index.row(); }
+    // Like the real TaskGroupingProxyModel, which expands a group parent itself;
+    // recording only the index it was handed pins that close() leaves the
+    // expansion upstream instead of walking children.
+    Q_INVOKABLE void requestClose(const QModelIndex &index) { m_closeCalls << index.row(); }
 
 private:
     struct Row {
@@ -131,5 +137,5 @@ private:
 
     QHash<int, QByteArray> m_roles;
     std::vector<std::unique_ptr<Row>> m_rows;
-    QVariantList m_activateCalls, m_toggleCalls, m_newInstanceCalls;
+    QVariantList m_activateCalls, m_toggleCalls, m_newInstanceCalls, m_closeCalls;
 };

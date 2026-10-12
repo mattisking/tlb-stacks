@@ -15,6 +15,15 @@ function decideClick(desktopId, taskArea) {
     return state.active ? "minimize" : "activate"
 }
 
+// Does this panel button own a native app context menu? Direct application
+// launchers and auto-appended running-app buttons do (published desktop
+// actions, plus Close while the app has live windows); stacks and custom
+// command launchers (tlbstacks-command: ids) do not — no KService, no task
+// match. Pure inspection, so it stays testable offscreen.
+function offersContextMenu(item) {
+    return !!item && (item.type === "application" || item.type === "task")
+}
+
 // Do two panel arrays render the same buttons? Cheap content comparison for
 // the identity-stabilized panel model: a reference match is always equal, and
 // fresh unclaimed rows (TaskArea re-maps them on every revision) compare by

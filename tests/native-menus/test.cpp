@@ -59,7 +59,7 @@ private slots:
         QCOMPARE(entry.value("action").toString(), QString("launchApplication"));
         QCOMPARE(entry.value("arguments").toStringList(), args);
         QCOMPARE(entry.value("icon").toString(), QString("custom-icon"));
-        QVERIFY(entry.value("actions").toStringList().contains("removeFromStack"));
+        QVERIFY(!entry.value("actions").toStringList().contains("removeFromStack"));
         QSignalSpy errors(&launcher, &Launcher::activationFailed);
         QVERIFY(!launcher.activateEntry(entry));
         QCOMPARE(errors.count(), 1);
@@ -81,7 +81,7 @@ private slots:
         QCOMPARE(entries.size(), 1);
         const auto entry = entries.first().toMap();
         QCOMPARE(entry.value("name").toString(), QString("Custom"));
-        QVERIFY(entry.value("actions").toStringList().contains("removeFromStack"));
+        QVERIFY(!entry.value("actions").toStringList().contains("removeFromStack"));
         QVERIFY(launcher.activateEntry(entry));
         QTRY_VERIFY(QFileInfo::exists(output));
         QFile result(output); QVERIFY(result.open(QIODevice::ReadOnly));
@@ -368,24 +368,23 @@ private slots:
         QCOMPARE(dismissed.count(), 0);
         QVERIFY(!menu->isVisible());
     }
-    void selectedRemovalCapability() {
+    void contextMenuNeverOffersRemoval() {
         Launcher launcher(nullptr, false);
         QQuickWindow window;
         window.setGeometry(20, 20, 300, 300); window.show();
         QQuickItem anchor(window.contentItem()); anchor.setSize(QSizeF(100, 40));
-        QSignalSpy removed(&launcher, &Launcher::removeApplicationRequested);
-        const auto category = StackEntry::applicationData("example", "categories", "", {});
-        launcher.showEntryContextMenu(&anchor, category);
-        QCOMPARE(removed.count(), 0);
+        // Removal now lives only in the configuration page: no entry shape
+        // advertises it, and the native menu never grows a Remove item.
         const auto selected = StackEntry::applicationData("example", "applications", "", {});
-        launcher.showEntryContextMenu(&anchor, selected);
+        QCOMPARE(selected.value("actions").toStringList(), QStringList{});
+        launcher.showEntryContextMenu(&anchor, selected, true); // running app
         QMenu *menu = nullptr;
         for (auto *widget : QApplication::topLevelWidgets())
             if (auto *candidate = qobject_cast<QMenu *>(widget); candidate && candidate->isVisible()) menu = candidate;
         QVERIFY(menu);
-        menu->actions().first()->trigger();
-        QTRY_COMPARE(removed.count(), 1);
-        QCOMPARE(removed.first().first().toString(), QString("example"));
+        QStringList texts;
+        for (auto *action : menu->actions()) texts.append(action->text());
+        QCOMPARE(texts, QStringList{QString("Close")});
         launcher.closeApplicationContextMenu();
     }
     void profileDoesNotBlockAndRejectsOverlap() {
@@ -425,7 +424,7 @@ private slots:
         QCOMPARE(selected.value("icon").toString(), QString("custom-icon"));
         QVERIFY(!selected.value("available").toBool());
         QVERIFY(!selected.value("isSeparator").toBool());
-        QVERIFY(selected.value("actions").toStringList().contains("removeFromStack"));
+        QVERIFY(!selected.value("actions").toStringList().contains("removeFromStack"));
         QVERIFY(category.value("actions").toStringList().isEmpty());
         QTemporaryDir dir;
         QFile file(dir.filePath("document.txt"));
@@ -439,6 +438,20 @@ private slots:
         QCOMPARE(document.value("action").toString(), QString("openFile"));
         QCOMPARE(document.value("actions").toStringList(), QStringList{"moveToTrash"});
         QCOMPARE(document.value("name").toString(), QString("document.txt"));
+    }
+    // The group bar's right-click menu builds its entry through this helper:
+    // an application-shaped entry with no removal capability, so the native
+    // menu only ever carries published desktop actions plus Close.
+    void applicationEntryFeedsThePanelContextMenu() {
+        Launcher launcher(nullptr, false);
+        const QString id = "tlb-test-intentionally-missing-application";
+        const auto entry = launcher.applicationEntry(id);
+        QCOMPARE(entry.value("id").toString(), id);
+        QCOMPARE(entry.value("target").toString(), id);
+        QCOMPARE(entry.value("source").toString(), QString("applications"));
+        QCOMPARE(entry.value("action").toString(), QString("launchApplication"));
+        QCOMPARE(entry.value("actions").toStringList(), QStringList{});
+        QVERIFY(!entry.value("isSeparator").toBool());
     }
     void delayReachesNestedMenus() {
         QTemporaryDir dir;

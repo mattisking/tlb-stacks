@@ -40,6 +40,12 @@ public:
     // Request a new window of the app (group-parent rows pass through
     // upstream, unlike the other actions); false when nothing matches.
     Q_INVOKABLE bool newInstance(const QString &desktopId);
+    // Politely close every window of the app. Unlike the activate family, the
+    // matched row itself is the target: upstream's
+    // TaskGroupingProxyModel::requestClose expands a group parent to its child
+    // windows, so grouped apps are driven through the parent row and ungrouped
+    // windows each get their own call. False when nothing matches.
+    Q_INVOKABLE bool close(const QString &desktopId);
 Q_SIGNALS:
     void changed();
 private:

@@ -289,15 +289,11 @@ PlasmoidItem {
         id: launcher
         onApplicationsChanged: { root.catalogRevision++; root.catalog = launcher.applications() }
         onActivationFailed: message => { root.launchError = message }
-        onRemoveApplicationRequested: desktopId => {
-            if (!root.activeStack || root.activeStack.settings.menuSource !== "applications") return
-            const commands = Object.assign({}, root.activeStack.settings.customLaunchers || {})
-            delete commands[desktopId]
-            const items = GroupItems.updateStack(root.decoded.items, root.activeStackId, {
-                customLaunchers: commands,
-                applications: root.activeStack.settings.applications.filter(id => id !== desktopId)
-            })
-            Plasmoid.configuration.items = GroupItems.encode(items)
+        onCloseWindowRequested: desktopId => {
+            // Polite window close through the live task bridge; a degraded
+            // widget (no taskArea) ignores the request.
+            if (!root.taskArea) return
+            root.taskArea.close(desktopId)
         }
     }
     function configure() {
@@ -459,6 +455,18 @@ PlasmoidItem {
                         id: hoverOpen
                         interval: button.modelData.type === "stack" ? button.modelData.settings.hoverDelay : 250
                         onTriggered: if (button.hovered) root.showStack(button, false)
+                    }
+                    // Right-click: the native app menu — published desktop
+                    // actions, plus Close while the app has live windows — for
+                    // direct launchers and appended running-app buttons. Stacks
+                    // and custom commands have no menu (no service, no task).
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: ClickMatrix.offersContextMenu(button.modelData)
+                        acceptedButtons: Qt.RightButton
+                        onClicked: launcher.showEntryContextMenu(button,
+                            launcher.applicationEntry(button.modelData.desktopId),
+                            button.taskState.running)
                     }
                     // Middle-click opens a new window (or launches an idle
                     // app); the wheel steps through the app's windows. Stacks

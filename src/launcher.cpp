@@ -315,7 +315,7 @@ void Launcher::closeApplicationContextMenu()
     if (m_applicationContextMenu) m_applicationContextMenu->close();
 }
 
-void Launcher::showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool removable, bool desktopActions, const QString &applicationId)
+void Launcher::showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool desktopActions, const QString &applicationId, bool offerClose)
 {
     if (!anchor || !anchor->window() || desktopId.isEmpty() ||
         !qobject_cast<QApplication *>(QCoreApplication::instance())) return;
@@ -339,13 +339,18 @@ void Launcher::showApplicationContextMenu(QQuickItem *anchor, const QString &des
             });
         }
     }
-    if (removable) {
+    if (offerClose) {
+        // Icon-Task-Manager semantics: a running app can be closed politely
+        // (requestClose), never killed. The task handling lives in the widget
+        // roots, which connect closeWindowRequested to the TaskArea — this
+        // class stays task-agnostic.
         if (!m_applicationContextMenu->isEmpty()) m_applicationContextMenu->addSeparator();
-        auto *remove = m_applicationContextMenu->addAction(tr("Remove from this stack"));
-        connect(remove, &QAction::triggered, this, [this, desktopId]() {
-            // Defer the model change until the native action has finished dispatching.
+        auto *close = m_applicationContextMenu->addAction(tr("Close"));
+        connect(close, &QAction::triggered, this, [this, desktopId]() {
+            // Defer: closing tears down the task row the native menu is still
+            // dispatching against.
             QMetaObject::invokeMethod(this, [this, desktopId]() {
-                Q_EMIT removeApplicationRequested(desktopId);
+                Q_EMIT closeWindowRequested(desktopId);
             }, Qt::QueuedConnection);
         });
     }
@@ -431,7 +436,7 @@ QVariantList Launcher::applicationEntries(const QStringList &ids, const QVariant
             const QFileInfo info(executable);
             auto entry = StackEntry::make(id, command.value("name", id).toString(),
                 icons.value(id, "application-x-executable").toString(), source,
-                "launchCommand", executable, true, false, true);
+                "launchCommand", executable, true, false);
             entry["executableAvailable"] = info.isAbsolute() && info.isFile() && info.isExecutable();
             entry["arguments"] = command.value("arguments").toStringList();
             entry["description"] = executable;
@@ -446,7 +451,7 @@ QVariantList Launcher::applicationEntries(const QStringList &ids, const QVariant
             const auto labelStart = rest.indexOf(':');
             const auto label = labelStart < 0 ? QString() : rest.mid(labelStart + 1).trimmed();
             auto entry = StackEntry::make(id, label, QString(), source, QString(), QString(),
-                                          true, false, false);
+                                          true, false);
             entry["isSeparator"] = true;
             entries.append(entry);
         } else {
@@ -454,6 +459,11 @@ QVariantList Launcher::applicationEntries(const QStringList &ids, const QVariant
         }
     }
     return entries;
+}
+
+QVariantMap Launcher::applicationEntry(const QString &desktopId) const
+{
+    return StackEntry::application(desktopId, "applications", {});
 }
 
 QVariantMap Launcher::folderEntry(const QUrl &url) const
@@ -495,7 +505,7 @@ bool Launcher::activateEntry(const QVariantMap &entry)
     return false;
 }
 
-void Launcher::showEntryContextMenu(QQuickItem *anchor, const QVariantMap &entry)
+void Launcher::showEntryContextMenu(QQuickItem *anchor, const QVariantMap &entry, bool offerClose)
 {
     if (entry.value("source").toString() == "folder" &&
         entry.value("actions").toStringList().contains("moveToTrash")) {
@@ -520,6 +530,6 @@ void Launcher::showEntryContextMenu(QQuickItem *anchor, const QVariantMap &entry
     const auto source = entry.value("source").toString();
     if (source == "applications" || source == "categories" || source == "activity")
         showApplicationContextMenu(anchor, entry.value("id").toString(),
-            source == "applications" && entry.value("actions").toStringList().contains("removeFromStack"),
-            entry.value("actions").toStringList().contains("desktopActions"), entry.value("target").toString());
+            entry.value("actions").toStringList().contains("desktopActions"), entry.value("target").toString(),
+            offerClose);
 }
