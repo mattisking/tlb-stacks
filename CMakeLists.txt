@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(TLBStacks VERSION 0.1.0)
+project(TLBStacks VERSION 0.2.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -36,7 +36,7 @@ endif()
 install(FILES LICENSE DESTINATION "${KDE_INSTALL_DATADIR}/licenses/tlb-stacks")
 
 # Experimental group shell: intentionally excluded from normal release packages.
-option(TLB_INSTALL_GROUP "Install the TLBStacks Group widget (distribution packaging; the developer installer deploys it regardless)" OFF)
+option(TLB_INSTALL_GROUP "Install the TLBStacks Group widget" ON)
 if(TLB_INSTALL_GROUP)
     file(READ "${CMAKE_CURRENT_SOURCE_DIR}/package-group/metadata.json" tlb_group_metadata)
     string(JSON tlb_group_version GET "${tlb_group_metadata}" KPlugin Version)

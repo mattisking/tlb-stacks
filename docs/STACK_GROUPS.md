@@ -2,12 +2,12 @@
 
 [Project guide](README.md) · [Feature F-015](FEATURE_TRACKER.md#f-015) · [Deployment](DEPLOYMENT.md#stack-group)
 
-> **Current status (October 11, 2026):** the group widget is the primary product
+> **Current status (October 12, 2026):** the group widget is the primary product
 > — a launcher bar with running-window management, positioned as an alternative
 > to a separate task manager widget (F-017). The scope notes below record the
 > original first-release agreement and are kept as history: task management has
-> since been delivered, and the developer installer deploys the group by default
-> (`-SkipGroup` excludes it; `-WithGroup` is a legacy no-op).
+> since been delivered, and both the developer installer and release payloads
+> (v0.2.0+) deploy the group.
 
 ## Agreed scope
 
@@ -86,8 +86,8 @@ certify every optional orientation and keyboard check below.
   Apply saves either change; Cancel preserves the saved group. Custom commands
   remain future work. Imported per-application icon overrides are retained and rendered.
 - The developer installer deploys the group by default (`-SkipGroup` excludes
-  it; `-WithGroup` is a legacy no-op); distribution packaging still excludes it
-  pending release readiness.
+  it; `-WithGroup` is a legacy no-op); release payloads include both widgets
+  from v0.2.0, with the group's metadata version asserted alongside the rest.
 
 Validation: group entry tests run in the existing CI navigation suite. Static QML
 checks cannot resolve the manually registered Launcher type or Plasma's `i18n`.

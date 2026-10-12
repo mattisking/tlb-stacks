@@ -274,8 +274,8 @@ try {
 }
 ```
 
-The staged tree contains the native plugin, qmldir and type metadata, widget
-contents and metadata, and GPL license. It excludes the historical manual and
+The staged tree contains the native plugin, qmldir and type metadata, both
+widgets' contents and metadata, and the GPL license. It excludes the historical manual and
 development tests. This is an install tree, not yet an RPM; it does not declare
 package-manager dependencies or restart Plasma. CMake checks that widget metadata
 and project versions agree. `scripts/release-assets.sh` automates this staging for
@@ -333,9 +333,10 @@ legacy no-op). The switch can be combined with `-NoRestart`; restart Plasma
 before testing updated code.
 Omitting the switch does not remove an already installed group.
 
-The group is not included in normal release binaries yet. Explicit CMake staging
-can include it with `-DTLB_INSTALL_GROUP=ON`; its metadata version must match the
-project version.
+The group ships in release payloads from v0.2.0: `scripts/release-assets.sh`
+stages both widgets (`-DTLB_INSTALL_GROUP=ON`) and asserts the group's metadata
+version alongside the project, widget, and tag versions. CMake also installs
+both widgets by default.
 
 In group configuration, **Import…** accepts an individual stack (appended to the
 list) or a group (replaces staged contents). **Export selected stack…** creates a

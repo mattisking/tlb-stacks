@@ -193,7 +193,8 @@ selected and is not queued. Argument customization belongs to F-009.
 <a id="f-015"></a>
 ## F-015 — Stack Groups
 
-**Delivered and desktop-accepted; installed by default with the developer installer.**
+**Delivered and desktop-accepted; shipped in release payloads from v0.2.0
+and installed by default with the developer installer.**
 Includes direct launchers, all four stack sources, ordering, shared settings,
 individual-stack/group import/export, launcher appearance, member icon editing,
 and dragging. See [checkpoints and remaining test combinations](STACK_GROUPS.md).

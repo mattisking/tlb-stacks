@@ -17,8 +17,8 @@ Schemas and `cfg_*` contracts are frozen; Apply/Cancel staging belongs to Plasma
   its own `-B build` flow).
 - Dev install: `pwsh install.ps1` (restarts plasmashell; `-NoRestart` skips).
   Installs both widgets by default; `-SkipGroup` excludes the group widget
-  (`-WithGroup` is a legacy no-op). Distribution packaging still excludes the
-  group pending release readiness.
+  (`-WithGroup` is a legacy no-op). Release payloads (v0.2.0+) include both
+  widgets, and CMake installs both by default.
 
 ## kwin-mcp live-render verification rig
 
