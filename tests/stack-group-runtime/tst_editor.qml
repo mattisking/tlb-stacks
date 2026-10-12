@@ -2,6 +2,9 @@ import QtQuick
 import QtTest
 import "../../package-group/contents/ui" as Group
 import "../../package-group/contents/ui/GroupItems.js" as Items
+// Provides the global i18n() used by the product QML (KLocalizedQmlContext);
+// the test harness has no Plasma shell to install it.
+import org.kde.plasma.core as PlasmaCore
 TestCase {
     name: "GroupStackEditor"
     Group.ConfigGeneral { id: editor; width: 800; height: 650 }

@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Dialogs as Dialogs
 import "IconOverrides.js" as IconOverrides
 import QtQuick.Layouts
-import org.kde.plasma.components as PlasmaComponents
+import QtQuick.Controls as QQC2
 import com.mattphilmon.tlbstacks
 
 ColumnLayout {
@@ -210,19 +210,19 @@ ColumnLayout {
     }
 
     RowLayout {
-        PlasmaComponents.Button {
+        QQC2.Button {
             text: i18n("Export menu…")
             icon.name: "document-export"
             onClicked: exportProfileDialog.open()
         }
-        PlasmaComponents.Button {
+        QQC2.Button {
             text: i18n("Import menu…")
             icon.name: "document-import"
             onClicked: importProfileDialog.open()
         }
     }
 
-    PlasmaComponents.Label {
+    QQC2.Label {
         Layout.fillWidth: true
         visible: root.profileMessage.length > 0
         text: root.profileMessage
@@ -230,7 +230,7 @@ ColumnLayout {
         wrapMode: Text.WordWrap
     }
 
-    PlasmaComponents.Label {
+    QQC2.Label {
         Layout.fillWidth: true
         visible: root.cfg_menuSource === "applications" && root.missingApplications.length > 0
         text: i18n("Unavailable applications (kept in the menu settings): %1", root.missingApplications.join(", "))

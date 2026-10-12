@@ -1,6 +1,9 @@
 import QtQuick
 import QtTest
 import "../../package/contents/ui" as Single
+// Provides the global i18n() used by the product QML (KLocalizedQmlContext);
+// the test harness has no Plasma shell to install it.
+import org.kde.plasma.core as PlasmaCore
 
 Rectangle {
     width: 760; height: 560

@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import org.kde.plasma.components as PlasmaComponents
+import "StackMembers.js" as StackMembers
 
 // Searchable application picker shown only while adding (review note:
 // search takes space only when adding). Emits picked(desktopId).
@@ -28,16 +28,15 @@ QQC2.Dialog {
 
     contentItem: ColumnLayout {
         spacing: Kirigami.Units.smallSpacing
-        PlasmaComponents.TextField {
+        QQC2.TextField {
             id: search
             objectName: "pickerSearch"
             Layout.fillWidth: true
             placeholderText: i18n("Search applications…")
-            clearButtonShown: true
             Keys.onReturnPressed: event => { event.accepted = true }
             Keys.onEnterPressed: event => { event.accepted = true }
         }
-        PlasmaComponents.ScrollView {
+        QQC2.ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
             contentWidth: availableWidth
@@ -51,18 +50,18 @@ QQC2.Dialog {
                         !root.exclude.includes(app.desktopId) &&
                         app.name.toLowerCase().includes(query))
                 }
-                delegate: PlasmaComponents.ItemDelegate {
+                delegate: QQC2.ItemDelegate {
                     id: row
                     required property var modelData
                     objectName: "pick-" + modelData.desktopId
                     width: ListView.view.width
-                    text: modelData.name
+                    text: StackMembers.escapeHtml(modelData.name)
                     icon.name: modelData.icon || "application-x-executable"
                     Accessible.role: Accessible.Button
                     Accessible.name: modelData.name
                     onClicked: { root.picked(modelData.desktopId); root.close() }
                 }
-                PlasmaComponents.Label {
+                QQC2.Label {
                     anchors.centerIn: parent
                     width: parent.width
                     horizontalAlignment: Text.AlignHCenter

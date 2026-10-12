@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
-import org.kde.plasma.components as PlasmaComponents
 
 // Filterable cloud of category chips (mockup frames 07-08): pills in a
 // wrapping flow, accent fill + check glyph + bold label = selected.
@@ -31,18 +31,17 @@ ColumnLayout {
 
     spacing: Kirigami.Units.smallSpacing
 
-    PlasmaComponents.TextField {
+    QQC2.TextField {
         id: filter
         objectName: "chipFilter"
         Layout.fillWidth: true
         placeholderText: i18n("Filter categories…")
-        clearButtonShown: true
         Accessible.name: i18n("Filter categories")
         Keys.onReturnPressed: event => { event.accepted = true }
         Keys.onEnterPressed: event => { event.accepted = true }
     }
 
-    PlasmaComponents.Label {
+    QQC2.Label {
         // Old-design count line: the selection is stated in words, not just
         // implied by chip styling.
         Layout.fillWidth: true
@@ -74,7 +73,7 @@ ColumnLayout {
 
         Repeater {
             model: root.chipModel(filter.text)
-            delegate: PlasmaComponents.ToolButton {
+            delegate: QQC2.ToolButton {
                 id: chip
                 required property string modelData
                 readonly property bool isSelected: root.selected.includes(modelData)
@@ -103,7 +102,7 @@ ColumnLayout {
                         implicitHeight: implicitWidth
                         color: Kirigami.Theme.highlightedTextColor
                     }
-                    PlasmaComponents.Label {
+                    QQC2.Label {
                         text: chip.text
                         font: chip.font
                         color: chip.isSelected ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
@@ -130,7 +129,7 @@ ColumnLayout {
         }
     }
 
-    PlasmaComponents.Label {
+    QQC2.Label {
         Layout.fillWidth: true
         visible: root.caption.length > 0
         text: root.caption

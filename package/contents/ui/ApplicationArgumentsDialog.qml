@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
-import org.kde.plasma.components as PlasmaComponents
 import "StackMembers.js" as StackMembers
 
 QQC2.Dialog {
@@ -24,22 +23,22 @@ QQC2.Dialog {
     onAccepted: saved(entryId, labelField.text.trim(), StackMembers.parseArguments(argumentsField.text).arguments)
     ColumnLayout {
         anchors.fill: parent
-        PlasmaComponents.Label { text: i18n("Name:") }
-        PlasmaComponents.TextField { id: labelField; Layout.fillWidth: true; maximumLength: 256 }
-        PlasmaComponents.Label { text: i18n("Additional arguments (optional):") }
-        PlasmaComponents.TextField {
+        QQC2.Label { text: i18n("Name:") }
+        QQC2.TextField { id: labelField; Layout.fillWidth: true; maximumLength: 256 }
+        QQC2.Label { text: i18n("Additional arguments (optional):") }
+        QQC2.TextField {
             id: argumentsField
             objectName: "applicationArgumentsField"
             Layout.fillWidth: true
             maximumLength: 4096
             placeholderText: '--example "value with spaces"'
         }
-        PlasmaComponents.Label {
+        QQC2.Label {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             text: i18n("Added to the application's normal launch command. Quote values containing spaces. Shell variables and commands are not expanded. Clear the arguments to use the normal launch behavior.")
         }
-        PlasmaComponents.Label {
+        QQC2.Label {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             visible: !!StackMembers.parseArguments(argumentsField.text).error

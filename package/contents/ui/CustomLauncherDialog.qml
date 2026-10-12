@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import QtQuick.Dialogs as Dialogs
-import org.kde.plasma.components as PlasmaComponents
 import "StackMembers.js" as StackMembers
 
 QQC2.Dialog {
@@ -27,22 +26,22 @@ QQC2.Dialog {
         onAccepted: saved(entryId, customName.text, customExecutable.text, customArguments.text)
         ColumnLayout {
             anchors.fill: parent
-            PlasmaComponents.Label { text: i18n("Name:") }
-            PlasmaComponents.TextField { id: customName; Layout.fillWidth: true; maximumLength: 256 }
-            PlasmaComponents.Label { text: i18n("Executable path:") }
+            QQC2.Label { text: i18n("Name:") }
+            QQC2.TextField { id: customName; Layout.fillWidth: true; maximumLength: 256 }
+            QQC2.Label { text: i18n("Executable path:") }
             RowLayout {
                 Layout.fillWidth: true
-                PlasmaComponents.TextField { id: customExecutable; Layout.fillWidth: true; maximumLength: 4096; placeholderText: "/path/to/program" }
-                PlasmaComponents.Button { text: i18n("Browse…"); onClicked: executablePicker.open() }
+                QQC2.TextField { id: customExecutable; Layout.fillWidth: true; maximumLength: 4096; placeholderText: "/path/to/program" }
+                QQC2.Button { text: i18n("Browse…"); onClicked: executablePicker.open() }
             }
-            PlasmaComponents.Label { text: i18n("Arguments (optional):") }
-            PlasmaComponents.TextField { id: customArguments; Layout.fillWidth: true; maximumLength: 4096; placeholderText: '--example "value with spaces"' }
-            PlasmaComponents.Label {
+            QQC2.Label { text: i18n("Arguments (optional):") }
+            QQC2.TextField { id: customArguments; Layout.fillWidth: true; maximumLength: 4096; placeholderText: '--example "value with spaces"' }
+            QQC2.Label {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 text: i18n("Use quotes around arguments containing spaces. Runs directly; shell variables, pipes and redirects are not expanded. Choose its icon from the list after adding.")
             }
-            PlasmaComponents.Label {
+            QQC2.Label {
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
                 visible: !customExecutable.text.startsWith("/") || !!StackMembers.parseArguments(customArguments.text).error

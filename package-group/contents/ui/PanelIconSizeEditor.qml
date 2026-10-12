@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import org.kde.plasma.components as PlasmaComponents
+import QtQuick.Controls as QQC2
 
 RowLayout {
     id: root
@@ -8,12 +8,12 @@ RowLayout {
     property int value: 0
     property string automaticLabel: qsTr("Use group setting")
     signal edited(int size)
-    PlasmaComponents.CheckBox {
+    QQC2.CheckBox {
         text: root.automaticLabel
         checked: root.value === 0
         onToggled: root.edited(checked ? 0 : 32)
     }
-    PlasmaComponents.SpinBox {
+    QQC2.SpinBox {
         objectName: root.spinObjectName
         from: 16
         to: 64
@@ -25,5 +25,5 @@ RowLayout {
         Accessible.name: qsTr("Panel icon size in pixels")
         onValueChanged: if (enabled && value !== root.value) root.edited(value)
     }
-    PlasmaComponents.Label { visible: root.value !== 0; text: qsTr("px") }
+    QQC2.Label { visible: root.value !== 0; text: qsTr("px") }
 }

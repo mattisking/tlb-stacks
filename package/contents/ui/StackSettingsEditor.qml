@@ -6,7 +6,6 @@ import QtQuick.Layouts
 import QtQuick.Dialogs as Dialogs
 import org.kde.kirigami as Kirigami
 import org.kde.iconthemes as IconThemes
-import org.kde.plasma.components as PlasmaComponents
 import "IconOverrides.js" as IconOverrides
 import "ApplicationCategories.js" as ApplicationCategories
 import com.mattphilmon.tlbstacks
@@ -282,7 +281,7 @@ ColumnLayout {
         property var selectedCategories: []
         spacing: Kirigami.Units.smallSpacing
 
-        PlasmaComponents.Label {
+        QQC2.Label {
             Layout.fillWidth: true
             text: preview.matches.length > 0
                 ? i18nc("%1 is a number of applications", "Matching applications (%1)", preview.matches.length)
@@ -290,7 +289,7 @@ ColumnLayout {
             font.bold: true
             elide: Text.ElideRight
         }
-        PlasmaComponents.Label {
+        QQC2.Label {
             Layout.fillWidth: true
             visible: preview.matches.length === 0
             wrapMode: Text.WordWrap
@@ -301,7 +300,7 @@ ColumnLayout {
                     : i18n("Select at least one category."))
                 : i18n("No installed applications match these categories.")
         }
-        PlasmaComponents.ScrollView {
+        QQC2.ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.minimumHeight: Kirigami.Units.gridUnit * 6
@@ -312,17 +311,17 @@ ColumnLayout {
                 objectName: "matchingList"
                 clip: true
                 model: preview.matches
-                delegate: PlasmaComponents.ItemDelegate {
+                delegate: QQC2.ItemDelegate {
                     required property var modelData
                     width: ListView.view.width
-                    text: modelData.name
+                    text: StackMembers.escapeHtml(modelData.name)
                     icon.name: modelData.icon || "application-x-executable"
                 }
             }
         }
     }
 
-    PlasmaComponents.Label {
+    QQC2.Label {
         objectName: "iconErrorLabel"
         Layout.fillWidth: true
         visible: root.iconError.length > 0
@@ -337,7 +336,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Repeater {
             model: root.kinds
-            delegate: PlasmaComponents.ToolButton {
+            delegate: QQC2.ToolButton {
                 id: segment
                 required property var modelData
                 objectName: "kind-" + modelData.id
@@ -399,7 +398,7 @@ ColumnLayout {
             ColumnLayout {
                 spacing: Kirigami.Units.smallSpacing
 
-                PlasmaComponents.ScrollView {
+                QQC2.ScrollView {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     contentWidth: availableWidth
@@ -446,11 +445,11 @@ ColumnLayout {
                                     Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
                                     Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
                                 }
-                                PlasmaComponents.Label {
+                                QQC2.Label {
                                     Layout.fillWidth: true
                                     Layout.minimumWidth: 0
                                     visible: !memberRow.isSeparator
-                                    text: root.memberName(memberRow.modelData)
+                                    text: StackMembers.escapeHtml(root.memberName(memberRow.modelData))
                                     elide: Text.ElideRight
                                 }
                                 Rectangle {
@@ -483,14 +482,14 @@ ColumnLayout {
                                     RowLayout {
                                         id: moveButtons
                                         visible: root.activeMemberId === memberRow.modelData
-                                        PlasmaComponents.ToolButton {
+                                        QQC2.ToolButton {
                                             objectName: "member-up-" + memberRow.modelData
                                             icon.name: "go-up"
                                             enabled: memberRow.index > 0
                                             Accessible.name: i18n("Move up")
                                             onClicked: root.moveMember(memberRow.index, -1)
                                         }
-                                        PlasmaComponents.ToolButton {
+                                        QQC2.ToolButton {
                                             objectName: "member-down-" + memberRow.modelData
                                             icon.name: "go-down"
                                             enabled: memberRow.index < (root.settings.applications || []).length - 1
@@ -499,13 +498,13 @@ ColumnLayout {
                                         }
                                     }
                                 }
-                                PlasmaComponents.ToolButton {
+                                QQC2.ToolButton {
                                     icon.name: "list-remove"
                                     Accessible.name: memberRow.isSeparator ? i18n("Remove separator")
                                         : i18n("Remove %1", root.memberName(memberRow.modelData))
                                     onClicked: root.removeMember(memberRow.index)
                                 }
-                                PlasmaComponents.ToolButton {
+                                QQC2.ToolButton {
                                     visible: !memberRow.isSeparator
                                     icon.name: "document-edit"
                                     Accessible.name: i18n("Edit launch options")
@@ -515,27 +514,27 @@ ColumnLayout {
                                         else root.editApplicationArguments(memberRow.modelData)
                                     }
                                 }
-                                PlasmaComponents.ToolButton {
+                                QQC2.ToolButton {
                                     visible: !memberRow.isSeparator
                                     icon.name: "preferences-desktop-icons"
                                     Accessible.name: i18n("Change icon for %1", root.memberName(memberRow.modelData))
                                     onClicked: iconMenu.open()
 
-                                    PlasmaComponents.ToolTip {
+                                    QQC2.ToolTip {
                                         text: i18n("Change icon")
                                     }
 
-                                    PlasmaComponents.Menu {
+                                    QQC2.Menu {
                                         id: iconMenu
-                                        PlasmaComponents.MenuItem {
+                                        QQC2.MenuItem {
                                             text: i18n("Choose icon…")
                                             onTriggered: root.chooseIcon(memberRow.modelData, false)
                                         }
-                                        PlasmaComponents.MenuItem {
+                                        QQC2.MenuItem {
                                             text: i18n("Choose image…")
                                             onTriggered: root.chooseIcon(memberRow.modelData, true)
                                         }
-                                        PlasmaComponents.MenuItem {
+                                        QQC2.MenuItem {
                                             text: i18n("Reset icon")
                                             enabled: IconOverrides.get(root.applicationIcons, memberRow.modelData).length > 0
                                             onTriggered: root.setCustomIcon(memberRow.modelData, "")
@@ -544,7 +543,7 @@ ColumnLayout {
                                 }
                         }
                         }
-                        PlasmaComponents.Label {
+                        QQC2.Label {
                             anchors.centerIn: parent
                             width: parent.width
                             horizontalAlignment: Text.AlignHCenter
@@ -557,7 +556,7 @@ ColumnLayout {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    PlasmaComponents.Button {
+                    QQC2.Button {
                         text: i18n("Add application…")
                         icon.name: "list-add"
                         enabled: (root.settings.applications || []).length < 2000
@@ -566,13 +565,13 @@ ColumnLayout {
                             appPicker.openPicker()
                         }
                     }
-                    PlasmaComponents.Button {
+                    QQC2.Button {
                         text: i18n("Add custom launcher…")
                         icon.name: "list-add"
                         enabled: (root.settings.applications || []).length < 2000
                         onClicked: root.editCustomLauncher("")
                     }
-                    PlasmaComponents.Button {
+                    QQC2.Button {
                         text: i18n("Add separator")
                         icon.name: "list-add"
                         enabled: (root.settings.applications || []).length < 2000
@@ -596,11 +595,11 @@ ColumnLayout {
                     RowLayout {
                         Kirigami.FormData.label: i18n("Folder:")
                         Layout.fillWidth: true
-                        PlasmaComponents.Button {
+                        QQC2.Button {
                             text: i18n("Choose folder…")
                             onClicked: folderPicker.open()
                         }
-                        PlasmaComponents.TextField {
+                        QQC2.TextField {
                             objectName: "folderUrlField"
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
@@ -615,7 +614,7 @@ ColumnLayout {
                             Accessible.name: i18n("Selected folder")
                         }
                     }
-                    PlasmaComponents.TextField {
+                    QQC2.TextField {
                         objectName: "folderFiltersField"
                         Kirigami.FormData.label: i18n("File patterns:")
                         Layout.fillWidth: true
@@ -628,7 +627,7 @@ ColumnLayout {
                         Keys.onReturnPressed: event => { event.accepted = true }
                         Keys.onEnterPressed: event => { event.accepted = true }
                     }
-                    PlasmaComponents.Label {
+                    QQC2.Label {
                         Layout.fillWidth: true
                         text: root.folderError || i18n("Separate patterns with semicolons, for example *.pdf;*.docx. Subfolders are always shown.")
                         wrapMode: Text.WordWrap
@@ -651,7 +650,7 @@ ColumnLayout {
                     width: categoryScroll.availableWidth
 
                     spacing: Kirigami.Units.smallSpacing
-                    PlasmaComponents.Label {
+                    QQC2.Label {
                         Layout.fillWidth: true
                         text: i18n("Match any selected category:")
                         wrapMode: Text.WordWrap
@@ -694,10 +693,10 @@ ColumnLayout {
                         columns: activityScroll.availableWidth >= Kirigami.Units.gridUnit * 16 ? 2 : 1
                         columnSpacing: Kirigami.Units.largeSpacing
                         rowSpacing: Kirigami.Units.smallSpacing
-                        PlasmaComponents.Label {
+                        QQC2.Label {
                             text: i18n("Order:")
                         }
-                        PlasmaComponents.ComboBox {
+                        QQC2.ComboBox {
                             Layout.fillWidth: true
                             Layout.maximumWidth: Kirigami.Units.gridUnit * 16
                             Layout.alignment: Qt.AlignLeft
@@ -706,7 +705,7 @@ ColumnLayout {
                             currentIndex: root.settings.activityOrder === "frequent" ? 1 : 0
                             onActivated: root.setField("activityOrder", currentIndex === 1 ? "frequent" : "recent")
                         }
-                        PlasmaComponents.Label {
+                        QQC2.Label {
                             text: i18n("Limit:")
                         }
                         QQC2.SpinBox {
@@ -717,7 +716,7 @@ ColumnLayout {
                             value: root.settings.activityLimit ?? 10
                             onValueModified: root.setField("activityLimit", value)
                         }
-                        PlasmaComponents.CheckBox {
+                        QQC2.CheckBox {
                             Layout.columnSpan: activityOptions.columns
                             Layout.alignment: Qt.AlignLeft
                             text: i18n("Current Activity only")
@@ -725,7 +724,7 @@ ColumnLayout {
                             onToggled: root.setField("activityCurrent", checked)
                         }
                     }
-                    PlasmaComponents.Label {
+                    QQC2.Label {
                         Layout.fillWidth: true
                         text: i18n("Optional categories (none means all applications):")
                         wrapMode: Text.WordWrap
@@ -746,7 +745,7 @@ ColumnLayout {
                         // `|| []` per the bar's note above.
                         selectedCategories: root.settings.applicationCategories || []
                     }
-                    PlasmaComponents.Label {
+                    QQC2.Label {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         text: i18n("KDE Activities tracking must be enabled; TLBStacks does not change tracking settings.")
@@ -767,7 +766,7 @@ ColumnLayout {
                 id: appearanceForm
                 width: Math.min(parent.width, Kirigami.Units.gridUnit * 36)
                 wideMode: false
-                PlasmaComponents.TextField {
+                QQC2.TextField {
                     Kirigami.FormData.label: i18n("Name:")
                     text: root.settings.groupName || ""
                     placeholderText: i18n("Stack name")
@@ -781,15 +780,15 @@ ColumnLayout {
                         implicitWidth: Kirigami.Units.iconSizes.medium
                         implicitHeight: implicitWidth
                     }
-                    PlasmaComponents.Button { text: i18n("Choose…"); onClicked: root.chooseIcon("", false) }
-                    PlasmaComponents.Button { text: i18n("Image…"); onClicked: root.chooseIcon("", true) }
-                    PlasmaComponents.Button {
+                    QQC2.Button { text: i18n("Choose…"); onClicked: root.chooseIcon("", false) }
+                    QQC2.Button { text: i18n("Image…"); onClicked: root.chooseIcon("", true) }
+                    QQC2.Button {
                         text: i18n("Reset")
                         enabled: root.settings.groupIcon !== root.stackIconDefault
                         onClicked: root.applyIconResult("", "")
                     }
                 }
-                PlasmaComponents.CheckBox {
+                QQC2.CheckBox {
                     objectName: "iconsOnlyBox"
                     Kirigami.FormData.label: i18n("Display:")
                     text: root.menuSource === "folder" ? i18n("Icons only (unavailable for Live Folder)")
@@ -820,7 +819,7 @@ ColumnLayout {
                     value: root.settings.hoverDelay ?? 250
                     onValueChanged: if (value !== (root.settings.hoverDelay ?? 250)) root.setField("hoverDelay", value)
                 }
-                PlasmaComponents.Label {
+                QQC2.Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     text: i18n("Applies to this stack's button and all its subfolders. Set to 0 for immediate opening; the default is 250 ms.")

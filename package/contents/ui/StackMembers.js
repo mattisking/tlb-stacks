@@ -61,3 +61,14 @@ function validArguments(args) {
     return Array.isArray(args) && args.length <= 256
         && args.every(a => typeof a === "string" && a.length <= 4096 && !a.includes("\0"))
 }
+
+// QQC2 controls read bound text as AutoText rich text, so any user-derived
+// string (imported group/stack/launcher/member/folder/separator names) must be
+// escaped before it reaches a control's `text`. PlasmaComponents did this
+// internally (Kirigami.MnemonicData.richTextLabel), so the swap to QQC2 has to
+// do it explicitly: an imported "<img src=…>" name would otherwise become a
+// live (remotely-fetchable) image tag — and crashes QQuickText's URL
+// resolution inside AbstractButton/ItemDelegate labels.
+function escapeHtml(value) {
+    return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+}

@@ -6,7 +6,6 @@ import QtQuick.Layouts
 import QtQuick.Dialogs as Dialogs
 import org.kde.kirigami as Kirigami
 import org.kde.iconthemes as IconThemes
-import org.kde.plasma.components as PlasmaComponents
 import com.mattphilmon.tlbstacks
 import "GroupItems.js" as GroupItems
 
@@ -246,10 +245,9 @@ ColumnLayout {
         : launcherLabel(selectedItem)
     // The breadcrumb renders as Text.StyledText, so imported names must be
     // escaped before entering the markup: an imported "<img src=…>" name
-    // would otherwise become a live (remotely-fetchable) image tag.
-    function escapeHtml(text) {
-        return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    }
+    // would otherwise become a live (remotely-fetchable) image tag. QQC2
+    // controls apply the same AutoText rule to their bound text, so they use
+    // the shared StackMembers.escapeHtml as well.
 
     // Launcher adds come through the shared picker (stack-member adds have
     // their own picker inside StackSettingsEditor).
@@ -273,15 +271,15 @@ ColumnLayout {
         id: panelCommandDialog
         onSaved: (id, name, executable, argumentsText) => root.savePanelCommand(id, name, executable, argumentsText)
     }
-    PlasmaComponents.Menu {
+    QQC2.Menu {
         id: addMenu
-        PlasmaComponents.MenuItem {
+        QQC2.MenuItem {
             text: i18n("Custom launcher…")
             icon.name: "list-add"
             enabled: !root.decoded.error && root.decoded.items.length < 500
             onTriggered: panelCommandDialog.edit("", {})
         }
-        PlasmaComponents.MenuItem {
+        QQC2.MenuItem {
             text: i18n("Application launcher…")
             icon.name: "list-add"
             enabled: !root.decoded.error && root.decoded.items.length < 500
@@ -290,7 +288,7 @@ ColumnLayout {
                 launcherPicker.openPicker()
             }
         }
-        PlasmaComponents.MenuItem {
+        QQC2.MenuItem {
             text: i18n("Stack")
             icon.name: "list-add"
             enabled: !root.decoded.error && root.decoded.items.length < 500
@@ -320,7 +318,7 @@ ColumnLayout {
         spacing: Kirigami.Units.smallSpacing
         QQC2.ScrollBar.horizontal: QQC2.ScrollBar { }
         model: root.decoded.items
-        header: PlasmaComponents.ToolButton {
+        header: QQC2.ToolButton {
             height: ListView.view.height
             display: QQC2.AbstractButton.IconOnly
             icon.name: "settings-configure"
@@ -329,7 +327,7 @@ ColumnLayout {
             onClicked: root.selectedIndex = -1
             Accessible.name: i18n("Group settings")
         }
-        footer: PlasmaComponents.ToolButton {
+        footer: QQC2.ToolButton {
             id: addFooter
             height: ListView.view.height
             display: QQC2.AbstractButton.IconOnly
@@ -339,7 +337,7 @@ ColumnLayout {
             onClicked: addMenu.popup(addFooter)
             Accessible.name: i18n("Add")
         }
-        delegate: PlasmaComponents.ToolButton {
+        delegate: QQC2.ToolButton {
             id: stripCell
             required property var modelData
             required property int index
@@ -355,12 +353,13 @@ ColumnLayout {
             icon.color: "transparent"
             icon.width: Kirigami.Units.iconSizes.medium
             icon.height: Kirigami.Units.iconSizes.medium
-            text: modelData.type === "stack"
+            readonly property string cellLabel: modelData.type === "stack"
                 ? (modelData.settings.groupName || i18n("Stack")) : root.launcherLabel(modelData)
+            text: StackMembers.escapeHtml(cellLabel)
             highlighted: root.selectedIndex === stripCell.index
             onClicked: { root.selectedMemberId = ""; root.selectedIndex = stripCell.index }
-            Accessible.name: stripCell.text
-            PlasmaComponents.ToolTip {
+            Accessible.name: cellLabel
+            QQC2.ToolTip {
                 text: stripCell.text
             }
         }
@@ -382,7 +381,7 @@ ColumnLayout {
             QQC2.SplitView.preferredWidth: Kirigami.Units.gridUnit * 14
 
             // Item tree: the group's structure, in panel order.
-            PlasmaComponents.ScrollView {
+            QQC2.ScrollView {
                 enabled: !root.decoded.error
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -399,10 +398,10 @@ ColumnLayout {
                     model: root.decoded.items
                     Keys.onUpPressed: root.selectedIndex = Math.max(0, root.selectedIndex - 1)
                     Keys.onDownPressed: root.selectedIndex = Math.min(count - 1, root.selectedIndex + 1)
-                    header: PlasmaComponents.ItemDelegate {
+                    header: QQC2.ItemDelegate {
                         width: ListView.view.width
                         icon.name: "settings-configure"
-                        text: root.cfg_groupName || i18n("Group")
+                        text: StackMembers.escapeHtml(root.cfg_groupName || i18n("Group"))
                         highlighted: root.selectedIndex < 0
                         onClicked: { root.selectedIndex = -1; itemTree.forceActiveFocus() }
                     }
@@ -413,14 +412,15 @@ ColumnLayout {
                         width: ListView.view.width
                         spacing: 0
 
-                        PlasmaComponents.ItemDelegate {
+                        QQC2.ItemDelegate {
                             id: itemRow
                             leftPadding: dragHandle.width + Kirigami.Units.smallSpacing
                             readonly property bool isStack: treeRow.modelData.type === "stack"
                             Layout.fillWidth: true
-                            text: itemRow.isStack
+                            readonly property string itemLabel: itemRow.isStack
                                 ? (treeRow.modelData.settings.groupName || i18n("Stack"))
                                 : root.launcherLabel(treeRow.modelData)
+                            text: StackMembers.escapeHtml(itemLabel)
                             readonly property string itemIcon: itemRow.isStack ? treeRow.modelData.settings.groupIcon || "applications-all"
                                 : root.launcherIcon(treeRow.modelData)
                             icon.name: IconOverrides.isFile(itemIcon) ? "" : itemIcon
@@ -435,14 +435,14 @@ ColumnLayout {
                                 objectName: "reorder-" + treeRow.modelData.id
                                 controller: treeReorder
                                 itemId: treeRow.modelData.id
-                                label: itemRow.text
+                                label: itemRow.itemLabel
                                 anchors.left: parent.left
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: implicitWidth
                                 height: parent.height
                             }
 
-                            PlasmaComponents.ToolButton {
+                            QQC2.ToolButton {
                                 id: expandChevron
                                 visible: itemRow.isStack
                                 anchors.right: parent.right
@@ -457,7 +457,7 @@ ColumnLayout {
                         Repeater {
                             model: itemRow.isStack && root.expandedIds[treeRow.modelData.id]
                                 ? root.summaryOf(treeRow.modelData) : []
-                            PlasmaComponents.ItemDelegate {
+                            QQC2.ItemDelegate {
                                 id: memberRow
                                 objectName: "member-" + treeRow.modelData.id + "-" + desktopId
                                 required property string modelData
@@ -467,7 +467,7 @@ ColumnLayout {
                                 readonly property bool selectable: desktopId.length > 0 && !StackMembers.isSeparator(desktopId)
                                 Layout.fillWidth: true
                                 leftPadding: Kirigami.Units.gridUnit * 2
-                                text: modelData
+                                text: StackMembers.escapeHtml(modelData)
                                 enabled: selectable
                                 highlighted: root.memberSelected && treeRow !== null && root.selectedMemberStackId === treeRow.modelData.id
                                     && root.selectedMemberId === desktopId
@@ -476,7 +476,7 @@ ColumnLayout {
                             }
                         }
                     }
-                    PlasmaComponents.Label {
+                    QQC2.Label {
                         anchors.centerIn: parent
                         width: parent.width
                         wrapMode: Text.WordWrap
@@ -489,26 +489,26 @@ ColumnLayout {
 
             RowLayout {
                 enabled: !root.decoded.error
-                PlasmaComponents.Button {
+                QQC2.Button {
                     id: addButton
                     text: i18n("Add")
                     icon.name: "list-add"
                     enabled: root.decoded.items.length < 500
                     onClicked: addMenu.popup(addButton)
                 }
-                PlasmaComponents.ToolButton {
+                QQC2.ToolButton {
                     icon.name: "go-up"
                     Accessible.name: i18n("Move up")
                     enabled: !root.memberSelected && root.selectedIndex > 0
                     onClicked: root.moveSelected(-1)
                 }
-                PlasmaComponents.ToolButton {
+                QQC2.ToolButton {
                     icon.name: "go-down"
                     Accessible.name: i18n("Move down")
                     enabled: !root.memberSelected && root.selectedIndex >= 0 && root.selectedIndex < root.decoded.items.length - 1
                     onClicked: root.moveSelected(1)
                 }
-                PlasmaComponents.ToolButton {
+                QQC2.ToolButton {
                     icon.name: "list-remove"
                     Accessible.name: i18n("Remove selected item")
                     enabled: !root.memberSelected && root.selectedIndex >= 0 && root.selectedIndex < root.decoded.items.length
@@ -525,24 +525,24 @@ ColumnLayout {
             ColumnLayout {
                 spacing: Kirigami.Units.smallSpacing
                 Layout.fillWidth: true
-                PlasmaComponents.Button {
+                QQC2.Button {
                     Layout.fillWidth: true
                     text: i18n("Import…")
                     onClicked: importDialog.open()
                 }
-                PlasmaComponents.Button {
+                QQC2.Button {
                     id: exportButton
                     Layout.fillWidth: true
                     text: i18n("Export…")
                     enabled: !root.decoded.error
                     onClicked: exportMenu.popup(exportButton)
-                    PlasmaComponents.Menu {
+                    QQC2.Menu {
                         id: exportMenu
-                        PlasmaComponents.MenuItem {
+                        QQC2.MenuItem {
                             text: i18n("Entire group…")
                             onTriggered: { exportDialog.wholeGroup = true; exportDialog.open() }
                         }
-                        PlasmaComponents.MenuItem {
+                        QQC2.MenuItem {
                             text: i18n("Selected stack…")
                             enabled: root.selectedStack !== null
                             onTriggered: {
@@ -553,7 +553,7 @@ ColumnLayout {
                         }
                     }
                 }
-                PlasmaComponents.Label {
+                QQC2.Label {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     textFormat: Text.PlainText
@@ -569,7 +569,7 @@ ColumnLayout {
             spacing: Kirigami.Units.largeSpacing
             QQC2.SplitView.fillWidth: true
 
-            PlasmaComponents.Label {
+            QQC2.Label {
                 objectName: "breadcrumb"
                 Layout.fillWidth: true
                 Layout.leftMargin: Kirigami.Units.largeSpacing
@@ -580,11 +580,11 @@ ColumnLayout {
                 // tree header's "Group" label — the link is never empty. Both
                 // the group name and the selected item's name are escaped.
                 text: {
-                    const groupName = root.escapeHtml(root.cfg_groupName || i18n("Group"))
+                    const groupName = StackMembers.escapeHtml(root.cfg_groupName || i18n("Group"))
                     return root.selectedIndex >= 0 && root.selectedItem
                         ? "<a href='group'>" + groupName + "</a>  ›  " + (root.memberSelected
-                            ? "<a href='stack'>" + root.escapeHtml(root.selectedItemName) + "</a>  ›  " + root.escapeHtml(root.nameFor(root.selectedMemberId))
-                            : root.escapeHtml(root.selectedItemName))
+                            ? "<a href='stack'>" + StackMembers.escapeHtml(root.selectedItemName) + "</a>  ›  " + StackMembers.escapeHtml(root.nameFor(root.selectedMemberId))
+                            : StackMembers.escapeHtml(root.selectedItemName))
                         : groupName
                 }
                 onLinkActivated: link => { root.selectedMemberId = ""; if (link !== "stack") root.selectedIndex = -1 }
@@ -606,7 +606,7 @@ ColumnLayout {
                     Layout.maximumWidth: Kirigami.Units.gridUnit * 36
                     Layout.alignment: Qt.AlignLeft | Qt.AlignTop
                     wideMode: false
-                    PlasmaComponents.TextField {
+                    QQC2.TextField {
                         id: groupNameField
                         Kirigami.FormData.label: i18n("Group name:")
                         placeholderText: i18n("TLBStacks Group")
@@ -620,13 +620,13 @@ ColumnLayout {
                         value: root.cfg_panelIconSize
                         onEdited: size => root.cfg_panelIconSize = size
                     }
-                    PlasmaComponents.CheckBox {
+                    QQC2.CheckBox {
                         Kirigami.FormData.label: i18n("Task tracking:")
                         text: i18n("Show running windows (task tracking)")
                         checked: root.cfg_taskTrackingEnabled
                         onToggled: root.cfg_taskTrackingEnabled = checked
                     }
-                    PlasmaComponents.Label {
+                    QQC2.Label {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         text: i18n("Default for all panel buttons. Each item can override it. Custom sizes are limited by panel space; popup icons are configured separately.")
@@ -637,7 +637,7 @@ ColumnLayout {
                     Layout.maximumWidth: Kirigami.Units.gridUnit * 36
                     Layout.alignment: Qt.AlignLeft | Qt.AlignTop
                     wideMode: false
-                    PlasmaComponents.ComboBox {
+                    QQC2.ComboBox {
                         visible: root.selectedItem && root.selectedItem.type === "application"
                         Kirigami.FormData.label: i18n("Application:")
                         Layout.fillWidth: true
@@ -648,18 +648,18 @@ ColumnLayout {
                             ? root.catalog.findIndex(app => app.desktopId === root.selectedItem.desktopId) : -1
                         onActivated: root.replaceLauncherApp(root.catalog[currentIndex].desktopId)
                     }
-                    PlasmaComponents.Button {
+                    QQC2.Button {
                         text: i18n("Edit launch options…")
                         visible: root.selectedItem && root.selectedItem.type === "application"
                         onClicked: panelApplicationDialog.edit(root.selectedItem.id,
                             root.selectedItem.label || root.nameFor(root.selectedItem.desktopId), root.selectedItem.arguments || [])
                     }
-                    PlasmaComponents.Button {
+                    QQC2.Button {
                         text: i18n("Edit custom launcher…")
                         visible: root.selectedItem && root.selectedItem.type === "command"
                         onClicked: panelCommandDialog.edit(root.selectedItem.id, root.selectedItem.command)
                     }
-                    PlasmaComponents.TextField {
+                    QQC2.TextField {
                         objectName: "launcherLabelField"
                         Kirigami.FormData.label: i18n("Label:")
                         Layout.fillWidth: true
@@ -677,27 +677,27 @@ ColumnLayout {
                             fallbackSource: root.selectedItem && root.selectedItem.type === "application" ? launcher.icon(root.selectedItem.desktopId) : ""
                             sourceAvailable: launcher.themeIconAvailable(source)
                         }
-                        PlasmaComponents.Button { text: i18n("Choose…"); onClicked: root.chooseLauncherIcon(false) }
-                        PlasmaComponents.Button { text: i18n("Image…"); onClicked: root.chooseLauncherIcon(true) }
+                        QQC2.Button { text: i18n("Choose…"); onClicked: root.chooseLauncherIcon(false) }
+                        QQC2.Button { text: i18n("Image…"); onClicked: root.chooseLauncherIcon(true) }
                     }
                     PanelIconSizeEditor {
                         Kirigami.FormData.label: i18n("Panel icon size:")
                         value: root.selectedItem ? root.selectedItem.panelIconSize || 0 : 0
                         onEdited: size => { if (root.selectedItem) root.updateLauncherAppearance(root.selectedItem.id, {panelIconSize: size}) }
                     }
-                    PlasmaComponents.Button {
+                    QQC2.Button {
                         text: i18n("Reset appearance")
                         enabled: root.selectedItem && !!(root.selectedItem.label || root.selectedItem.icon || root.selectedItem.panelIconSize)
                         onClicked: root.updateLauncherAppearance(root.selectedItem.id, {label: "", icon: "", panelIconSize: 0})
                     }
-                    PlasmaComponents.Label {
+                    QQC2.Label {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         text: i18n("Opens this application directly from the panel.")
                     }
                 }
                 ColumnLayout {
-                    PlasmaComponents.Label { text: i18n("Panel icon size:") }
+                    QQC2.Label { text: i18n("Panel icon size:") }
                     PanelIconSizeEditor {
                         spinObjectName: "stackPanelIconSize"
                         value: root.selectedStack ? root.selectedStack.panelIconSize || 0 : 0
@@ -715,7 +715,7 @@ ColumnLayout {
                 ColumnLayout {
                     Layout.alignment: Qt.AlignTop
                     spacing: Kirigami.Units.largeSpacing
-                    PlasmaComponents.Label {
+                    QQC2.Label {
                         Layout.fillWidth: true
                         text: root.memberSelected ? root.nameFor(root.selectedMemberId) : ""
                         textFormat: Text.PlainText
@@ -731,20 +731,20 @@ ColumnLayout {
                             fallbackSource: root.memberSelected ? launcher.icon(((root.selectedStack.settings.customLaunchers || {})[root.selectedMemberId] || {}).desktopId || root.selectedMemberId) || "application-x-executable" : ""
                             sourceAvailable: launcher.themeIconAvailable(source)
                         }
-                        PlasmaComponents.Button { text: i18n("Choose icon…"); onClicked: root.chooseMemberIcon(false) }
-                        PlasmaComponents.Button { text: i18n("Image…"); onClicked: root.chooseMemberIcon(true) }
-                        PlasmaComponents.Button {
+                        QQC2.Button { text: i18n("Choose icon…"); onClicked: root.chooseMemberIcon(false) }
+                        QQC2.Button { text: i18n("Image…"); onClicked: root.chooseMemberIcon(true) }
+                        QQC2.Button {
                             text: i18n("Reset")
                             enabled: root.memberSelected && !!IconOverrides.get(root.selectedStack.settings.applicationIcons || {}, root.selectedMemberId)
                             onClicked: root.applyMemberIcon(root.selectedStack.id, root.selectedMemberId, "")
                         }
                     }
-                    PlasmaComponents.Label {
+                    QQC2.Label {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         text: i18n("This icon applies only to this application in this stack.")
                     }
-                    PlasmaComponents.Button {
+                    QQC2.Button {
                         text: i18n("Back to stack contents")
                         onClicked: root.selectedMemberId = ""
                     }
