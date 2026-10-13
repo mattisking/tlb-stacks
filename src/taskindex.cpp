@@ -69,6 +69,7 @@ qint64 lastActivatedOf(const RoleReader &reader, const QModelIndex &index)
 struct TaskRow {
     QModelIndex index;
     QString desktopId;
+    QString taskKey;
     QString name;  // "display" role
     QVariant icon; // "decoration" role value
     bool isGroup = false;
@@ -90,7 +91,13 @@ QList<TaskRow> taskRows(const QAbstractItemModel *model)
         QString id = desktopIdFromUrl(reader.value(index, "LauncherUrl").toUrl());
         if (id.isEmpty())
             id = withoutDesktopSuffix(reader.value(index, "AppId").toString());
-        rows.append(TaskRow{index, id, reader.value(index, "display").toString(),
+        QString key = id;
+        if (key.isEmpty()) {
+            const auto ids = reader.value(index, "WinIdList").toList();
+            if (!ids.isEmpty() && !ids.first().toString().isEmpty())
+                key = QStringLiteral("tlbstacks-window:") + ids.first().toString();
+        }
+        rows.append(TaskRow{index, id, key, reader.value(index, "display").toString(),
                              reader.value(index, "decoration"), isGroup,
                              reader.flag(index, "IsActive"), reader.flag(index, "IsMinimized")});
     }
@@ -99,10 +106,11 @@ QList<TaskRow> taskRows(const QAbstractItemModel *model)
 
 QList<TaskRow> rowsMatching(const QAbstractItemModel *model, const QString &desktopId)
 {
-    const QString wanted = withoutDesktopSuffix(desktopId);
+    if (desktopId.isEmpty()) return {};
+    const QString wanted = desktopId.startsWith("tlbstacks-window:") ? desktopId : withoutDesktopSuffix(desktopId);
     QList<TaskRow> matched;
     for (const TaskRow &row : taskRows(model)) {
-        if (row.desktopId == wanted)
+        if (row.taskKey == wanted)
             matched.append(row);
     }
     return matched;
@@ -218,7 +226,7 @@ QList<QModelIndex> windowIndexes(const QAbstractItemModel *model)
 // decimal string); false when no window matches.
 bool driveWindow(QAbstractItemModel *model, const QString &id, const char *action)
 {
-    if (id.isEmpty())
+    if (!model || id.isEmpty())
         return false;
     const RoleReader reader(model);
     for (const QModelIndex &index : windowIndexes(model)) {
@@ -293,13 +301,13 @@ QVariantList TaskIndex::unclaimedTasks() const
 {
     QSet<QString> claimed;
     for (const QString &id : m_desktopIds)
-        claimed.insert(withoutDesktopSuffix(id));
+        if (!id.isEmpty()) claimed.insert(withoutDesktopSuffix(id));
 
     QVariantList tasks;
     for (const TaskRow &row : taskRows(m_model)) {
         if (claimed.contains(row.desktopId))
             continue;
-        tasks.append(QVariantMap{{"desktopId", row.desktopId},
+        tasks.append(QVariantMap{{"desktopId", row.desktopId}, {"taskKey", row.taskKey},
                                  {"name", row.name},
                                  {"icon", iconNameOf(row.icon)},
                                  {"active", row.active},

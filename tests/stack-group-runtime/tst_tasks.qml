@@ -41,6 +41,36 @@ TestCase {
         }
     }
 
+    function test_claims_follow_current_source() {
+        const settings = {menuSource: "applications", applications: ["chrome", "tlbstacks-separator:1", "command"], customLaunchers: {command: {}}}
+        compare(ClickMatrix.stackClaims(settings, ["game"], ["recent"]), ["chrome"])
+        settings.menuSource = "folder"
+        compare(ClickMatrix.stackClaims(settings, ["game"], ["recent"]), [])
+        settings.menuSource = "categories"
+        compare(ClickMatrix.stackClaims(settings, ["game"], ["recent"]), ["game"])
+        settings.menuSource = "activity"
+        compare(ClickMatrix.stackClaims(settings, ["game"], ["recent"]), ["recent"])
+        const cache = {key: ClickMatrix.activityQueryKey(settings), ids: ["recent"]}
+        compare(ClickMatrix.activityClaims(cache, settings), ["recent"])
+        settings.activityLimit = 5
+        compare(ClickMatrix.activityClaims(cache, settings), [])
+        compare(ClickMatrix.activityClaims({key: ClickMatrix.activityQueryKey(settings), ids: []}, settings), [])
+    }
+    function test_argument_launcher_preserves_launch_intent() {
+        const item = {type: "application", desktopId: "chrome", arguments: ["--incognito"]}
+        area.states = {chrome: {running: true, active: true, count: 2}}
+        verify(ClickMatrix.launchOnly(item))
+        compare(ClickMatrix.decideClick(ClickMatrix.taskKey(item), area), "launch")
+        item.arguments = []
+        verify(!ClickMatrix.launchOnly(item))
+        compare(ClickMatrix.decideClick(ClickMatrix.taskKey(item), area), "minimize")
+    }
+    function test_unknown_tasks_have_distinct_panel_identity() {
+        const a = [{type: "task", desktopId: "", taskKey: "tlbstacks-window:one"}]
+        const b = [{type: "task", desktopId: "", taskKey: "tlbstacks-window:two"}]
+        verify(!ClickMatrix.samePanelItems(a, b))
+        verify(ClickMatrix.samePanelItems(a, [{type: "task", desktopId: "", taskKey: "tlbstacks-window:one", active: true}]))
+    }
     function test_single_window_matrix() {
         area.states = {"org.kde.konsole.desktop": {running: false, active: false, minimized: false, count: 0}}
         compare(ClickMatrix.decideClick("org.kde.konsole.desktop", area), "launch")
@@ -67,7 +97,7 @@ TestCase {
 
     function test_windows_without_desktop_entry_decide_the_same() {
         area.states = {"": {running: true, active: false, minimized: false, count: 1}}
-        compare(ClickMatrix.decideClick("", area), "activate")
+        compare(ClickMatrix.decideClick("", area), "launch")
         area.states = {}
         compare(ClickMatrix.decideClick("", area), "launch")
     }

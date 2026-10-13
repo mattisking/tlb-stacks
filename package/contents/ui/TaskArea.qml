@@ -24,9 +24,9 @@ Item {
     // this property so they re-evaluate when task state changes.
     readonly property int revision: index.revision
 
-    // {type:"task", desktopId, name, icon, active, minimized, count} rows,
+    // {type:"task", desktopId, taskKey, name, icon, active, minimized, count} rows,
     // ready to concat onto a Repeater model. Rows with no resolvable desktop
-    // entry (desktopId: "") pass through unchanged.
+    // entry keep an empty desktopId but carry a window-specific taskKey.
     readonly property var unclaimed: {
         // Reading index.revision here makes the binding re-run whenever the
         // index bumps it; the value itself is unused.

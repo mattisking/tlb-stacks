@@ -6,6 +6,7 @@
 #include <QVariantList>
 #include <QVariantMap>
 
+// Queries accept desktop-file IDs or opaque taskKey values from unclaimedTasks.
 // Matches desktop-file IDs against a tasks model (Plasma's TasksModel at runtime).
 // Reads roles by name only, so it needs no taskmanager headers and works with any model.
 class TaskIndex : public QObject {
@@ -22,7 +23,7 @@ public:
     void setDesktopIds(const QStringList &desktopIds);
     // {running, active, minimized, count, iconName}; walks the model on every call.
     Q_INVOKABLE QVariantMap taskState(const QString &desktopId) const;
-    // {desktopId, name, icon, active, minimized, count} per unclaimed group/window row,
+    // {desktopId, taskKey, name, icon, active, minimized, count} per unclaimed group/window row,
     // in model order; walks the model on every call.
     Q_INVOKABLE QVariantList unclaimedTasks() const;
     // Toggle-minimize the focused window, else activate the most recently

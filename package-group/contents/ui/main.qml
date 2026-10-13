@@ -83,35 +83,31 @@ PlasmoidItem {
         const ids = []
         const add = id => { if (id && !seen.has(id)) { seen.add(id); ids.push(id) } }
         for (const item of decoded.items) {
-            if (item.type === "application") add(item.desktopId)
+            if (item.type === "application" && !ClickMatrix.launchOnly(item)) add(item.desktopId)
             else if (item.type === "stack") for (const id of stackDesktopIds(item)) add(id)
         }
         return ids
     }
     function stackDesktopIds(item) {
         const cfg = item.settings
-        const commands = cfg.customLaunchers || {}
-        const ids = []
-        for (const id of cfg.applications || [])
-            if (!commands[id] && !StackMembers.isSeparator(id)) ids.push(id)
-        if (cfg.menuSource === "categories")
-            for (const app of ApplicationCategories.matching(catalog, cfg.applicationCategories)) ids.push(app.desktopId)
-        if (cfg.menuSource === "activity")
-            for (const id of activityIds[item.id] || []) ids.push(id)
-        return ids
+        return ClickMatrix.stackClaims(cfg,
+            cfg.menuSource === "categories" ? ApplicationCategories.matching(catalog, cfg.applicationCategories).map(app => app.desktopId) : [],
+            ClickMatrix.activityClaims(activityIds[item.id], cfg))
     }
     // Activity stacks claim ids only once their entries have materialized; the
     // collected ids persist across button rebuilds so the claim set never
     // flickers empty while an activity query reloads.
-    function rememberActivityIds(stackId, ids) {
-        activityIds = Object.assign({}, activityIds, {[stackId]: ids})
+    function rememberActivityIds(stackId, key, ids) {
+        const record = {key: key, ids: ids}
+        if (JSON.stringify(activityIds[stackId]) === JSON.stringify(record)) return
+        activityIds = Object.assign({}, activityIds, {[stackId]: record})
     }
     // The left-click matrix: an idle app launches, a running one activates
     // its most recent window, the focused one minimizes — except a focused
     // group of windows, which cycles to its next member. Appended task
     // buttons have no launch fallback.
     function clickTask(item) {
-        const decision = ClickMatrix.decideClick(item.desktopId, taskArea)
+        const decision = ClickMatrix.decideClick(ClickMatrix.taskKey(item), taskArea)
         const launch = () => {
             if (item.type === "application") launcher.launch(item.desktopId, item.arguments || [])
         }
@@ -120,15 +116,15 @@ PlasmoidItem {
             return
         }
         const area = taskArea
-        if (decision === "minimize" && area.stateFor(item.desktopId).count > 1) {
-            if (!area.cycle(item.desktopId)) launch()
+        if (decision === "minimize" && area.stateFor(ClickMatrix.taskKey(item)).count > 1) {
+            if (!area.cycle(ClickMatrix.taskKey(item))) launch()
             return
         }
-        if (!area.activate(item.desktopId)) launch()
+        if (!area.activate(ClickMatrix.taskKey(item))) launch()
     }
     // Middle-click: a new window when the app is running, otherwise launch.
     function newTaskInstance(item) {
-        if (taskArea && taskArea.newInstance(item.desktopId)) return
+        if (!ClickMatrix.launchOnly(item) && taskArea && taskArea.newInstance(ClickMatrix.taskKey(item))) return
         if (item.type === "application") launcher.launch(item.desktopId, item.arguments || [])
     }
 
@@ -355,13 +351,23 @@ PlasmoidItem {
                     readonly property string activityMessage: activityLoader.item ? activityLoader.item.message : ""
                     readonly property string activityKey: activityStack ? JSON.stringify(modelData.settings) : ""
                     onActivityKeyChanged: refreshActivity()
-                    onActivityEntriesChanged: if (activityEntries.length)
-                        root.rememberActivityIds(modelData.id, activityEntries.map(entry => entry.id))
+                    Connections {
+                        target: activityLoader.item
+                        function onChanged() {
+                            button.publishActivityClaims()
+                        }
+                    }
+                    function publishActivityClaims() {
+                        if (!activityLoader.item || activityLoader.item.loading) return
+                        root.rememberActivityIds(modelData.id, ClickMatrix.activityQueryKey(modelData.settings),
+                            activityLoader.item.entries.map(entry => entry.id))
+                    }
                     function refreshActivity() {
                         if (!activityStack || !activityLoader.item) return
                         const cfg = modelData.settings
                         activityLoader.item.refresh(cfg.activityOrder === "frequent", cfg.activityLimit,
                             cfg.applicationCategories, cfg.activityCurrent)
+                        publishActivityClaims()
                     }
                     Loader {
                         id: activityLoader
@@ -372,11 +378,12 @@ PlasmoidItem {
                     // Live window state for application and task buttons
                     // (idle defaults otherwise); touching taskArea.revision
                     // keeps it fresh — stateFor walks the model on every call.
+                    readonly property string taskKey: ClickMatrix.taskKey(modelData)
                     readonly property var taskState: {
                         if (!root.taskArea || (modelData.type !== "application" && modelData.type !== "task"))
                             return {running: false, active: false, minimized: false, count: 0}
                         root.taskArea.revision
-                        return root.taskArea.stateFor(modelData.desktopId)
+                        return root.taskArea.stateFor(button.taskKey)
                     }
                     // Live windows for the hover tiles (empty while idle, so an
                     // idle button keeps its text tooltip).
@@ -384,7 +391,7 @@ PlasmoidItem {
                         if (!root.taskArea || (modelData.type !== "application" && modelData.type !== "task"))
                             return []
                         root.taskArea.revision
-                        return root.taskArea.windows(modelData.desktopId)
+                        return root.taskArea.windows(button.taskKey)
                     }
                     // Stack button: true when any member app is running. The
                     // touches below refresh it when the member list or task
@@ -473,7 +480,7 @@ PlasmoidItem {
                         enabled: ClickMatrix.offersContextMenu(button.modelData)
                         acceptedButtons: Qt.RightButton
                         onClicked: launcher.showEntryContextMenu(button,
-                            launcher.applicationEntry(button.modelData.desktopId),
+                            Object.assign({}, launcher.applicationEntry(button.modelData.desktopId), {id: button.taskKey || button.modelData.desktopId}),
                             button.taskState.running)
                     }
                     // Middle-click opens a new window (or launches an idle
@@ -485,7 +492,7 @@ PlasmoidItem {
                             && (button.modelData.type === "application" || button.modelData.type === "task")
                         acceptedButtons: Qt.MiddleButton
                         onClicked: root.newTaskInstance(button.modelData)
-                        onWheel: wheel => root.taskArea.step(button.modelData.desktopId,
+                        onWheel: wheel => root.taskArea.step(button.taskKey,
                             wheel.angleDelta.y > 0 ? 1 : -1)
                     }
                     // Running indicator: active windows light the dot up;

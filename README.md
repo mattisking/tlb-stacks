@@ -79,8 +79,12 @@ in the group configuration; the group then behaves as a pure launcher again.
 - **Append zone:** applications that are not part of the group appear as extra
   buttons while they run and disappear again once their last window closes.
   Windows without an installed desktop entry keep their window title and icon.
-  Custom command launchers never claim windows, so their windows show up in
+  Custom command launchers and application launchers with arguments never claim
+  windows, so their windows show up in
   the append zone too.
+- Application launchers with arguments always run their configured command, even
+  when the application is already running. Clearing the arguments restores normal
+  task-button behavior.
 - **Click matrix:** left-click an idle application to launch it, a running one
   to activate its most recent window, and a focused one to minimize it —
   except when it has several windows, where the click cycles to its next

@@ -7,7 +7,7 @@
 // this never triggers task actions, so it stays testable offscreen. A null
 // taskArea (disabled or degraded) decides "launch".
 function decideClick(desktopId, taskArea) {
-    if (!taskArea)
+    if (!taskArea || !desktopId)
         return "launch"
     const state = taskArea.stateFor(desktopId)
     if (!state || !state.running)
@@ -45,8 +45,32 @@ function samePanelItems(a, b) {
         const x = a[i], y = b[i]
         if (x === y)
             continue
-        if (!x || !y || x.type !== "task" || y.type !== "task" || x.desktopId !== y.desktopId)
+        if (!x || !y || x.type !== "task" || y.type !== "task" || x.desktopId !== y.desktopId || taskKey(x) !== taskKey(y))
             return false
     }
     return true
+}
+
+// Argument-bearing launchers describe a particular launch, not every window of
+// the underlying app. Preserve that intent until windows can be matched reliably.
+function launchOnly(item) {
+    return item && item.type === "application" && (item.arguments || []).length > 0
+}
+function taskKey(item) {
+    return launchOnly(item) ? "" : (item.taskKey || item.desktopId || "")
+}
+function stackClaims(settings, categoryIds, activityIds) {
+    if (settings.menuSource === "categories") return categoryIds
+    if (settings.menuSource === "activity") return activityIds
+    if (settings.menuSource !== "applications") return []
+    const commands = settings.customLaunchers || {}
+    return (settings.applications || []).filter(id => id && !commands[id]
+        && !id.startsWith("tlbstacks-separator:"))
+}
+function activityQueryKey(settings) {
+    return JSON.stringify([settings.activityOrder, settings.activityLimit,
+        settings.applicationCategories, settings.activityCurrent])
+}
+function activityClaims(cache, settings) {
+    return cache && cache.key === activityQueryKey(settings) ? cache.ids : []
 }

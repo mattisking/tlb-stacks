@@ -281,3 +281,22 @@ at least one standalone stack:
 
 Record each step's result here once run; keep failures as bugs with a
 reproducible case rather than reopening the feature.
+
+### Ownership review follow-up — October 13, 2026
+
+Implemented, awaiting desktop acceptance: group ownership follows only the active
+stack source. Recent/Frequent claims are tied to the current query and cleared
+when a completed query has no results. Argument-bearing direct application
+launchers remain launch-only (including middle-click); ordinary launchers retain
+the task click matrix. Unidentified tasks use a separate window-based action key,
+leaving desktop IDs available for metadata. An absent task/window identity never
+selects all unidentified windows. Hover and popup timing/layout are unchanged.
+
+Desktop checks: switch a Selected stack to Live Folder and verify its old apps
+are eligible for appended task buttons; launch a configured Chrome `--incognito`
+entry while an ordinary Chrome window is open; verify ordinary task clicks and
+hover previews still feel the same.
+
+Other review findings remain separate work: URL-based optional TaskArea loading,
+overflow handling for many window previews, and the untracked OBS spec's license
+path mismatch (`tlbstacks` versus CMake's `tlb-stacks`).

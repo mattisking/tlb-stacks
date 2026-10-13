@@ -112,6 +112,29 @@ private slots:
         index.setDesktopIds({Konsole});
     }
 
+    void unidentifiedWindowsKeepSeparateActionTargets()
+    {
+        model.setRows({idWindow("", "one", "First"), idWindow("", "two", "Second")});
+        const auto first = index.unclaimedTasks().at(0).toMap().value("taskKey").toString();
+        const auto second = index.unclaimedTasks().at(1).toMap().value("taskKey").toString();
+        QVERIFY(!first.isEmpty()); QVERIFY(first != second);
+        QCOMPARE(index.taskState(second).value("count").toInt(), 1);
+        QCOMPARE(index.windows(second).first().toMap().value("uuid").toString(), QString("two"));
+        QVERIFY(index.activate(second)); QCOMPARE(model.activateCalls(), QVariantList{1});
+        QVERIFY(index.close(second)); QCOMPARE(model.closeCalls(), QVariantList{1});
+        QVERIFY(!index.close("")); QVERIFY(!index.activate(""));
+        QCOMPARE(index.windows("").size(), 0);
+        model.removeRowAt(0);
+        model.clearCalls();
+        QVERIFY(index.activate(second)); QCOMPARE(model.activateCalls(), QVariantList{0});
+        QVERIFY(!index.activate(first));
+        model.setRows({idWindow("", uint(321), "X11")});
+        const auto x11 = index.unclaimedTasks().first().toMap().value("taskKey").toString();
+        QVERIFY(index.activate(x11));
+        QCOMPARE(index.windows(x11).first().toMap().value("winId").toUInt(), uint(321));
+        index.setModel(nullptr);
+        QVERIFY(!index.activateWindow("two")); QVERIFY(!index.closeWindow("two"));
+    }
     void emptyModelIsNotRunning()
     {
         const QVariantMap state = index.taskState(Konsole);
@@ -267,11 +290,11 @@ private slots:
         QCOMPARE(model.activateCalls(), QVariantList{0});
     }
 
-    void activateRoutesRowsWithoutADesktopEntry()
+    void rowsWithoutAnyIdentityNeverShareAnActionTarget()
     {
         model.setRows({window({}, false, true), window({})});
-        QVERIFY(index.activate(QString()));
-        QCOMPARE(model.activateCalls(), QVariantList{1});
+        QVERIFY(!index.activate(QString()));
+        QCOMPARE(model.activateCalls(), QVariantList{});
         QCOMPARE(model.toggleMinimizedCalls(), QVariantList{});
     }
 
