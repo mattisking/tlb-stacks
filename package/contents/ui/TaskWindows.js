@@ -54,6 +54,16 @@ function dialogSize(contentWidth, contentHeight, marginLeft, marginRight, margin
             height: atLeastZero(contentHeight) + atLeastZero(marginTop) + atLeastZero(marginBottom)}
 }
 
+// The x for a natively positioned tip: horizontally centred on its anchor item and
+// clamped into the screen rectangle. `windowWidth` is the CURRENT window width, so
+// the centre is recomputed after every correction — a tip that shrank must not keep
+// the far-left x a wider geometry left behind, and the dialog does not re-anchor for
+// a size we wrote ourselves.
+function centeredX(anchorX, anchorWidth, windowWidth, screenX, screenWidth) {
+    const centred = anchorX + (anchorWidth - windowWidth) / 2
+    return Math.min(Math.max(centred, screenX), Math.max(screenX, screenX + screenWidth - windowWidth))
+}
+
 // Which kind of window does this tip need? A clickable tile tip has to receive
 // pointer input, and the tooltip window kind does not reliably deliver button
 // events on every platform, so an interactive tip is an ordinary frameless,

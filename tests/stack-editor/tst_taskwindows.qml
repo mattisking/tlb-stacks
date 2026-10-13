@@ -186,4 +186,27 @@ TestCase {
         compare(TaskWindows.dialogSize(436, 164, undefined, undefined, undefined, undefined).width, 436)
         compare(TaskWindows.dialogSize(436, 164, -5, -5, -5, -5).height, 164)
     }
+
+    // ---- Native placement ----
+    // A natively positioned tip is centred on its anchor item and clamped into the
+    // screen, using the CURRENT window width so a correction after a size change
+    // recentres it (the dialog's own anchoring does not re-run for a size we wrote).
+    function test_centered_x_centres_on_the_anchor() {
+        // 1000-wide screen, anchor 60 wide at x=500, 200-wide tip.
+        compare(TaskWindows.centeredX(500, 60, 200, 0, 1000), 430)      // 500 + (60-200)/2
+    }
+
+    function test_centered_x_clamps_into_the_screen() {
+        compare(TaskWindows.centeredX(0, 60, 200, 0, 1000), 0)          // -70 -> left edge
+        compare(TaskWindows.centeredX(980, 60, 200, 0, 1000), 800)      // 910 -> right edge
+        // An oversized tip pins to the left edge rather than escaping the screen.
+        compare(TaskWindows.centeredX(500, 60, 5000, 0, 1000), 0)
+    }
+
+    function test_centered_x_follows_the_current_width() {
+        // Same anchor and screen, different widths: the stale far-left x of a wide
+        // tip must be replaced by the centred x of the narrow one.
+        compare(TaskWindows.centeredX(500, 60, 1104, 0, 1000), 0)
+        compare(TaskWindows.centeredX(500, 60, 224, 0, 1000), 418)       // 500 + (60-224)/2
+    }
 }

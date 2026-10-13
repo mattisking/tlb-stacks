@@ -109,13 +109,16 @@ Item {
         if (!root.shown) return
         Qt.callLater(function() { if (root.shown) root.placeTip() })
     }
-    // The dialog adopts its size once, at the show flip, and never follows the
-    // content afterwards — so a payload that grows or shrinks while the tip is up (a
-    // window opening or closing under a hover, or the model's regroup transition)
-    // would render clipped, with the extra tiles outside the window. While shown the
-    // window is therefore sized explicitly from the content, and the resulting
-    // resize re-runs the native anchoring.
-    function applyWindowSize() {
+    // The dialog window's geometry is a pure function of the current content and
+    // anchor: the dialog keeps whatever rect it adopted (it sizes and places itself
+    // once, so a payload that changed while the tip was hidden leaves a stale — wide
+    // and far-left — rect behind forever), so every visible moment re-asserts the
+    // computed size, plus the x for natively positioned bar tips (centred on the
+    // anchor with the CURRENT width, clamped into the screen; the dialog does not
+    // re-anchor for a size we wrote ourselves). The writes are guarded by the target
+    // values, so a matching geometry never resizes or moves anything, and a
+    // correction terminates (a re-entered call finds everything already correct).
+    function applyWindowGeometry() {
         const content = tip.mainItem
         if (!root.shown || !content)
             return
@@ -126,23 +129,42 @@ Item {
             tip.width = size.width
         if (tip.height !== size.height)
             tip.height = size.height
+        if (root.nativePositioning) {
+            const anchorPos = root.mapToGlobal(0, 0)
+            const x = TaskWindows.centeredX(anchorPos.x, root.width, tip.width,
+                root.Screen.virtualX, root.Screen.width)
+            // Rounded compare: sub-pixel differences must not fight the dialog.
+            if (Math.round(tip.x) !== Math.round(x))
+                tip.x = x
+        }
     }
     // Content settled (or changed) while the tip is up: keep the window in step and
     // re-place the manually positioned ("beside") tips.
     function contentChanged() {
-        root.applyWindowSize()
+        root.applyWindowGeometry()
         root.replaceIfShown()
     }
+    // Set once a window has actually been shown, i.e. once the frame margins the
+    // dialog draws are real (before the first show they read as zero).
+    property bool dialogMarginsKnown: false
     // Flip visible: the size is final by now, so the first visible frame is
     // already at the right size and place.
     function flipVisible() {
         root.placeTip()
         root.shown = true
-        // The native frame margins are final only after the window is shown: apply
-        // the settled size and re-place once the frame is real.
+        // The dialog keeps whatever geometry it adopted, so a later show would carry
+        // the previous payload's size into its first frame. With the frame margins
+        // known (any show after the first) the computed size can be applied right
+        // away; before the first show the margins are not final and the dialog sizes
+        // itself from the content it was given.
+        if (root.dialogMarginsKnown)
+            root.applyWindowGeometry()
+        // The margins are final only once the window is shown: apply and re-place
+        // again once the frame is real.
         Qt.callLater(function() {
             if (!root.shown) return
-            root.applyWindowSize()
+            root.applyWindowGeometry()
+            root.dialogMarginsKnown = true
             root.placeTip()
         })
     }
@@ -240,6 +262,10 @@ Item {
         // never intercepts it.
         outputOnly: !root.interactive
         hideOnWindowDeactivate: false
+        // The dialog keeps whatever geometry it adopted, so the computed size is
+        // re-asserted (while shown) if anything else changes the window's size.
+        onWidthChanged: root.applyWindowGeometry()
+        onHeightChanged: root.applyWindowGeometry()
         mainItem: Item {
             // The text tip keeps its 320px cap (the label's own width clamp);
             // tiles use the fixed geometry above, so the dialog has its final size
