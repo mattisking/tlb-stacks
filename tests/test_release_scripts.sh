@@ -9,6 +9,13 @@ ok()  { echo "PASS: $1"; pass=$((pass+1)); }
 bad() { echo "FAIL: $1"; fail=$((fail+1)); }
 
 MODULE_PATH='com/mattphilmon/tlbstacks'
+# The version under test follows the tree (CMakeLists is the lockstep source of
+# truth) so a release bump cannot leave these tests pinned to the old version.
+ver="$(sed -nE 's/^project\(TLBStacks VERSION ([0-9.]+)\).*/\1/p' CMakeLists.txt)"
+[[ -n "$ver" ]] || {
+    echo 'precondition failed: cannot read the version from CMakeLists.txt' >&2
+    exit 2
+}
 
 [[ -f "build/ci/qml/${MODULE_PATH}/libtlbstacksplugin.so" ]] || {
     echo 'precondition failed: no build/ci plugin; run scripts/ci-run.sh first' >&2
@@ -16,9 +23,9 @@ MODULE_PATH='com/mattphilmon/tlbstacks'
 }
 
 echo '== T0: clean local packaging still succeeds =='
-if scripts/release-assets.sh 0.2.0 build/ci HEAD >/dev/null 2>&1 \
-    && tar -tzf dist/tlbstacks-0.2.0-fedora44.tar.gz | grep 'libtlbstacksplugin.so' >/dev/null \
-    && tar -tzf dist/tlbstacks-0.2.0-fedora44.tar.gz | grep 'com.mattphilmon.tlbstacks.group/metadata.json' >/dev/null \
+if scripts/release-assets.sh "$ver" build/ci HEAD >/dev/null 2>&1 \
+    && tar -tzf "dist/tlbstacks-${ver}-fedora44.tar.gz" | grep 'libtlbstacksplugin.so' >/dev/null \
+    && tar -tzf "dist/tlbstacks-${ver}-fedora44.tar.gz" | grep 'com.mattphilmon.tlbstacks.group/metadata.json' >/dev/null \
     && [[ -f dist/com.mattphilmon.tlbstacks.plasmoid && -f dist/com.mattphilmon.tlbstacks.group.plasmoid ]]; then
     ok 'T0 clean run builds assets with the staged plugin, both widgets, and both payloads'
 else
@@ -35,7 +42,7 @@ fi
 if [[ -e dist ]]; then bad 'T1 dist absent after failure'; else ok 'T1 dist absent after failure'; fi
 
 echo '== T2: a SOURCE_REF that is not the checked-out commit is rejected =='
-if scripts/release-assets.sh 0.2.0 build/ci cb65ab1 >/dev/null 2>&1; then
+if scripts/release-assets.sh "$ver" build/ci cb65ab1 >/dev/null 2>&1; then
     bad 'T2 non-HEAD SOURCE_REF rejected'
 else
     ok 'T2 non-HEAD SOURCE_REF rejected'
@@ -44,7 +51,7 @@ rm -rf dist
 
 echo '== T3: uncommitted release inputs are rejected =='
 printf '\n' >> CMakeLists.txt
-if scripts/release-assets.sh 0.2.0 build/ci HEAD >/dev/null 2>&1; then
+if scripts/release-assets.sh "$ver" build/ci HEAD >/dev/null 2>&1; then
     bad 'T3 dirty release inputs rejected'
 else
     ok 'T3 dirty release inputs rejected'
@@ -57,8 +64,8 @@ if [[ ! -f "build/ci-override/qml/${MODULE_PATH}/libtlbstacksplugin.so" ]]; then
     cmake -S . -B build/ci-override -DTLB_QML_INSTALL_DIR=/tmp/opencode/tlb-override-qml >/dev/null 2>&1
     cmake --build build/ci-override -j "$(nproc)" >/dev/null 2>&1
 fi
-if scripts/release-assets.sh 0.2.0 build/ci-override HEAD >/dev/null 2>&1; then
-    if tar -tzf dist/tlbstacks-0.2.0-fedora44.tar.gz | grep 'libtlbstacksplugin.so' >/dev/null; then
+if scripts/release-assets.sh "$ver" build/ci-override HEAD >/dev/null 2>&1; then
+    if tar -tzf dist/tlbstacks-'$ver'-fedora44.tar.gz | grep 'libtlbstacksplugin.so' >/dev/null; then
         ok 'T4 override build: tarball contains the plugin'
     else
         bad 'T4 override build: tarball contains the plugin'
