@@ -46,6 +46,14 @@ public:
     // windows, so grouped apps are driven through the parent row and ungrouped
     // windows each get their own call. False when nothing matches.
     Q_INVOKABLE bool close(const QString &desktopId);
+    // Per-window rows for the app, in model order, expanding group parents to
+    // their child windows: {uuid, winId, title, minimized, active}, where the
+    // platform fills exactly one of uuid (Wayland) / winId (X11).
+    Q_INVOKABLE QVariantList windows(const QString &desktopId) const;
+    // Activate / politely close exactly the window `id` names — a Wayland UUID
+    // string or an X11 WId as a decimal string. False when no window matches.
+    Q_INVOKABLE bool activateWindow(const QString &id);
+    Q_INVOKABLE bool closeWindow(const QString &id);
 Q_SIGNALS:
     void changed();
 private:

@@ -63,6 +63,21 @@ Item {
         return index.close(desktopId)
     }
 
+    // Per-window rows for the app {uuid, winId, title, minimized, active}, for
+    // the hover tooltip's live window tiles (empty when not running).
+    function windows(desktopId) {
+        return index.windows(desktopId)
+    }
+
+    // Drive exactly the window a tile names (Wayland uuid or X11 winId).
+    function activateWindow(id) {
+        return index.activateWindow(id)
+    }
+
+    function closeWindow(id) {
+        return index.closeWindow(id)
+    }
+
     TaskManager.TasksModel {
         id: tasksModel
         groupMode: TaskManager.TasksModel.GroupApplications

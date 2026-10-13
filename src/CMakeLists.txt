@@ -25,6 +25,13 @@ set_source_files_properties("../package/contents/ui/ApplicationIcon.qml" PROPERT
     QT_RESOURCE_ALIAS "ApplicationIcon.qml" QT_QML_SKIP_CACHEGEN TRUE)
 set_source_files_properties("../package/contents/ui/StackToolTip.qml" PROPERTIES
     QT_RESOURCE_ALIAS "StackToolTip.qml" QT_QML_SKIP_CACHEGEN TRUE)
+# Running-app tooltip tile decisions, shared by the tooltip and its tests.
+set_source_files_properties("../package/contents/ui/TaskWindows.js" PROPERTIES
+    QT_RESOURCE_ALIAS "TaskWindows.js" QT_QML_SKIP_CACHEGEN TRUE)
+# Wayland live window thumbnails: loaded lazily so a missing pipewire/taskmanager
+# module degrades to the icon fallback.
+set_source_files_properties("../package/contents/ui/TaskThumbnail.qml" PROPERTIES
+    QT_RESOURCE_ALIAS "TaskThumbnail.qml" QT_QML_SKIP_CACHEGEN TRUE)
 set_source_files_properties("../package/contents/ui/MenuNavigation.js" PROPERTIES
     QT_RESOURCE_ALIAS "MenuNavigation.js" QT_QML_SKIP_CACHEGEN TRUE)
 set_source_files_properties("../package/contents/ui/IconOverrides.js" PROPERTIES
@@ -57,6 +64,8 @@ qt_add_qml_module(tlbstacksplugin
         ../package/contents/ui/ApplicationMenu.qml
         ../package/contents/ui/ApplicationIcon.qml
         ../package/contents/ui/StackToolTip.qml
+        ../package/contents/ui/TaskWindows.js
+        ../package/contents/ui/TaskThumbnail.qml
         ../package/contents/ui/MenuNavigation.js
         ../package/contents/ui/IconOverrides.js
         ../package/contents/ui/TaskArea.qml

@@ -378,6 +378,14 @@ PlasmoidItem {
                         root.taskArea.revision
                         return root.taskArea.stateFor(modelData.desktopId)
                     }
+                    // Live windows for the hover tiles (empty while idle, so an
+                    // idle button keeps its text tooltip).
+                    readonly property var taskWindows: {
+                        if (!root.taskArea || (modelData.type !== "application" && modelData.type !== "task"))
+                            return []
+                        root.taskArea.revision
+                        return root.taskArea.windows(modelData.desktopId)
+                    }
                     // Stack button: true when any member app is running. The
                     // touches below refresh it when the member list or task
                     // state changes; stackDesktopIds and stateFor hide their
@@ -516,8 +524,32 @@ PlasmoidItem {
                     }
                     Keys.onReturnPressed: clicked()
                     Keys.onEnterPressed: clicked()
-                    PlasmaComponents.ToolTip {
+                    // A running button hovers as live window tiles — click one to
+                    // activate that window, middle-click or ✕ to close it. An
+                    // idle button keeps the plain text tooltip below.
+                    StackToolTip {
+                        id: barToolTip
+                        anchors.fill: parent
                         text: root.launchError || button.appName
+                        windows: button.taskWindows
+                        fallbackIcon: button.resolvedIcon
+                        // Panel host window is the full-width panel, so the tip
+                        // is anchored natively to the button at the panel edge.
+                        placement: "above"
+                        dialogLocation: Plasmoid.location
+                        selected: button.hovered && barToolTip.tileMode
+                        onWindowActivated: id => {
+                            barToolTip.hideToolTip()
+                            if (root.taskArea) root.taskArea.activateWindow(id)
+                        }
+                        onWindowClosed: id => {
+                            if (root.taskArea) root.taskArea.closeWindow(id)
+                        }
+                    }
+                    PlasmaComponents.ToolTip {
+                        // The tile tip owns the hover while the app is running;
+                        // this component only shows itself for non-empty text.
+                        text: barToolTip.tileMode ? "" : (root.launchError || button.appName)
                         delay: 700
                     }
                 }

@@ -48,6 +48,30 @@ QVariantMap recentWindow(const QString &url, qint64 lastActivated, bool minimize
     return row;
 }
 
+// A window with its per-window identifier: WinIdList holds the platform's id —
+// a numeric WId on X11 or a UUID string on Wayland — exactly one entry per
+// window row, as the real model reports.
+QVariantMap idWindow(const QString &url, const QVariant &id, const QString &title = {},
+                     bool active = false, bool minimized = false)
+{
+    QVariantMap row = window(url, active, minimized);
+    row.insert("WinIdList", QVariantList{id});
+    if (!title.isEmpty())
+        row.insert("display", title);
+    return row;
+}
+
+// The live Plasma shape: a group parent that ALSO reports IsWindow, with a
+// WinIdList carrying its first child's uuid — so it masquerades as that child
+// unless IsGroupParent is treated as authoritative.
+QVariantMap liveGroupRow(const QString &url, const QVariantList &children, const QVariant &firstChildId)
+{
+    QVariantMap row = groupRow(url, children);
+    row.insert("IsWindow", true);
+    row.insert("WinIdList", QVariantList{firstChildId});
+    return row;
+}
+
 QVariantMap recentWindow(const QString &url, const QDateTime &lastActivated)
 {
     QVariantMap row = window(url);
@@ -346,6 +370,154 @@ private slots:
         model.setRows({window(DolphinUrl)});
         QVERIFY(!index.close(Konsole));
         QCOMPARE(model.closeCalls(), QVariantList{});
+    }
+
+    // ---- Per-window API (tooltip tiles) ----
+    // The real tasks model exposes one identifier per window row through
+    // "WinIdList" — a numeric WId on X11, a UUID string on Wayland (there is no
+    // separate UUID/WinId role). windows() reports both fields, one per window.
+
+    void windowsListEveryWindowOfTheApp()
+    {
+        model.setRows({idWindow(DolphinUrl, uint(9)),
+                       idWindow(KonsoleUrl, uint(4242), "First", true),
+                       idWindow(KonsoleUrl, QStringLiteral("konsole-uuid-2"), "Second", true)});
+        const QVariantList windows = index.windows(Konsole);
+        QCOMPARE(windows.size(), 2);
+
+        const QVariantMap first = windows.at(0).toMap();
+        QCOMPARE(first.value("uuid").toString(), QString());
+        QCOMPARE(first.value("winId").toUInt(), uint(4242));
+        QCOMPARE(first.value("title").toString(), QStringLiteral("First"));
+        QCOMPARE(first.value("active").toBool(), true);
+        QCOMPARE(first.value("minimized").toBool(), false);
+
+        const QVariantMap second = windows.at(1).toMap();
+        QCOMPARE(second.value("uuid").toString(), QStringLiteral("konsole-uuid-2"));
+        QCOMPARE(second.value("winId").toUInt(), uint(0));
+        QCOMPARE(second.value("title").toString(), QStringLiteral("Second"));
+    }
+
+    void windowsExpandGroupParents()
+    {
+        const QVariantList children{idWindow(KonsoleUrl, uint(11)),
+                                    idWindow(KonsoleUrl, QStringLiteral("u-12"), "B", false, true)};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children)});
+        const QVariantList windows = index.windows(Konsole);
+        QCOMPARE(windows.size(), 2);
+        QCOMPARE(windows.at(0).toMap().value("winId").toUInt(), uint(11));
+        QCOMPARE(windows.at(1).toMap().value("uuid").toString(), QStringLiteral("u-12"));
+        QCOMPARE(windows.at(1).toMap().value("title").toString(), QStringLiteral("B"));
+        QCOMPARE(windows.at(1).toMap().value("minimized").toBool(), true);
+    }
+
+    void windowsAreEmptyWhenTheAppIsIdle()
+    {
+        QCOMPARE(index.windows(Konsole), QVariantList{});
+        model.setRows({idWindow(DolphinUrl, uint(7))});
+        QCOMPARE(index.windows(Konsole), QVariantList{});
+    }
+
+    void activateWindowTargetsExactlyThatWindow()
+    {
+        model.setRows({idWindow(KonsoleUrl, uint(111)), idWindow(KonsoleUrl, QStringLiteral("uuid-b")),
+                       window(DolphinUrl)});
+        QVERIFY(index.activateWindow(QStringLiteral("uuid-b")));
+        QCOMPARE(model.activateCalls(), QVariantList{1});
+        model.clearCalls();
+        QVERIFY(index.activateWindow(QStringLiteral("111"))); // an X11 WId arrives as a string
+        QCOMPARE(model.activateCalls(), QVariantList{0});
+    }
+
+    void closeWindowTargetsExactlyThatWindow()
+    {
+        model.setRows({idWindow(KonsoleUrl, uint(111)), idWindow(KonsoleUrl, QStringLiteral("uuid-b"))});
+        QVERIFY(index.closeWindow(QStringLiteral("111")));
+        QCOMPARE(model.closeCalls(), QVariantList{0});
+        model.clearCalls();
+        QVERIFY(index.closeWindow(QStringLiteral("uuid-b")));
+        QCOMPARE(model.closeCalls(), QVariantList{1});
+    }
+
+    void windowActionsFindGroupedChildRows()
+    {
+        // The group sits at top-level 1 with three children, and the target is
+        // child 2: a row index that can never be the group-parent row, so the
+        // recorded call proves the CHILD row was driven, not the parent.
+        const QVariantList children{idWindow(KonsoleUrl, uint(11)), idWindow(KonsoleUrl, QStringLiteral("u-12")),
+                                    idWindow(KonsoleUrl, QStringLiteral("u-13"))};
+        model.setRows({window(DolphinUrl), groupRow(KonsoleUrl, children)});
+        QVERIFY(index.activateWindow(QStringLiteral("u-13")));
+        QCOMPARE(model.activateCalls(), QVariantList{2});
+        QVERIFY(index.closeWindow(QStringLiteral("11")));
+        QCOMPARE(model.closeCalls(), QVariantList{0});
+    }
+
+    void windowActionsWithoutAMatchReturnFalse()
+    {
+        model.setRows({idWindow(KonsoleUrl, uint(111))});
+        QVERIFY(!index.activateWindow(QStringLiteral("nope")));
+        QVERIFY(!index.closeWindow(QStringLiteral("nope")));
+        QVERIFY(!index.activateWindow(QString()));
+        QVERIFY(!index.closeWindow(QString()));
+        QCOMPARE(model.activateCalls(), QVariantList{});
+        QCOMPARE(model.closeCalls(), QVariantList{});
+    }
+
+    void windowsAcceptAWindowUuidAsAByteArray()
+    {
+        // Some Wayland backends surface the window UUID as a QByteArray; it must
+        // still be usable as a window id, since a silently empty id turns every
+        // tile click into a no-op.
+        model.setRows({idWindow(KonsoleUrl, QByteArray("konsole-byte-uuid"), "Byte")});
+        const QVariantList windows = index.windows(Konsole);
+        QCOMPARE(windows.size(), 1);
+        QCOMPARE(windows.at(0).toMap().value("uuid").toString(), QStringLiteral("konsole-byte-uuid"));
+        QCOMPARE(windows.at(0).toMap().value("winId").toUInt(), uint(0));
+        QVERIFY(index.activateWindow(QStringLiteral("konsole-byte-uuid")));
+        QCOMPARE(model.activateCalls(), QVariantList{0});
+        QVERIFY(index.closeWindow(QStringLiteral("konsole-byte-uuid")));
+        QCOMPARE(model.closeCalls(), QVariantList{0});
+    }
+
+    void liveGroupParentNeverMasqueradesAsItsFirstChild()
+    {
+        // The live Plasma 6.7 shape (from a real desktop trace): the group parent
+        // reports BOTH IsWindow and IsGroupParent, and its WinIdList.first() is its
+        // first child's uuid — so IsWindow-first logic makes the parent look like a
+        // window and hides its children. Dolphin sits at top-level 0 so the konsole
+        // group is top-level 1: a driven CHILD records its own row under the parent
+        // (0 or 1), while a wrongly driven PARENT would record 1 and, for the first
+        // child's uuid, would win the match outright.
+        const QVariantList children{idWindow(KonsoleUrl, QStringLiteral("{9c56c428}"), "Left"),
+                                    idWindow(KonsoleUrl, QStringLiteral("{25accca1}"), "Right")};
+        model.setRows({window(DolphinUrl),
+                       liveGroupRow(KonsoleUrl, children, QStringLiteral("{9c56c428}"))});
+
+        // Tiles: exactly the two children, in order, never the parent.
+        const QVariantList windows = index.windows(Konsole);
+        QCOMPARE(windows.size(), 2);
+        QCOMPARE(windows.at(0).toMap().value("uuid").toString(), QStringLiteral("{9c56c428}"));
+        QCOMPARE(windows.at(0).toMap().value("title").toString(), QStringLiteral("Left"));
+        QCOMPARE(windows.at(1).toMap().value("uuid").toString(), QStringLiteral("{25accca1}"));
+        QCOMPARE(windows.at(1).toMap().value("title").toString(), QStringLiteral("Right"));
+
+        // Left-click the first tile: the CHILD row (0), never the group parent (1),
+        // whose requestActivate is an upstream no-op.
+        QVERIFY(index.activateWindow(QStringLiteral("{9c56c428}")));
+        QCOMPARE(model.activateCalls(), QVariantList{0});
+        model.clearCalls();
+        // The second child's own uuid can only ever match that child.
+        QVERIFY(index.activateWindow(QStringLiteral("{25accca1}")));
+        QCOMPARE(model.activateCalls(), QVariantList{1});
+        model.clearCalls();
+        // Middle-click / ✕: exactly that child, never every child through the parent.
+        QVERIFY(index.closeWindow(QStringLiteral("{9c56c428}")));
+        QCOMPARE(model.closeCalls(), QVariantList{0});
+        model.clearCalls();
+        QVERIFY(index.closeWindow(QStringLiteral("{25accca1}")));
+        QCOMPARE(model.closeCalls(), QVariantList{1});
+        QCOMPARE(model.activateCalls(), QVariantList{});
     }
 
     // ---- Grouped topology (one group-parent row with child window rows) ----

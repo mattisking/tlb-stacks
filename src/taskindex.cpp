@@ -151,6 +151,86 @@ void invokeTaskAction(QAbstractItemModel *model, const char *action, const QMode
 {
     QMetaObject::invokeMethod(model, action, Q_ARG(QModelIndex, index));
 }
+
+// One window's platform identifier. "WinIdList" is the model's only per-window
+// id role: it holds a numeric WId on X11 or a UUID string on Wayland, exactly
+// one entry per window row.
+struct WindowIdentity {
+    QString uuid;
+    uint winId = 0;
+    bool valid() const { return !uuid.isEmpty() || winId != 0; }
+};
+
+WindowIdentity windowIdentityOf(const RoleReader &reader, const QModelIndex &index)
+{
+    WindowIdentity identity;
+    const QVariantList ids = reader.value(index, "WinIdList").toList();
+    if (ids.isEmpty())
+        return identity;
+    const QVariant &id = ids.first();
+    // A Wayland window UUID arrives as a string — a QString, or a QByteArray on
+    // some backends — anything numeric is an X11 WId. Misreading a UUID as numeric
+    // leaves the window with no id at all, which silently turns its tile's clicks
+    // into no-ops.
+    const int type = id.userType();
+    if (type == QMetaType::QString || type == QMetaType::QByteArray)
+        identity.uuid = id.toString();
+    else
+        identity.winId = id.toUInt();
+    return identity;
+}
+
+// Every window row the model holds: top-level windows plus the child windows of
+// group parents (a group parent is not itself a window).
+// Group expansion, IsGroupParent-first. The live Plasma model marks a group parent
+// with BOTH IsGroupParent and IsWindow, and its WinIdList carries its FIRST CHILD's
+// uuid — so IsWindow-first logic lets the parent masquerade as that child: it wins
+// a match for the child's id (requestActivate on a group parent is an upstream
+// no-op, requestClose closes every child) and its children are never enumerated.
+// A row reporting IsGroupParent is therefore a group parent whatever else it
+// claims: never a window itself, and always expanded to its windows.
+void collectWindowRows(const RoleReader &reader, const QAbstractItemModel *model,
+                       const QModelIndex &parent, QList<QModelIndex> &sink)
+{
+    for (int row = 0; row < model->rowCount(parent); ++row) {
+        const QModelIndex index = model->index(row, 0, parent);
+        if (reader.flag(index, "IsGroupParent")) {
+            collectWindowRows(reader, model, index, sink);
+            continue;
+        }
+        if (reader.flag(index, "IsWindow"))
+            sink.append(index);
+    }
+}
+
+// Every window row the model holds, in model order (nested groups included).
+QList<QModelIndex> windowIndexes(const QAbstractItemModel *model)
+{
+    QList<QModelIndex> indexes;
+    if (!model)
+        return indexes;
+    const RoleReader reader(model);
+    collectWindowRows(reader, model, QModelIndex(), indexes);
+    return indexes;
+}
+
+// Drive exactly the window `id` names (a Wayland UUID string or an X11 WId as a
+// decimal string); false when no window matches.
+bool driveWindow(QAbstractItemModel *model, const QString &id, const char *action)
+{
+    if (id.isEmpty())
+        return false;
+    const RoleReader reader(model);
+    for (const QModelIndex &index : windowIndexes(model)) {
+        const WindowIdentity identity = windowIdentityOf(reader, index);
+        if ((!identity.uuid.isEmpty() && identity.uuid == id)
+            || (identity.winId != 0 && QString::number(identity.winId) == id)) {
+            invokeTaskAction(model, action, index);
+            return true;
+        }
+    }
+    return false;
+}
 }
 
 TaskIndex::TaskIndex(QObject *parent) : QObject(parent) {}
@@ -321,4 +401,38 @@ bool TaskIndex::close(const QString &desktopId)
     for (const TaskRow &row : rows)
         invokeTaskAction(m_model, "requestClose", row.index);
     return true;
+}
+
+QVariantList TaskIndex::windows(const QString &desktopId) const
+{
+    QVariantList windows;
+    if (!m_model)
+        return windows;
+    const RoleReader reader(m_model);
+    QList<QModelIndex> indexes;
+    for (const TaskRow &row : rowsMatching(m_model, desktopId)) {
+        if (row.isGroup)
+            collectWindowRows(reader, m_model, row.index, indexes);
+        else
+            indexes.append(row.index);
+    }
+    for (const QModelIndex &index : indexes) {
+        const WindowIdentity identity = windowIdentityOf(reader, index);
+        windows.append(QVariantMap{{"uuid", identity.uuid},
+                                   {"winId", identity.winId},
+                                   {"title", reader.value(index, "display").toString()},
+                                   {"minimized", reader.flag(index, "IsMinimized")},
+                                   {"active", reader.flag(index, "IsActive")}});
+    }
+    return windows;
+}
+
+bool TaskIndex::activateWindow(const QString &id)
+{
+    return driveWindow(m_model, id, "requestActivate");
+}
+
+bool TaskIndex::closeWindow(const QString &id)
+{
+    return driveWindow(m_model, id, "requestClose");
 }

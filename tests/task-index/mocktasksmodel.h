@@ -21,7 +21,10 @@ public:
     explicit MockTasksModel(QObject *parent = nullptr) : QAbstractItemModel(parent)
     {
         const QStringList names{"IsWindow", "IsActive", "IsMinimized", "IsLauncher", "IsGroupParent",
-                                "LauncherUrl", "AppId", "display", "decoration", "LastActivated"};
+                                "LauncherUrl", "AppId", "display", "decoration", "LastActivated",
+                                // Per-window identifier list: a numeric WId (X11) or a UUID
+                                // string (Wayland) — the real model's only window-id role.
+                                "WinIdList"};
         int role = Qt::UserRole + 1;
         for (const QString &name : names) {
             m_roles.insert(role++, name.toUtf8());

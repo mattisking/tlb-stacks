@@ -86,6 +86,11 @@ in the group configuration; the group then behaves as a pure launcher again.
   except when it has several windows, where the click cycles to its next
   window instead. Middle-click a running application to open a new window.
   Scrolling the wheel over a button steps through that application's windows.
+- **Hover window tiles:** hover a running application to see each of its
+  windows as a live thumbnail. Click a thumbnail to activate exactly that
+  window; middle-click it, or use its close button, to close exactly that
+  window. Minimized windows show the application icon instead of a live
+  preview.
 - **Running state in stacks:** stack menus show a running dot beside entries
   whose application is running, highlighted while active. Clicking a running
   entry activates its window instead of launching a new copy; middle-clicking

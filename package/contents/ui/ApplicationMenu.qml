@@ -98,6 +98,16 @@ PlasmaComponents.ScrollView {
                     return area.stateFor(modelData.id)
                 }
 
+                // Live windows for the hover tiles; empty while the app is idle,
+                // which keeps the plain text tooltip.
+                readonly property var taskWindows: {
+                    const area = applicationScroll.taskArea
+                    if (!area || modelData.isSeparator === true)
+                        return []
+                    area.revision
+                    return area.windows(modelData.id)
+                }
+
                 visible: modelData.available
 
                 Layout.fillWidth: true
@@ -198,10 +208,23 @@ PlasmaComponents.ScrollView {
                     anchors.fill: parent
                     text: (launcherItem.applicationName || launcherItem.modelData.id)
                         + (launcherItem.modelData.description ? "\n" + launcherItem.modelData.description : "")
+                    // A running app hovers as live window tiles; an idle entry
+                    // keeps the text tip exactly as before.
+                    windows: launcherItem.taskWindows
+                    fallbackIcon: launcherItem.applicationIcon || "application-x-executable"
                     selected: applicationScroll.popupOpen && launcherItem.visible
                         && (applicationScroll.keyboardNavigation
                             ? applicationScroll.selectedApplication === launcherItem.index
                             : launcherItem.hovered)
+                    onWindowActivated: id => {
+                        applicationToolTip.hideToolTip()
+                        const area = applicationScroll.taskArea
+                        if (area) area.activateWindow(id)
+                    }
+                    onWindowClosed: id => {
+                        const area = applicationScroll.taskArea
+                        if (area) area.closeWindow(id)
+                    }
                 }
 
                 // Consume only right-clicks; normal activation stays with the delegate.
