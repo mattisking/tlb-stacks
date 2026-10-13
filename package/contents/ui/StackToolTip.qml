@@ -252,13 +252,15 @@ Item {
                             height: root.previewHeight
 
                             // Fallback: a modest centred icon, not a full-bleed
-                            // image (a minimized window, or no thumbnail backend).
+                            // image (a minimized window, no live thumbnail backend,
+                            // or a session where the Wayland backend cannot even be
+                            // loaded — see the loader below).
                             Kirigami.Icon {
                                 anchors.centerIn: parent
                                 width: root.fallbackIconSize
                                 height: root.fallbackIconSize
                                 source: root.fallbackIcon
-                                visible: !tile.live
+                                visible: !tile.live || waylandThumb.unavailable
                             }
                             // X11: Plasma's window pixmap. Sized by the box, never
                             // by its own implicit size, so the pixmap arriving can
@@ -273,10 +275,25 @@ Item {
                             // likewise box-sized, so a stream arriving after the
                             // show swaps in place without moving anything.
                             Loader {
+                                id: waylandThumb
                                 width: previewBox.width
                                 height: previewBox.height
-                                active: root.shown && tile.live && (tile.modelData.winId || 0) === 0 && !!tile.modelData.uuid
-                                sourceComponent: Component { TaskThumbnail { uuid: tile.modelData.uuid } }
+                                // Loaded BY URL, never as an inline Component:
+                                // TaskThumbnail.qml imports org.kde.taskmanager and
+                                // org.kde.pipewire, and an inline component is compiled
+                                // together with this file, so in a session without
+                                // those modules merely compiling the tooltip would take
+                                // every consumer of it down. By URL their imports are
+                                // resolved only when this loader actually activates.
+                                property bool unavailable: false
+                                active: !unavailable && root.shown && tile.live
+                                    && (tile.modelData.winId || 0) === 0 && !!tile.modelData.uuid
+                                source: unavailable ? "" : "TaskThumbnail.qml"
+                                // A module-less session can never load it: latch the
+                                // failure so we stop retrying (one log line, not one
+                                // per hover) and the tile keeps its icon fallback.
+                                onStatusChanged: if (status === Loader.Error) unavailable = true
+                                onLoaded: if (item) item.uuid = Qt.binding(() => tile.modelData.uuid)
                             }
                         }
                         MouseArea {

@@ -9,7 +9,10 @@ import org.kde.pipewire as PipeWire
 
 Item {
     id: root
-    required property string uuid
+    // Not `required`: this component is instantiated by a URL-based Loader, which
+    // cannot set a property at creation time — the tooltip assigns the uuid in the
+    // loader's onLoaded. An empty uuid simply never opens a stream.
+    property string uuid: ""
 
     readonly property int nodeId: request.nodeId
     // Until the compositor hands over a node there is nothing to paint; the
