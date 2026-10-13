@@ -41,6 +41,19 @@ function tilesArmed(tileMode, shown, armRequested) {
     return !!tileMode && (!!shown || !!armRequested)
 }
 
+// The dialog draws frame margins around its mainItem, so its window size is the
+// content plus those margins. A theme that reports nothing yet (or a NaN reading)
+// counts as zero: the window must never fall below the content, or the tip would
+// clip its own tiles.
+function dialogSize(contentWidth, contentHeight, marginLeft, marginRight, marginTop, marginBottom) {
+    const atLeastZero = value => {
+        const number = Number(value)
+        return isFinite(number) && number > 0 ? number : 0
+    }
+    return {width: atLeastZero(contentWidth) + atLeastZero(marginLeft) + atLeastZero(marginRight),
+            height: atLeastZero(contentHeight) + atLeastZero(marginTop) + atLeastZero(marginBottom)}
+}
+
 // Which kind of window does this tip need? A clickable tile tip has to receive
 // pointer input, and the tooltip window kind does not reliably deliver button
 // events on every platform, so an interactive tip is an ordinary frameless,

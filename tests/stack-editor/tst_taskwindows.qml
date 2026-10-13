@@ -167,4 +167,23 @@ TestCase {
         compare(TaskWindows.tipWindowKind(true), "tool")
         compare(TaskWindows.tipWindowKind(false), "tooltip")
     }
+
+    // ---- Dialog sizing ----
+    // The dialog draws frame margins around its mainItem, so its window size is the
+    // content plus those margins — and it has to know that size whenever the content
+    // changes while shown, or a growing payload renders clipped.
+    function test_dialog_size_adds_the_frame_margins() {
+        const size = TaskWindows.dialogSize(436, 164, 4, 4, 4, 4)
+        compare(size.width, 444)
+        compare(size.height, 172)
+    }
+
+    function test_dialog_size_tolerates_absent_or_negative_margins() {
+        // A theme that reports no margins yet must not shrink the window below the
+        // content, and a missing/NaN reading must not poison the size.
+        compare(TaskWindows.dialogSize(436, 164, 0, 0, 0, 0).width, 436)
+        compare(TaskWindows.dialogSize(436, 164, 0, 0, 0, 0).height, 164)
+        compare(TaskWindows.dialogSize(436, 164, undefined, undefined, undefined, undefined).width, 436)
+        compare(TaskWindows.dialogSize(436, 164, -5, -5, -5, -5).height, 164)
+    }
 }

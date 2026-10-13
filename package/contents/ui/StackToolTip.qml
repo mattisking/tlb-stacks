@@ -109,13 +109,42 @@ Item {
         if (!root.shown) return
         Qt.callLater(function() { if (root.shown) root.placeTip() })
     }
+    // The dialog adopts its size once, at the show flip, and never follows the
+    // content afterwards — so a payload that grows or shrinks while the tip is up (a
+    // window opening or closing under a hover, or the model's regroup transition)
+    // would render clipped, with the extra tiles outside the window. While shown the
+    // window is therefore sized explicitly from the content, and the resulting
+    // resize re-runs the native anchoring.
+    function applyWindowSize() {
+        const content = tip.mainItem
+        if (!root.shown || !content)
+            return
+        const margins = tip.margins || {}
+        const size = TaskWindows.dialogSize(content.implicitWidth, content.implicitHeight,
+            margins.left, margins.right, margins.top, margins.bottom)
+        if (tip.width !== size.width)
+            tip.width = size.width
+        if (tip.height !== size.height)
+            tip.height = size.height
+    }
+    // Content settled (or changed) while the tip is up: keep the window in step and
+    // re-place the manually positioned ("beside") tips.
+    function contentChanged() {
+        root.applyWindowSize()
+        root.replaceIfShown()
+    }
     // Flip visible: the size is final by now, so the first visible frame is
     // already at the right size and place.
     function flipVisible() {
         root.placeTip()
         root.shown = true
-        // The native frame margins are final only after the window is shown.
-        Qt.callLater(function() { if (root.shown) root.placeTip() })
+        // The native frame margins are final only after the window is shown: apply
+        // the settled size and re-place once the frame is real.
+        Qt.callLater(function() {
+            if (!root.shown) return
+            root.applyWindowSize()
+            root.placeTip()
+        })
     }
     // The armed content has to finish a layout pass before the dialog flips
     // visible: showing earlier puts the first frame at a pre-settle size, and the
@@ -217,9 +246,10 @@ Item {
             // while still hidden and the first visible frame needs no resize.
             implicitWidth: root.tilesActive ? root.tilesWidth : Math.min(textLabel.implicitWidth, 320)
             implicitHeight: root.tilesActive ? root.tileHeight : textLabel.implicitHeight
-            // Tiles settle a frame or two after the dialog shows; re-place then.
-            onImplicitWidthChanged: root.replaceIfShown()
-            onImplicitHeightChanged: root.replaceIfShown()
+            // Tiles settle a frame or two after the dialog shows; re-place then, and
+            // keep the window in step when the content changes while shown.
+            onImplicitWidthChanged: root.contentChanged()
+            onImplicitHeightChanged: root.contentChanged()
 
             HoverHandler {
                 id: tipHover
