@@ -209,4 +209,92 @@ TestCase {
         compare(TaskWindows.centeredX(500, 60, 1104, 0, 1000), 0)
         compare(TaskWindows.centeredX(500, 60, 224, 0, 1000), 418)       // 500 + (60-224)/2
     }
+
+    // ---- Tile viewport cap ----
+    // The tile row is unbounded by nature (one tile per window), so an app with
+    // many windows would make the tip wider than the screen and put its tiles out
+    // of reach. The viewport is therefore capped at half the screen span — never
+    // below one tile — and the row scrolls inside it.
+    function test_tile_viewport_is_uncapped_while_the_row_still_fits() {
+        // 224-wide tiles, 8px gaps, 1600px screen (cap = 800).
+        compare(TaskWindows.tilesWidth(1, 224, 8, 1600), 224)
+        compare(TaskWindows.tilesWidth(3, 224, 8, 1600), 688)    // 3*224 + 2*8
+        // The cap is half of the span, and the row does not grow past it.
+        compare(TaskWindows.tilesWidth(4, 224, 8, 1600), 800)    // 920 natural -> 800
+        compare(TaskWindows.tilesWidth(12, 224, 8, 1600), 800)
+    }
+
+    function test_tile_viewport_exactly_at_the_cap_is_kept() {
+        // 100-wide tiles, 100px gaps, 1000px screen: cap = 500, and 3 tiles are
+        // exactly 500 — at the cap, not over it.
+        compare(TaskWindows.tilesWidth(3, 100, 100, 1000), 500)
+        compare(TaskWindows.tilesWidth(4, 100, 100, 1000), 500)  // 700 natural
+    }
+
+    function test_tile_viewport_never_falls_below_one_tile() {
+        // Zero windows: nothing to show (the text-tip branch).
+        compare(TaskWindows.tilesWidth(0, 224, 8, 1600), 0)
+        // A screen narrower than a single half-span still fits a whole tile, so a
+        // cap can never shrink the viewport below one tile.
+        compare(TaskWindows.tilesWidth(1, 224, 8, 100), 224)
+        compare(TaskWindows.tilesWidth(2, 224, 8, 100), 224)
+    }
+
+    function test_tile_viewport_is_monotonic_and_bounded() {
+        // Growing the payload never shrinks the viewport and never breaks the cap.
+        let previous = -1
+        for (let count = 0; count <= 16; ++count) {
+            const width = TaskWindows.tilesWidth(count, 224, 8, 1600)
+            compare(width >= previous, true)
+            compare(width <= 800, true)
+            previous = width
+        }
+    }
+
+    function test_tile_viewport_without_a_known_screen_never_caps() {
+        // No usable screen span: keep the natural row rather than guessing a cap.
+        compare(TaskWindows.tilesWidth(5, 224, 8, undefined), 1152)   // 5*224 + 4*8
+        compare(TaskWindows.tilesWidth(5, 224, 8, NaN), 1152)
+    }
+
+    // ---- Wheel scrolling ----
+    // The wheel is handled explicitly (the tiles' MouseArea sits between the pointer
+    // and the ScrollView, so the view's own wheel handling cannot be relied on), so
+    // where a turn lands is decided here: move by the wheel's delta and stop at
+    // either end of the row.
+    function test_wheel_scroll_moves_the_row_by_the_delta() {
+        // A 1756-wide row in a 400-wide viewport scrolls over 0..1356.
+        compare(TaskWindows.scrollTarget(0, 120, 1756, 400), 120)
+        compare(TaskWindows.scrollTarget(600, 120, 1756, 400), 720)
+        compare(TaskWindows.scrollTarget(600, -120, 1756, 400), 480)
+        // Both axes are summed by the caller, so a small trackpad step works too.
+        compare(TaskWindows.scrollTarget(600, 60 + 60, 1756, 400), 720)
+    }
+
+    function test_wheel_scroll_clamps_at_both_ends() {
+        // At the start, a turn the other way cannot go negative.
+        compare(TaskWindows.scrollTarget(40, -120, 1756, 400), 0)
+        // At the end the row is pinned to its last offset.
+        compare(TaskWindows.scrollTarget(1356, 120, 1756, 400), 1356)
+        // A fast flick lands exactly on the end, never past it.
+        compare(TaskWindows.scrollTarget(1200, 1200, 1756, 400), 1356)
+        compare(TaskWindows.scrollTarget(60, -1200, 1756, 400), 0)
+    }
+
+    function test_wheel_scroll_is_a_no_op_when_the_row_fits_its_viewport() {
+        // Nothing to scroll: the offset stays put whatever the wheel says, so a
+        // short row never drifts.
+        compare(TaskWindows.scrollTarget(0, 120, 216, 216), 0)
+        compare(TaskWindows.scrollTarget(0, -120, 216, 216), 0)
+        // Even a viewport wider than the content (a reading we should never see).
+        compare(TaskWindows.scrollTarget(0, 120, 200, 400), 0)
+    }
+
+    function test_wheel_scroll_survives_unusable_readings() {
+        // A NaN offset or delta cannot throw the row somewhere arbitrary.
+        compare(TaskWindows.scrollTarget(NaN, 120, 1756, 400), 120)
+        compare(TaskWindows.scrollTarget(600, NaN, 1756, 400), 600)
+        // An unknown content width pins to the start rather than overshooting.
+        compare(TaskWindows.scrollTarget(600, 120, NaN, 400), 0)
+    }
 }

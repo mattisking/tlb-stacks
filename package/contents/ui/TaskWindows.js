@@ -41,6 +41,33 @@ function tilesArmed(tileMode, shown, armRequested) {
     return !!tileMode && (!!shown || !!armRequested)
 }
 
+// The tile tip's viewport width. The row itself is as wide as its windows, so an
+// app with many of them would produce a tip wider than the screen, with the later
+// tiles off-screen and out of reach. The viewport is therefore capped at half the
+// screen span — never below one tile, so a single tile is always shown whole — and
+// the row scrolls horizontally inside it. An unusable screen reading keeps the
+// natural row rather than guessing a cap. Zero windows collapse to nothing (the
+// tip is on its text branch).
+function tilesWidth(windowCount, tileWidth, tileSpacing, screenSpan) {
+    const count = Math.max(0, Number(windowCount) || 0)
+    const natural = count * tileWidth + Math.max(0, count - 1) * tileSpacing
+    const span = Number(screenSpan)
+    const cap = isFinite(span) ? Math.max(tileWidth, Math.round(span / 2)) : natural
+    return Math.min(natural, cap)
+}
+
+// Where one wheel turn leaves the tile viewport: the offset moves by the wheel's
+// delta (both axes summed by the caller) and stops at either end of the row. A row
+// that already fits its viewport has no offset to move to, so it can never drift,
+// and an unusable reading leaves the row where it is rather than throwing it
+// somewhere arbitrary.
+function scrollTarget(currentContentX, wheelDelta, contentWidth, viewportWidth) {
+    const current = Number(currentContentX) || 0
+    const delta = Number(wheelDelta) || 0
+    const max = Math.max(0, (Number(contentWidth) || 0) - (Number(viewportWidth) || 0))
+    return Math.min(Math.max(current + delta, 0), max)
+}
+
 // The dialog draws frame margins around its mainItem, so its window size is the
 // content plus those margins. A theme that reports nothing yet (or a NaN reading)
 // counts as zero: the window must never fall below the content, or the tip would

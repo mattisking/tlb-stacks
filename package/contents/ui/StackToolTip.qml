@@ -61,8 +61,16 @@ Item {
     readonly property int previewHeight: Math.round(tileWidth * 0.625)
     readonly property int tileHeaderHeight: Math.round(Kirigami.Units.gridUnit * 1.6)
     readonly property int tileHeight: tileHeaderHeight + previewHeight
-    readonly property int tilesWidth: root.windows.length > 0
+    // The whole row of tiles, end to end — one tile per window, so this is the
+    // width that used to be handed to the dialog.
+    readonly property int tileRowWidth: root.windows.length > 0
         ? root.windows.length * tileWidth + (root.windows.length - 1) * tileSpacing : 0
+    // What the dialog is actually given: the row capped at half the screen (see
+    // TaskWindows.tilesWidth), with the ScrollView scrolling the rest. An app with
+    // many windows therefore keeps every tile on screen and reachable instead of
+    // spilling off it.
+    readonly property int tilesWidth: TaskWindows.tilesWidth(root.windows.length,
+        root.tileWidth, root.tileSpacing, root.Screen.width)
     // The no-thumbnail fallback is a modest centred icon, not a full-bleed
     // image: the preview box keeps its geometry either way, so a failed or
     // minimized stream never resizes the tile (and never re-runs placement).
@@ -108,6 +116,25 @@ Item {
     function replaceIfShown() {
         if (!root.shown) return
         Qt.callLater(function() { if (root.shown) root.placeTip() })
+    }
+    // Wheel scrolling for the tile viewport, driven explicitly: a wheel over the row
+    // is caught by the MouseArea wrapped around it (see below) because the view's
+    // built-in wheel handling never sees it — the tiles' MouseArea sits between the
+    // pointer and the ScrollView. The landing offset comes from
+    // TaskWindows.scrollTarget, so the row stops at both ends, both wheel axes work,
+    // and a row that already fits can never drift.
+    function scrollTiles(wheel) {
+        const view = tileScroll.contentItem
+        if (!view) return
+        // angleDelta is positive away from the user while the offset grows toward
+        // the later tiles, so the summed axes are negated: wheeling down (or swiping
+        // up) advances the row, as it does in a horizontal Qt view.
+        const delta = -((wheel.angleDelta.x || 0) + (wheel.angleDelta.y || 0))
+        const target = TaskWindows.scrollTarget(view.contentX, delta, view.contentWidth, view.width)
+        if (target !== view.contentX)
+            view.contentX = target
+        // Handled here, so nothing upstream acts on the same wheel twice.
+        wheel.accepted = true
     }
     // The dialog window's geometry is a pure function of the current content and
     // anchor: the dialog keeps whatever rect it adopted (it sizes and places itself
@@ -282,107 +309,135 @@ Item {
                 enabled: root.interactive
                 onHoveredChanged: root.tipHovered = hovered
             }
-            Row {
-                id: tileRow
+            // The tile viewport: the capped width (see TaskWindows.tilesWidth),
+            // with the whole row scrolling inside it horizontally. Both dimensions
+            // are explicit, never laid out — a hidden QQuickWindow lays nothing out,
+            // so the dialog's size has to be final before its first visible frame.
+            PlasmaComponents.ScrollView {
+                id: tileScroll
                 visible: root.tilesActive
-                // Explicit, not implicit: no layout pass required for the size.
                 width: root.tilesWidth
                 height: root.tileHeight
-                spacing: root.tileSpacing
-                Repeater {
-                    model: root.tilesActive ? root.windows : []
-                    delegate: Item {
-                        id: tile
-                        required property var modelData
-                        readonly property bool live: modelData.minimized !== true
-                            && ((modelData.winId || 0) > 0 || !!modelData.uuid)
-                        width: root.tileWidth
+                // The row is the only scrolling axis, and a visible scrollbar would
+                // eat into the fixed-height tile band.
+                PlasmaComponents.ScrollBar.horizontal.policy: PlasmaComponents.ScrollBar.AlwaysOff
+                PlasmaComponents.ScrollBar.vertical.policy: PlasmaComponents.ScrollBar.AlwaysOff
+                // The content is the whole row — a pure function of the window
+                // list, so it is final while the dialog is still hidden.
+                contentWidth: root.tileRowWidth
+                contentHeight: root.tileHeight
+                // Wheel scrolling is caught around the whole row: the viewport's
+                // own wheel handling never sees a wheel that lands on a tile (the
+                // tiles sit between the pointer and the view, and their MouseArea
+                // takes the clicks), so the row is driven directly. The catcher
+                // spans the row end to end — no dead sliver between tiles — and
+                // accepts no buttons, so clicks still reach the tiles and their ✕.
+                MouseArea {
+                    width: root.tileRowWidth
+                    height: root.tileHeight
+                    acceptedButtons: Qt.NoButton
+                    onWheel: wheel => root.scrollTiles(wheel)
+                    Row {
+                        id: tileRow
+                        width: root.tileRowWidth
                         height: root.tileHeight
+                        spacing: root.tileSpacing
+                        Repeater {
+                            model: root.tilesActive ? root.windows : []
+                            delegate: Item {
+                                id: tile
+                                required property var modelData
+                                readonly property bool live: modelData.minimized !== true
+                                    && ((modelData.winId || 0) > 0 || !!modelData.uuid)
+                                width: root.tileWidth
+                                height: root.tileHeight
 
-                        // Fixed-geometry preview box: the tile and tip sizes
-                        // never depend on whether a live thumbnail is available.
-                        Item {
-                            id: previewBox
-                            anchors.top: headerRow.bottom
-                            width: parent.width
-                            height: root.previewHeight
+                                // Fixed-geometry preview box: the tile and tip sizes
+                                // never depend on whether a live thumbnail is available.
+                                Item {
+                                    id: previewBox
+                                    anchors.top: headerRow.bottom
+                                    width: parent.width
+                                    height: root.previewHeight
 
-                            // Fallback: a modest centred icon, not a full-bleed
-                            // image (a minimized window, no live thumbnail backend,
-                            // or a session where the Wayland backend cannot even be
-                            // loaded — see the loader below).
-                            Kirigami.Icon {
-                                anchors.centerIn: parent
-                                width: root.fallbackIconSize
-                                height: root.fallbackIconSize
-                                source: root.fallbackIcon
-                                visible: !tile.live || waylandThumb.unavailable
-                            }
-                            // X11: Plasma's window pixmap. Sized by the box, never
-                            // by its own implicit size, so the pixmap arriving can
-                            // never resize the tile or move the dialog.
-                            PlasmaCore.WindowThumbnail {
-                                width: previewBox.width
-                                height: previewBox.height
-                                visible: tile.live && (tile.modelData.winId || 0) > 0
-                                winId: tile.modelData.winId || 0
-                            }
-                            // Wayland: PipeWire stream fed by the window UUID and
-                            // likewise box-sized, so a stream arriving after the
-                            // show swaps in place without moving anything.
-                            Loader {
-                                id: waylandThumb
-                                width: previewBox.width
-                                height: previewBox.height
-                                // Loaded BY URL, never as an inline Component:
-                                // TaskThumbnail.qml imports org.kde.taskmanager and
-                                // org.kde.pipewire, and an inline component is compiled
-                                // together with this file, so in a session without
-                                // those modules merely compiling the tooltip would take
-                                // every consumer of it down. By URL their imports are
-                                // resolved only when this loader actually activates.
-                                property bool unavailable: false
-                                active: !unavailable && root.shown && tile.live
-                                    && (tile.modelData.winId || 0) === 0 && !!tile.modelData.uuid
-                                source: unavailable ? "" : "TaskThumbnail.qml"
-                                // A module-less session can never load it: latch the
-                                // failure so we stop retrying (one log line, not one
-                                // per hover) and the tile keeps its icon fallback.
-                                onStatusChanged: if (status === Loader.Error) unavailable = true
-                                onLoaded: if (item) item.uuid = Qt.binding(() => tile.modelData.uuid)
-                            }
-                        }
-                        MouseArea {
-                            anchors.fill: parent
-                            acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-                            onClicked: mouse => root.driveTile(tile.modelData,
-                                mouse.button === Qt.MiddleButton ? "middle" : "left")
-                        }
-                        // Declared last so the ✕ gets its clicks before the tile.
-                        // Fixed header band, so the preview box below it sits at a
-                        // computed offset rather than a laid-out one.
-                        Row {
-                            id: headerRow
-                            width: parent.width
-                            height: root.tileHeaderHeight
-                            spacing: Kirigami.Units.smallSpacing
-                            PlasmaComponents.Label {
-                                width: Math.max(0, headerRow.width - closeButton.width - headerRow.spacing)
-                                height: headerRow.height
-                                verticalAlignment: Text.AlignVCenter
-                                text: tile.modelData.title || i18n("Untitled window")
-                                textFormat: Text.PlainText
-                                elide: Text.ElideRight
-                                font: Kirigami.Theme.smallFont
-                                color: tile.modelData.active === true
-                                    ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
-                            }
-                            PlasmaComponents.ToolButton {
-                                id: closeButton
-                                height: headerRow.height
-                                icon.name: "window-close"
-                                Accessible.name: i18n("Close window")
-                                onClicked: root.driveTile(tile.modelData, "close")
+                                    // Fallback: a modest centred icon, not a full-bleed
+                                    // image (a minimized window, no live thumbnail backend,
+                                    // or a session where the Wayland backend cannot even be
+                                    // loaded — see the loader below).
+                                    Kirigami.Icon {
+                                        anchors.centerIn: parent
+                                        width: root.fallbackIconSize
+                                        height: root.fallbackIconSize
+                                        source: root.fallbackIcon
+                                        visible: !tile.live || waylandThumb.unavailable
+                                    }
+                                    // X11: Plasma's window pixmap. Sized by the box, never
+                                    // by its own implicit size, so the pixmap arriving can
+                                    // never resize the tile or move the dialog.
+                                    PlasmaCore.WindowThumbnail {
+                                        width: previewBox.width
+                                        height: previewBox.height
+                                        visible: tile.live && (tile.modelData.winId || 0) > 0
+                                        winId: tile.modelData.winId || 0
+                                    }
+                                    // Wayland: PipeWire stream fed by the window UUID and
+                                    // likewise box-sized, so a stream arriving after the
+                                    // show swaps in place without moving anything.
+                                    Loader {
+                                        id: waylandThumb
+                                        width: previewBox.width
+                                        height: previewBox.height
+                                        // Loaded BY URL, never as an inline Component:
+                                        // TaskThumbnail.qml imports org.kde.taskmanager and
+                                        // org.kde.pipewire, and an inline component is compiled
+                                        // together with this file, so in a session without
+                                        // those modules merely compiling the tooltip would take
+                                        // every consumer of it down. By URL their imports are
+                                        // resolved only when this loader actually activates.
+                                        property bool unavailable: false
+                                        active: !unavailable && root.shown && tile.live
+                                            && (tile.modelData.winId || 0) === 0 && !!tile.modelData.uuid
+                                        source: unavailable ? "" : "TaskThumbnail.qml"
+                                        // A module-less session can never load it: latch the
+                                        // failure so we stop retrying (one log line, not one
+                                        // per hover) and the tile keeps its icon fallback.
+                                        onStatusChanged: if (status === Loader.Error) unavailable = true
+                                        onLoaded: if (item) item.uuid = Qt.binding(() => tile.modelData.uuid)
+                                    }
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                    acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+                                    onClicked: mouse => root.driveTile(tile.modelData,
+                                        mouse.button === Qt.MiddleButton ? "middle" : "left")
+                                }
+                                // Declared last so the ✕ gets its clicks before the tile.
+                                // Fixed header band, so the preview box below it sits at a
+                                // computed offset rather than a laid-out one.
+                                Row {
+                                    id: headerRow
+                                    width: parent.width
+                                    height: root.tileHeaderHeight
+                                    spacing: Kirigami.Units.smallSpacing
+                                    PlasmaComponents.Label {
+                                        width: Math.max(0, headerRow.width - closeButton.width - headerRow.spacing)
+                                        height: headerRow.height
+                                        verticalAlignment: Text.AlignVCenter
+                                        text: tile.modelData.title || i18n("Untitled window")
+                                        textFormat: Text.PlainText
+                                        elide: Text.ElideRight
+                                        font: Kirigami.Theme.smallFont
+                                        color: tile.modelData.active === true
+                                            ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
+                                    }
+                                    PlasmaComponents.ToolButton {
+                                        id: closeButton
+                                        height: headerRow.height
+                                        icon.name: "window-close"
+                                        Accessible.name: i18n("Close window")
+                                        onClicked: root.driveTile(tile.modelData, "close")
+                                    }
+                                }
                             }
                         }
                     }
