@@ -3,9 +3,14 @@
     <param name="url">https://github.com/mattisking/tlb-stacks.git</param>
     <param name="scm">git</param>
     <param name="revision">v0.3.1</param>
-    <param name="versionformat">@TAG@</param>
+    <param name="versionformat">@PARENT_TAG@</param>
     <param name="versionrewrite-pattern">v(.*)</param>
     <param name="versionrewrite-replacement">\1</param>
     <param name="filename">tlbstacks</param>
   </service>
+  <service name="recompress">
+    <param name="file">*.tar</param>
+    <param name="compression">gz</param>
+  </service>
+  <service name="set_version"/>
 </services>
