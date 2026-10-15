@@ -44,5 +44,26 @@ Rectangle {
             verify(findChild(picker.contentItem, "pick-code").visible)
             picker.close()
         }
+
+        // Same affordance the chip-bar filter keeps: the QQC2 TextField has no
+        // built-in clear button (PC3's clearButtonShown went with the swap).
+        function test_search_clear_button_clears_and_keeps_the_caret() {
+            picker.openPicker()
+            const search = findChild(picker.contentItem, "pickerSearch")
+            const clear = findChild(picker.contentItem, "pickerSearchClear")
+            verify(search !== null)
+            verify(clear !== null, "the search field has no clear affordance")
+            search.text = ""
+            compare(clear.visible, false)
+            const reserved = search.rightPadding
+            search.text = "code"
+            compare(clear.visible, true)
+            compare(search.rightPadding, reserved)
+            clear.clicked()
+            compare(search.text, "")
+            compare(clear.visible, false)
+            verify(search.focus, "clearing should leave the caret in the search field")
+            picker.close()
+        }
     }
 }

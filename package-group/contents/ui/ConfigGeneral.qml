@@ -638,6 +638,8 @@ ColumnLayout {
                     Layout.alignment: Qt.AlignLeft | Qt.AlignTop
                     wideMode: false
                     QQC2.ComboBox {
+                        id: applicationCombo
+                        objectName: "applicationCombo"
                         visible: root.selectedItem && root.selectedItem.type === "application"
                         Kirigami.FormData.label: i18n("Application:")
                         Layout.fillWidth: true
@@ -646,6 +648,27 @@ ColumnLayout {
                         model: root.catalog
                         currentIndex: root.selectedItem && root.selectedItem.type === "application"
                             ? root.catalog.findIndex(app => app.desktopId === root.selectedItem.desktopId) : -1
+                        // The popup rows carry application names, and the stock delegate
+                        // binds them straight to a control's `text` (AutoText), where an
+                        // "<img src=…>" name would turn into live markup. Escaped for the
+                        // label, raw for assistive tech — the same split as the tree and
+                        // chip rows. Otherwise the stock shape: the row fills the view,
+                        // the current entry is heavier, the keyboard cursor is
+                        // highlighted, and selection stays with the ComboBox (the
+                        // stock delegates handle no clicks of their own either).
+                        delegate: QQC2.ItemDelegate {
+                            required property var model
+                            required property int index
+                            // The stock delegates take their width from the view; the
+                            // Plasma style hosts the rows in a Menu instead, where there
+                            // is no ListView and the row's implicit width sizes it.
+                            width: ListView.view ? ListView.view.width : implicitWidth
+                            text: StackMembers.escapeHtml(model[applicationCombo.textRole])
+                            Accessible.name: model[applicationCombo.textRole]
+                            font.weight: applicationCombo.currentIndex === index ? Font.DemiBold : Font.Normal
+                            highlighted: applicationCombo.highlightedIndex === index
+                            hoverEnabled: applicationCombo.hoverEnabled
+                        }
                         onActivated: root.replaceLauncherApp(root.catalog[currentIndex].desktopId)
                     }
                     QQC2.Button {

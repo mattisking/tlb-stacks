@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import org.kde.plasma.components as PlasmaComponents
 import org.kde.kirigami as Kirigami
 import "StackMembers.js" as StackMembers
 
@@ -33,8 +34,28 @@ QQC2.Dialog {
             objectName: "pickerSearch"
             Layout.fillWidth: true
             placeholderText: i18n("Search applications…")
+            // PC3's TextField had a built-in clear button; the QQC2 one does not,
+            // so the search keeps its own. The trailing space is reserved whether
+            // or not the button shows, so the text area never jumps.
+            rightPadding: clearSearch.width + Kirigami.Units.smallSpacing
             Keys.onReturnPressed: event => { event.accepted = true }
             Keys.onEnterPressed: event => { event.accepted = true }
+            PlasmaComponents.ToolButton {
+                id: clearSearch
+                objectName: "pickerSearchClear"
+                icon.name: "edit-clear"
+                Accessible.name: i18n("Clear search")
+                width: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
+                height: width
+                anchors.right: parent.right
+                anchors.rightMargin: Math.round(Kirigami.Units.smallSpacing / 2)
+                anchors.verticalCenter: parent.verticalCenter
+                visible: search.text.length > 0
+                onClicked: {
+                    search.text = ""
+                    search.forceActiveFocus()
+                }
+            }
         }
         QQC2.ScrollView {
             Layout.fillWidth: true

@@ -39,11 +39,18 @@ PlasmoidItem {
 
     // TaskArea brings the live window database for the shared menu delegates
     // and the panel indicator (always on — the standalone has no task-tracking
-    // config, per spec); loading it dynamically degrades to launcher-only
-    // mode wherever its module is unavailable.
+    // config, per spec); loading it by URL degrades to launcher-only mode
+    // wherever its module is unavailable. Deliberately not an inline Component:
+    // TaskArea.qml is the one file that imports org.kde.taskmanager, and an
+    // inline component is compiled together with this root, so that module would
+    // have to resolve for the whole widget to load at all (the TaskThumbnail
+    // pattern).
     Loader {
         id: taskLoader
-        sourceComponent: Component { TaskArea { desktopIds: root.desktopIds } }
+        source: "TaskArea.qml"
+        // A URL-loaded item cannot be given properties at creation, so the
+        // widget's claimed desktop ids are bound once it exists.
+        onLoaded: if (item) item.desktopIds = Qt.binding(() => root.desktopIds)
     }
 
     readonly property var applicationIcons: IconOverrides.parse(Plasmoid.configuration.applicationIcons)

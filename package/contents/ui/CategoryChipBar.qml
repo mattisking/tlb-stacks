@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
+import org.kde.plasma.components as PlasmaComponents
 import org.kde.kirigami as Kirigami
 
 // Filterable cloud of category chips (mockup frames 07-08): pills in a
@@ -37,8 +38,29 @@ ColumnLayout {
         Layout.fillWidth: true
         placeholderText: i18n("Filter categories…")
         Accessible.name: i18n("Filter categories")
+        // PC3's TextField had a built-in clear button; the QQC2 one does not, so
+        // the filter keeps its own (design-reviewable: it is the affordance, not
+        // the look, that was lost in the swap). The trailing space is reserved
+        // whether or not the button shows, so the text area never jumps.
+        rightPadding: clearFilter.width + Kirigami.Units.smallSpacing
         Keys.onReturnPressed: event => { event.accepted = true }
         Keys.onEnterPressed: event => { event.accepted = true }
+        PlasmaComponents.ToolButton {
+            id: clearFilter
+            objectName: "chipFilterClear"
+            icon.name: "edit-clear"
+            Accessible.name: i18n("Clear filter")
+            width: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
+            height: width
+            anchors.right: parent.right
+            anchors.rightMargin: Math.round(Kirigami.Units.smallSpacing / 2)
+            anchors.verticalCenter: parent.verticalCenter
+            visible: filter.text.length > 0
+            onClicked: {
+                filter.text = ""
+                filter.forceActiveFocus()
+            }
+        }
     }
 
     QQC2.Label {

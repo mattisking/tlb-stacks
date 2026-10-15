@@ -4,7 +4,6 @@ import QtQuick.Window
 import QtQuick.Layouts
 import QtQuick.Controls as QQC2
 import org.kde.plasma.components as PlasmaComponents
-import org.kde.plasma.core as PlasmaCore
 import com.mattphilmon.tlbstacks
 
 ColumnLayout {
@@ -96,6 +95,14 @@ ColumnLayout {
     onFolderUrlChanged: { listingReady = false; resetFolder() }
     onPopupOpenChanged: {
         folderHover.stop()
+        // Closing the menu takes the notice tooltip with it: the tooltip is a popup,
+        // so nothing else would close it while the pointer still rests on the notice.
+        if (!popupOpen) {
+            noticeTipDelay.stop()
+            noticeTip.visible = false
+        } else if (noticeHover.hovered) {
+            noticeTipDelay.restart()
+        }
         if (popupOpen) {
             resetFolder()
             keyboardNavigation = false
@@ -176,17 +183,38 @@ ColumnLayout {
     }
 
     PlasmaComponents.Label {
+        id: noticeLabel
         Layout.fillWidth: true
         visible: root.notice.length > 0
         text: root.iconsOnly ? "…" : root.notice
         textFormat: Text.PlainText
         wrapMode: Text.WordWrap
         Accessible.name: root.notice
-        PlasmaCore.ToolTipArea {
-            anchors.fill: parent
-            mainText: root.notice
-            textFormat: Text.PlainText
-            active: root.popupOpen
+        // The notice is ellipsised in icon-only menus, so it carries the full text
+        // as a tooltip. The PlasmaCore tool area is gone from here: its destructor
+        // runs QML bindings after QGuiApplication has been torn down, which is a
+        // qFatal in the font database when plasmashell shuts down. What is left is
+        // the PlasmaComponents tooltip the bar buttons use, kept to the semantics the
+        // tool area had — on hover, only while the menu is open, after a short delay.
+        // Its visibility is not bound: a tooltip is a popup, and opening one takes
+        // over its own `visible`, so a bound gate opens on the first hover and then
+        // never closes again. The transitions below re-assert it instead.
+        HoverHandler {
+            id: noticeHover
+            onHoveredChanged: {
+                noticeTipDelay.stop()
+                if (hovered && root.popupOpen) noticeTipDelay.restart()
+                else noticeTip.visible = false
+            }
+        }
+        Timer {
+            id: noticeTipDelay
+            interval: 700
+            onTriggered: noticeTip.visible = root.popupOpen && noticeHover.hovered
+        }
+        PlasmaComponents.ToolTip {
+            id: noticeTip
+            text: root.notice
         }
     }
 

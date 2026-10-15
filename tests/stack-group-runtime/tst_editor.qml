@@ -316,4 +316,25 @@ TestCase {
         editor.selectedIndex = 0
         compare(folderSegment.checked, true)
     }
+
+    // The application selector's popup rows are rendered by the ComboBox's own
+    // delegate, which binds the application name straight to a control's `text`
+    // (AutoText): a name that looks like markup must not become live rich text.
+    // The selector's own button text goes through a TextField, which renders plain
+    // text. The popup is a separate window the offscreen harness never maps, so the
+    // delegate is built exactly as the popup builds it, with the model item it
+    // would be handed.
+    function test_application_selector_popup_escapes_names() {
+        const rawName = "<img src='http://example.invalid/x.png'>Evil"
+        editor.cfg_items = Items.encode(Items.add([], "example.desktop"))
+        editor.selectedIndex = 0
+        editor.catalog = [{desktopId: "example.desktop", name: rawName}]
+        const combo = findChild(editor, "applicationCombo")
+        verify(combo !== null, "application selector not found")
+        verify(combo.delegate !== null, "the selector has no popup delegate")
+        const row = combo.delegate.createObject(combo, {model: {name: rawName}, index: 0})
+        verify(row !== null, "the popup row could not be built")
+        compare(row.text, "&lt;img src='http://example.invalid/x.png'&gt;Evil")
+        row.destroy()
+    }
 }

@@ -296,12 +296,19 @@ PlasmoidItem {
         const action = Plasmoid.internalAction("configure")
         if (action) action.trigger()
     }
-    // TaskArea brings the live window database; loading it dynamically
-    // degrades to launcher-only mode wherever its module is unavailable.
+    // TaskArea brings the live window database; loading it by URL degrades to
+    // launcher-only mode wherever its module is unavailable. Deliberately not an
+    // inline Component: TaskArea.qml is the one file that imports
+    // org.kde.taskmanager, and an inline component is compiled together with
+    // this root, so that module would have to resolve for the whole widget to
+    // load at all (the TaskThumbnail pattern).
     Loader {
         id: taskLoader
         active: Plasmoid.configuration.taskTrackingEnabled
-        sourceComponent: Component { TaskArea { desktopIds: root.desktopIds } }
+        source: "TaskArea.qml"
+        // A URL-loaded item cannot be given properties at creation, so the
+        // widget's claimed desktop ids are bound once it exists.
+        onLoaded: if (item) item.desktopIds = Qt.binding(() => root.desktopIds)
     }
     fullRepresentation: Item {
         id: content

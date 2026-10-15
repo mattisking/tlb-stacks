@@ -58,6 +58,28 @@ Rectangle {
             verify(findLive(bar, "chip-Audio") === null)
             search.text = ""
         }
+        // The swap from PlasmaComponents' TextField to QQC2's lost the built-in
+        // clearButtonShown, so the filter keeps its own clear affordance
+        // (objectName chipFilterClear) instead.
+        function test_filter_clear_button_clears_and_keeps_the_caret() {
+            const search = findChild(bar, "chipFilter")
+            const clear = findChild(bar, "chipFilterClear")
+            verify(search !== null)
+            verify(clear !== null, "the filter has no clear affordance")
+            // Hidden while the field is empty, so it never crowds the placeholder.
+            compare(clear.visible, false)
+            // The field reserves the button's width either way, so the text area
+            // never jumps as the affordance comes and goes.
+            const reserved = search.rightPadding
+            search.text = "game"
+            compare(clear.visible, true)
+            compare(search.rightPadding, reserved)
+            clear.clicked()
+            compare(search.text, "")
+            compare(clear.visible, false)
+            verify(search.focus, "clearing should leave the caret in the filter")
+        }
+
         // Chips are located through live visual children: Repeater model
         // resets leave removed delegates unparented-but-findable, so
         // findChild can return a dead object after the filter narrows the
