@@ -247,6 +247,35 @@ Planned work is tracked in the
 [feature tracker](docs/FEATURE_TRACKER.md); historical True Launch Bar features
 are research material, not promises about this project.
 
+## Installing
+
+Packages are built automatically from every release tag and published on
+the [openSUSE Build Service](https://build.opensuse.org/project/show/home:mattisking:tlbstacks).
+
+### Fedora 44
+
+```sh
+sudo dnf config-manager addrepo --from-repofile=https://download.opensuse.org/repositories/home:/mattisking:/tlbstacks/Fedora_44/home:mattisking:tlbstacks.repo
+sudo dnf install tlbstacks
+```
+
+### Ubuntu with Plasma 6 (26.04, 25.10, 25.04, 24.10)
+
+For each release line (example: 26.04):
+
+```sh
+echo 'deb https://download.opensuse.org/repositories/home:/mattisking:/tlbstacks/xUbuntu_26.04/ /' | sudo tee /etc/apt/sources.list.d/tlbstacks.list
+curl -fsSL "https://download.opensuse.org/repositories/home:/mattisking:/tlbstacks/xUbuntu_26.04/Release.key" | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/tlbstacks.gpg > /dev/null
+sudo apt update
+sudo apt install tlbstacks
+```
+
+### Other distributions
+
+Build from the source tarball, or install a distribution package built
+from it. You need KDE Plasma 6, Qt 6 and KDE Frameworks 6 runtime
+libraries, and Python 3.
+
 ## Getting started
 
 You need KDE Plasma 6, a C++20 compiler, CMake, Qt 6 and KDE Frameworks 6
