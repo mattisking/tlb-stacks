@@ -1,0 +1,25 @@
+Source: tlbstacks
+Section: utils
+Priority: optional
+Standards-Version: 4.6.2
+Build-Depends: debhelper-compat (= 13),
+               cmake,
+               extra-cmake-modules,
+               qt6-base-dev,
+               qt6-declarative-dev,
+               kf6-kio-dev,
+               kf6-kservice-dev,
+               libplasmaactivities-dev,
+               libplasmaactivitiesstats-dev
+Homepage: https://github.com/mattisking/tlb-stacks
+Maintainer: Matt Philmon <mattisking@gmail.com>
+
+Package: tlbstacks
+Architecture: amd64
+Depends: ${misc:Depends}, ${shlibs:Depends}, plasma-workspace, qml6-module-org-kde-kirigami, python3
+Description: Application launchers, configurable stacks, live menus, and task management for KDE Plasma 6
+ TLBStacks provides KDE Plasma 6 widgets for launching and organizing
+ applications. The main widget, TLBStacks Groups, organizes applications
+ into compact launcher groups with individual launchers, configurable
+ stacks, live menus, and task management for running windows. The
+ standalone TLBStacks widget provides a single configurable stack.
