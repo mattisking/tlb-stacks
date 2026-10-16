@@ -2,12 +2,12 @@ Format: 3.0 (quilt)
 Source: tlbstacks
 Binary: tlbstacks
 Architecture: any
-Version: 0.3.2-1
+Version: @VERSION@-1
 Maintainer: Matt Philmon <mattisking@gmail.com>
 Homepage: https://github.com/mattisking/tlb-stacks
 Standards-Version: 4.6.2
 Build-Depends: debhelper-compat (= 13), cmake, extra-cmake-modules, qt6-base-dev, qt6-declarative-dev, libkf6kio-dev, libkf6service-dev, libplasmaactivities-dev, libplasmaactivitiesstats-dev
-DEBTRANSFORM-TAR: tlbstacks-0.3.2.tar.gz
+DEBTRANSFORM-TAR: tlbstacks-@VERSION@.tar.gz
 DEBTRANSFORM-RELEASE: 1
 Files:
- 00000000000000000000000000000000 0 tlbstacks-0.3.2.tar.gz
+ 00000000000000000000000000000000 0 tlbstacks-@VERSION@.tar.gz

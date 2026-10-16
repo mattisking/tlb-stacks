@@ -13,13 +13,13 @@ no web UI required.
 - `tlbstacks/tlbstacks.spec` — RPM spec (builds and installs both widgets:
   `com.mattphilmon.tlbstacks` and `com.mattphilmon.tlbstacks.group`, plus the
   `com.mattphilmon.tlbstacks` QML module).
-- `tlbstacks/tlbstacks.dsc` — debtransform recipe for the xUbuntu targets.
-  OBS-only: there is no `debian/` tree on the OBS package; instead flat
-  `debian.changelog`, `debian.control`, and `debian.rules` files are uploaded
-  alongside it. They are byte-for-byte copies of the repo's
-  `debian/changelog`, `debian/control`, and `debian/rules` (flat names — the
-  repo `debian/` directory is the source of truth; do not edit the OBS
-  copies independently).
+- `tlbstacks/tlbstacks.dsc.template` — debtransform recipe for the xUbuntu
+  targets, with `@VERSION@` placeholders. OBS-only: there is no `debian/`
+  tree on the OBS package; instead flat `debian.changelog`, `debian.control`,
+  and `debian.rules` files are uploaded alongside the rendered dsc. They are
+  byte-for-byte copies of the repo's `debian/changelog`, `debian/control`,
+  and `debian/rules` — never edit the OBS copies by hand; the renderer in
+  `scripts/obs-release.sh` produces them from the repo.
 
 ## Release checklist (each version bump)
 
@@ -31,16 +31,14 @@ no web UI required.
    tag.
 5. Commit, tag `v<VERSION>`, push `main` + the tag. The GitHub Release
    workflow builds and publishes the assets.
-6. Update the OBS package (`osc co home:mattisking:tlbstacks/tlbstacks`):
-   - copy the repo `debian/changelog` → `debian.changelog`,
-   - **bump `tlbstacks.dsc`**: its `Version:` field AND the
-     `DEBTRANSFORM-TAR:` / `Files:` tarball reference
-     (`tlbstacks-<VERSION>.tar.gz`). `set_version` rewrites the dsc Version
-     at build time but NOT the tarball reference — a stale reference makes
-     debtransform fail ("debian transforming failed") on every Ubuntu target
-     while Fedora (spec-only) still succeeds.
-   - `osc ci`, then `osc service remoterun` if the Ubuntu targets do not
-     pick up the rebuild.
+6. Run `scripts/obs-release.sh <VERSION>` — it renders the flat debian files
+   from the repo `debian/` tree and the dsc from
+   `packaging/obs/tlbstacks/tlbstacks.dsc.template`, commits them to the OBS
+   package, and re-runs the source service so the Ubuntu targets rebuild.
+   (Use `--dry-run` to preview without touching OBS. The dsc's
+   `DEBTRANSFORM-TAR` reference and Version both come from the template —
+   the stale-tarball-reference failure mode of the 0.3.2 release cannot
+   recur as long as the script is the only path to OBS.)
 7. Watch: `osc -A https://api.opensuse.org results -w home:mattisking:tlbstacks tlbstacks`.
 
 ## Preconditions

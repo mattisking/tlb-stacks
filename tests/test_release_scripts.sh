@@ -105,6 +105,32 @@ else
     bad 'T7 absolute build-dir argument runs the full gate'
 fi
 
+echo '== T-OBS: obs-release dry run renders the debtransform contract =='
+# The OBS flat files must come from the repo (single source of truth): the
+# changelog passed through verbatim, and the dsc rendered with the CURRENT
+# version in both the Version field and the DEBTRANSFORM-TAR tarball reference
+# (a stale reference was the 0.3.2 Ubuntu-target failure).
+T8_STAGE="$(mktemp -d)"
+if scripts/obs-release.sh "$ver" --dry-run --stagedir "${T8_STAGE}" >/dev/null 2>&1 \
+    && cmp -s "${T8_STAGE}/debian.changelog" debian/changelog \
+    && cmp -s "${T8_STAGE}/debian.control" debian/control \
+    && cmp -s "${T8_STAGE}/debian.rules" debian/rules \
+    && grep -q "Version: ${ver}-1" "${T8_STAGE}/tlbstacks.dsc" \
+    && grep -q "DEBTRANSFORM-TAR: tlbstacks-${ver}.tar.gz" "${T8_STAGE}/tlbstacks.dsc" \
+    && grep -q " tlbstacks-${ver}.tar.gz" "${T8_STAGE}/tlbstacks.dsc"; then
+    ok 'T-OBS dry run renders the changelog passthrough and a version-consistent dsc'
+else
+    bad 'T-OBS dry run renders the changelog passthrough and a version-consistent dsc'
+fi
+rm -rf "${T8_STAGE}"
+
+echo '== T-OBS2: obs-release rejects a version outside the lockstep =='
+if scripts/obs-release.sh 9.9.9 --dry-run >/dev/null 2>&1; then
+    bad 'T-OBS2 mismatched version rejected'
+else
+    ok 'T-OBS2 mismatched version rejected'
+fi
+
 echo
 echo "result: ${pass} passed, ${fail} failed"
 [[ "${fail}" -eq 0 ]]
