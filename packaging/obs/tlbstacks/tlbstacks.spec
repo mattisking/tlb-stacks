@@ -1,5 +1,5 @@
 Name:           tlbstacks
-Version:        0.3.1
+Version:        0.3.2
 Release:        0%{?dist}
 Summary:        Application launchers, configurable stacks, and task management for KDE Plasma 6
 
@@ -49,5 +49,9 @@ widget provides a single configurable stack.
 %{_libdir}/qt6/qml/com/mattphilmon/tlbstacks/
 
 %changelog
+* Fri Oct 16 2026 Matt Philmon <mattisking@users.noreply.github.com> - 0.3.2-0
+- Restore the group widget's task bridge (relative Loader URL pointed at a
+  file missing from the group package; all task tracking was dead)
+
 * Mon Oct 12 2026 Matt Philmon <mattisking@users.noreply.github.com> - 0.3.1-0
 - Initial packaging of TLBStacks and TLBStacks Groups 0.3.1
