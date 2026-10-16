@@ -56,7 +56,10 @@ if [[ ! -f "${MODULE_DIR}/libtlbstacksplugin.so" ]]; then
     echo "ERROR: expected ${MODULE_DIR}/libtlbstacksplugin.so after the build" >&2
     exit 1
 fi
-export QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QML_IMPORT_PATH="${QML_IMPORT_DIR}"
+# QML_XHR_ALLOW_FILE_READ lets tests/stack-group-runtime/tst_taskloader.qml read
+# the group root's source (a PlasmoidItem cannot be instantiated offscreen) and
+# drive its taskLoader declaration against the real TaskArea.qml.
+export QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QML_IMPORT_PATH="${QML_IMPORT_DIR}" QML_XHR_ALLOW_FILE_READ=1
 "${QML_RUNNER}" -input tests/folder-source -o -,txt
 "${QML_RUNNER}" -input tests/categories -o -,txt
 "${QML_RUNNER}" -input tests/navigation -o -,txt
