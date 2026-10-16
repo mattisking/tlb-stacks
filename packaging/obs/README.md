@@ -8,18 +8,47 @@ no web UI required.
 
 - `project-meta.xml` — project meta for `home:mattisking:tlbstacks`
   (Fedora 44, x86_64).
-- `tlbstacks/_service` — `tar_scm` source service pointing at the
-  `v0.2.0` GitHub tag of https://github.com/mattisking/tlb-stacks.
+- `tlbstacks/_service` — `tar_scm` source service pinning the release tag of
+  https://github.com/mattisking/tlb-stacks.
 - `tlbstacks/tlbstacks.spec` — RPM spec (builds and installs both widgets:
   `com.mattphilmon.tlbstacks` and `com.mattphilmon.tlbstacks.group`, plus the
   `com.mattphilmon.tlbstacks` QML module).
+- `tlbstacks/tlbstacks.dsc` — debtransform recipe for the xUbuntu targets.
+  OBS-only: there is no `debian/` tree on the OBS package; instead flat
+  `debian.changelog`, `debian.control`, and `debian.rules` files are uploaded
+  alongside it. They are byte-for-byte copies of the repo's
+  `debian/changelog`, `debian/control`, and `debian/rules` (flat names — the
+  repo `debian/` directory is the source of truth; do not edit the OBS
+  copies independently).
+
+## Release checklist (each version bump)
+
+1. Bump `CMakeLists.txt` (`project(... VERSION ...)`) and the `KPlugin.Version`
+   in **both** `package/metadata.json` and `package-group/metadata.json`.
+2. Add a `debian/changelog` entry (repo copy).
+3. Update `packaging/obs/tlbstacks/tlbstacks.spec`: `Version:` + `%changelog`.
+4. Update `packaging/obs/tlbstacks/_service`: the `revision` param to the new
+   tag.
+5. Commit, tag `v<VERSION>`, push `main` + the tag. The GitHub Release
+   workflow builds and publishes the assets.
+6. Update the OBS package (`osc co home:mattisking:tlbstacks/tlbstacks`):
+   - copy the repo `debian/changelog` → `debian.changelog`,
+   - **bump `tlbstacks.dsc`**: its `Version:` field AND the
+     `DEBTRANSFORM-TAR:` / `Files:` tarball reference
+     (`tlbstacks-<VERSION>.tar.gz`). `set_version` rewrites the dsc Version
+     at build time but NOT the tarball reference — a stale reference makes
+     debtransform fail ("debian transforming failed") on every Ubuntu target
+     while Fedora (spec-only) still succeeds.
+   - `osc ci`, then `osc service remoterun` if the Ubuntu targets do not
+     pick up the rebuild.
+7. Watch: `osc -A https://api.opensuse.org results -w home:mattisking:tlbstacks tlbstacks`.
 
 ## Preconditions
 
-1. The `v0.2.0` tag exists and is pushed:
-   `git tag -a v0.2.0 && git push origin v0.2.0`
+1. The release tag exists and is pushed:
+   `git tag -a v<VERSION> && git push origin v<VERSION>`
    (versions in `CMakeLists.txt` and both `metadata.json` files are already
-   0.2.0; run `scripts/ci-run.sh` + `scripts/release-assets.sh` as the gate
+   at `<VERSION>`; run `scripts/ci-run.sh` + `scripts/release-assets.sh` as the gate
    before tagging).
 2. `osc` is authenticated (the account password works with
    `osc -A https://api.opensuse.org api /person/mattisking`).
