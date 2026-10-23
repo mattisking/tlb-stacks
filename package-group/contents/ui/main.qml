@@ -10,6 +10,7 @@ import org.kde.plasma.plasmoid
 import com.mattphilmon.tlbstacks
 import "GroupItems.js" as GroupItems
 import "ClickMatrix.js" as ClickMatrix
+import "BarLayout.js" as BarLayout
 
 PlasmoidItem {
     id: root
@@ -317,8 +318,18 @@ PlasmoidItem {
             ? Math.max(1, root.vertical ? root.width : root.height)
             : Kirigami.Units.gridUnit * 2
         readonly property int count: Math.max(1, root.panelItems.length)
-        implicitWidth: root.vertical ? cellSize : count * cellSize
-        implicitHeight: root.vertical ? count * cellSize : cellSize
+        // The gap between bar buttons: the panel's own spacing, so the bar reads
+        // like the rest of the panel and follows it as it gets shorter or taller
+        // (see BarLayout.js; the panel view derives its own spacing the same way).
+        // The buttons share one row, so launchers, stacks and appended task buttons
+        // all get this same gap — there is no per-kind spacing anywhere.
+        readonly property int buttonSpacing: BarLayout.barButtonSpacing(cellSize,
+            Kirigami.Units.smallSpacing, Kirigami.Units.iconSizes.smallMedium)
+        // The bar is its buttons plus the gaps between them: the buttons keep their
+        // own cell size, only the run between them widens.
+        readonly property int barLength: BarLayout.barLength(count, cellSize, buttonSpacing)
+        implicitWidth: root.vertical ? cellSize : barLength
+        implicitHeight: root.vertical ? barLength : cellSize
         // Only constrain the panel's long axis; Plasma owns its thickness.
         Layout.minimumWidth: root.vertical ? 0 : implicitWidth
         Layout.minimumHeight: root.vertical ? implicitHeight : 0
@@ -334,8 +345,8 @@ PlasmoidItem {
             width: content.implicitWidth
             height: content.implicitHeight
             columns: root.vertical ? 1 : content.count
-            rowSpacing: 0
-            columnSpacing: 0
+            rowSpacing: content.buttonSpacing
+            columnSpacing: content.buttonSpacing
             PlasmaComponents.ToolButton {
                 visible: root.panelItems.length === 0
                 Layout.fillWidth: true
