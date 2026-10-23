@@ -1,3 +1,10 @@
+tlbstacks (0.3.3-1) UNRELEASED; urgency=medium
+
+  * Panel-rhythm bar spacing, security and architecture documentation, OBS
+    install notes, and the CI diffutils fix.
+
+ -- Matt Philmon <mattisking@gmail.com>  Thu, 23 Oct 2026 22:45:00 +0000
+
 tlbstacks (0.3.2-0obs1) UNRELEASED; urgency=medium
 
   * Restore the group widget's task bridge: the taskLoader created by commit
