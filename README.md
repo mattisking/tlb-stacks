@@ -137,6 +137,37 @@ item inside TLBStacks Groups.
 - **Portable configuration:** export and import standalone stacks or an entire
   TLBStacks Group, including custom icon images.
 
+## Security and architecture
+
+Why does a launcher widget ship a compiled C++ plugin? Because everything that
+makes TLBStacks more than a list of buttons lives in APIs that QML cannot reach
+on its own: Plasma's task manager model (per-window activate, minimize, cycle,
+close and live window state — the same interfaces the stock task manager uses),
+KDE's application launch service, and the activity/usage statistics that power
+Recent and Frequent stacks. The plugin (`src/`, a few small files) is exactly
+that bridge — nothing more:
+
+- it runs as your user, inside plasmashell; there is no daemon, no root or
+  setuid component, and no background service
+- it opens no network connections (the only network in the project is the
+  build service fetching the release tag)
+- custom launchers execute through `QProcess::startDetached` with an argument
+  vector — no shell is ever involved, so no configuration string can inject
+  commands, and every target is verified (absolute path, regular file,
+  executable bit) before it runs
+- importing a profile executes nothing; profiles never bundle executables,
+  and every custom command is visible in the editor before it can be used
+- user-controlled names are escaped at every rendered binding (tested)
+
+Builds are transparent: the RPM and debs are produced by the [openSUSE Build
+Service](https://build.opensuse.org/project/show/home:mattisking:tlbstacks)
+from a release tag of this repository — not compiled on a random machine —
+served over HTTPS and signed with the project's OBS key. Verify the key
+fingerprint on the project page when you add the repository.
+
+See [SECURITY.md](SECURITY.md) for the full security notes, with the code
+references behind each claim.
+
 ## Two ways to use TLBStacks
 
 ### Standalone TLBStacks
