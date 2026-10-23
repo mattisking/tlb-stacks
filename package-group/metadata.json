@@ -10,7 +10,7 @@
         "Icon": "view-grid",
         "Id": "com.mattphilmon.tlbstacks.group",
         "Name": "TLBStacks Group",
-        "Version": "0.3.2",
+        "Version": "0.3.3",
         "License": "GPL-3.0-or-later",
         "Website": "https://github.com/mattisking/tlb-stacks",
         "BugReportUrl": "https://github.com/mattisking/tlb-stacks/issues"
