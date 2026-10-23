@@ -251,6 +251,9 @@ are research material, not promises about this project.
 
 Packages are built automatically from every release tag and published on
 the [openSUSE Build Service](https://build.opensuse.org/project/show/home:mattisking:tlbstacks).
+When adding the repository, verify the OBS key fingerprint on the project page
+against the key you import. See [Security notes](SECURITY.md) for what the
+compiled backend does and does not do.
 
 ### Fedora 44
 
