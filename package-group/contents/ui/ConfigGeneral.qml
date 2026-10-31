@@ -238,7 +238,13 @@ ColumnLayout {
             return [i18np("1 category", "%1 categories", (s.applicationCategories || []).length)]
         if (s.menuSource === "activity")
             return [s.activityOrder === "frequent" ? i18n("Most frequent") : i18n("Most recent")]
-        return [s.folderUrl ? decodeURIComponent(s.folderUrl) : i18n("No folder selected")]
+        if (!s.folderUrl) return [i18n("No folder selected")]
+        if (!s.folderUrl.startsWith("file:///")) return [s.folderUrl]
+        try {
+            return [decodeURIComponent(s.folderUrl)]
+        } catch (e) {
+            return [s.folderUrl]
+        }
     }
     readonly property string selectedItemName: !selectedItem ? ""
         : selectedItem.type === "stack" ? (selectedItem.settings.groupName || i18n("Stack"))

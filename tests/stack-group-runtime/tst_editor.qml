@@ -337,4 +337,37 @@ TestCase {
         compare(row.text, "&lt;img src='http://example.invalid/x.png'&gt;Evil")
         row.destroy()
     }
+
+    function test_summaryOf_folder_paths_data() {
+        return [
+            {tag: "raw-percent", input: "/home/user/100% finished", expected: "/home/user/100% finished"},
+            {tag: "raw-percent20", input: "/tmp/50%20off", expected: "/tmp/50%20off"},
+            {tag: "raw-url-like", input: "/tmp/name://notes%20literal", expected: "/tmp/name://notes%20literal"},
+            {tag: "encoded-file-url", input: "file:///home/user/My%20Documents", expected: "file:///home/user/My Documents"},
+            {tag: "encoded-unicode", input: "file:///tmp/B%C3%BCro", expected: "file:///tmp/Büro"},
+            {tag: "malformed-percent", input: "file:///home/user/broken%", expected: "file:///home/user/broken%"},
+            {tag: "invalid-utf8", input: "file:///tmp/%FF", expected: "file:///tmp/%FF"},
+            {tag: "empty-folder", input: "", expected: i18n("No folder selected")}
+        ]
+    }
+    function test_summaryOf_folder_paths(data) {
+        const item = {type: "stack", settings: {menuSource: "folder", folderUrl: data.input}}
+        const before = JSON.stringify(item)
+        compare(editor.summaryOf(item), [data.expected])
+        compare(JSON.stringify(item), before)
+    }
+    function test_summaryOf_preserves_other_summaries() {
+        const categoryStack = {type: "stack", settings: {menuSource: "categories", applicationCategories: ["a", "b"]}}
+        compare(editor.summaryOf(categoryStack), [i18np("1 category", "%1 categories", 2)])
+    }
+    function test_summaryOf_does_not_mutate_settings() {
+        editor.cfg_items = Items.encode(Items.addStack([]))
+        editor.updateStack({menuSource: "folder", folderUrl: "/tmp/50%20off"})
+        const before = editor.cfg_items
+        editor.summaryOf(editor.decoded.items[0])
+        editor.summaryOf({type: "stack", settings: {menuSource: "folder", folderUrl: "file:///tmp/My%20Documents"}})
+        editor.summaryOf({type: "stack", settings: {menuSource: "folder", folderUrl: "file:///tmp/broken%"}})
+        compare(editor.cfg_items, before)
+        compare(editor.decoded.items[0].settings.folderUrl, "/tmp/50%20off")
+    }
 }
