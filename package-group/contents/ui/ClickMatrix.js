@@ -59,18 +59,15 @@ function launchOnly(item) {
 function taskKey(item) {
     return launchOnly(item) ? "" : (item.taskKey || item.desktopId || "")
 }
-function stackClaims(settings, categoryIds, activityIds) {
+// The desktop ids a stack owns windows for. Only curated sources claim:
+// an application list names the member apps, a category query resolves to
+// them — but an activity stack is a recent-applications VIEW built from
+// usage statistics. Its entries are not a home, so its running windows
+// stay unclaimed and append to the bar like any other unclaimed window.
+function stackClaims(settings, categoryIds) {
     if (settings.menuSource === "categories") return categoryIds
-    if (settings.menuSource === "activity") return activityIds
     if (settings.menuSource !== "applications") return []
     const commands = settings.customLaunchers || {}
     return (settings.applications || []).filter(id => id && !commands[id]
         && !id.startsWith("tlbstacks-separator:"))
-}
-function activityQueryKey(settings) {
-    return JSON.stringify([settings.activityOrder, settings.activityLimit,
-        settings.applicationCategories, settings.activityCurrent])
-}
-function activityClaims(cache, settings) {
-    return cache && cache.key === activityQueryKey(settings) ? cache.ids : []
 }

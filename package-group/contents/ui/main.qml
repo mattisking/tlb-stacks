@@ -39,7 +39,6 @@ PlasmoidItem {
         if (stackPopup) stackPopup.visible = false
         activeButton = null
     }
-    property var activityIds: ({})  // activity stack id → materialized desktop ids
     property int catalogRevision: 0
     property var catalog: []
     property var folderHeights: ({})
@@ -72,14 +71,14 @@ PlasmoidItem {
     }
 
     // Desktop IDs the group claims, per the ownership rule: panel-direct
-    // applications plus every stack's members — stack member lists, category
-    // matches, and materialized activity entries. Custom launchers are never
-    // collected: command items stay launch-only, so their windows auto-append.
-    // The catalog/activityIds reads below are otherwise invisible to this
-    // binding (stackDesktopIds hides them); touching them keeps it fresh.
+    // applications plus every stack's curated members — stack member lists
+    // and category matches. Custom launchers are never collected: command
+    // items stay launch-only, and activity stacks are a recent-applications
+    // view, not a home, so neither owns windows. The catalog read below is
+    // otherwise invisible to this binding (stackDesktopIds hides it);
+    // touching it keeps the binding fresh.
     readonly property var desktopIds: {
         catalog
-        activityIds
         const seen = new Set()
         const ids = []
         const add = id => { if (id && !seen.has(id)) { seen.add(id); ids.push(id) } }
@@ -92,16 +91,7 @@ PlasmoidItem {
     function stackDesktopIds(item) {
         const cfg = item.settings
         return ClickMatrix.stackClaims(cfg,
-            cfg.menuSource === "categories" ? ApplicationCategories.matching(catalog, cfg.applicationCategories).map(app => app.desktopId) : [],
-            ClickMatrix.activityClaims(activityIds[item.id], cfg))
-    }
-    // Activity stacks claim ids only once their entries have materialized; the
-    // collected ids persist across button rebuilds so the claim set never
-    // flickers empty while an activity query reloads.
-    function rememberActivityIds(stackId, key, ids) {
-        const record = {key: key, ids: ids}
-        if (JSON.stringify(activityIds[stackId]) === JSON.stringify(record)) return
-        activityIds = Object.assign({}, activityIds, {[stackId]: record})
+            cfg.menuSource === "categories" ? ApplicationCategories.matching(catalog, cfg.applicationCategories).map(app => app.desktopId) : [])
     }
     // The left-click matrix: an idle app launches, a running one activates
     // its most recent window, the focused one minimizes — except a focused
@@ -370,23 +360,11 @@ PlasmoidItem {
                     readonly property string activityMessage: activityLoader.item ? activityLoader.item.message : ""
                     readonly property string activityKey: activityStack ? JSON.stringify(modelData.settings) : ""
                     onActivityKeyChanged: refreshActivity()
-                    Connections {
-                        target: activityLoader.item
-                        function onChanged() {
-                            button.publishActivityClaims()
-                        }
-                    }
-                    function publishActivityClaims() {
-                        if (!activityLoader.item || activityLoader.item.loading) return
-                        root.rememberActivityIds(modelData.id, ClickMatrix.activityQueryKey(modelData.settings),
-                            activityLoader.item.entries.map(entry => entry.id))
-                    }
                     function refreshActivity() {
                         if (!activityStack || !activityLoader.item) return
                         const cfg = modelData.settings
                         activityLoader.item.refresh(cfg.activityOrder === "frequent", cfg.activityLimit,
                             cfg.applicationCategories, cfg.activityCurrent)
-                        publishActivityClaims()
                     }
                     Loader {
                         id: activityLoader
@@ -420,7 +398,6 @@ PlasmoidItem {
                         if (modelData.type !== "stack" || !root.taskArea) return false
                         root.taskArea.revision
                         root.catalog
-                        root.activityIds
                         for (const id of root.stackDesktopIds(modelData)) {
                             if (root.taskArea.stateFor(id).running) return true
                         }

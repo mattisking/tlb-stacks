@@ -48,13 +48,11 @@ TestCase {
         compare(ClickMatrix.stackClaims(settings, ["game"], ["recent"]), [])
         settings.menuSource = "categories"
         compare(ClickMatrix.stackClaims(settings, ["game"], ["recent"]), ["game"])
+        // An activity stack is a recent-applications VIEW, not a curated home:
+        // its usage-stats entries must never claim running windows, or a
+        // merely-recent app's window silently vanishes from the append zone.
         settings.menuSource = "activity"
-        compare(ClickMatrix.stackClaims(settings, ["game"], ["recent"]), ["recent"])
-        const cache = {key: ClickMatrix.activityQueryKey(settings), ids: ["recent"]}
-        compare(ClickMatrix.activityClaims(cache, settings), ["recent"])
-        settings.activityLimit = 5
-        compare(ClickMatrix.activityClaims(cache, settings), [])
-        compare(ClickMatrix.activityClaims({key: ClickMatrix.activityQueryKey(settings), ids: []}, settings), [])
+        compare(ClickMatrix.stackClaims(settings, ["game"], ["recent"]), [])
     }
     function test_argument_launcher_preserves_launch_intent() {
         const item = {type: "application", desktopId: "chrome", arguments: ["--incognito"]}
