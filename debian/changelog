@@ -1,3 +1,14 @@
+tlbstacks (0.3.4-1) UNRELEASED; urgency=medium
+
+  * Plasma 6.8 compatibility: the widget failed to load entirely because
+    libplasma dropped PlasmaCore.WindowThumbnail; hover tiles now use the
+    PipeWire stream as the sole live-thumbnail backend (faster hovers too).
+  * Activity stacks no longer claim running windows — a merely-recent app's
+    window can no longer vanish from the append zone.
+  * Config editor: folder-path summaries guard against percent escape errors.
+
+ -- Matt Philmon <mattisking@gmail.com>  Mon, 02 Nov 2026 03:46:58 +0000
+
 tlbstacks (0.3.3-1) UNRELEASED; urgency=medium
 
   * Panel-rhythm bar spacing, security and architecture documentation, OBS

@@ -262,8 +262,9 @@ Automated suites are recorded in the [verification record](TESTING_AND_STATUS.md
   close their children, verified against libtaskmanager); offered even when the
   app publishes no desktop actions.
 - **Hover window tiles:** hovering a running application shows each of its
-  windows as a live thumbnail (PipeWire screencast on Wayland,
-  WindowThumbnail on X11; minimized windows fall back to the app icon).
+  windows as a live thumbnail (a PipeWire screencast stream — the only live
+  backend since Plasma 6.8 dropped PlasmaCore.WindowThumbnail; windows with
+  no UUID, e.g. on X11 sessions, fall back to the app icon).
   Clicking a tile activates exactly that window; middle-click or the tile's
   close button closes exactly that window. The viewport is capped at half the
   screen span with wheel scrolling; geometry (size and centered position) is

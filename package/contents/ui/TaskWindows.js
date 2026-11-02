@@ -1,8 +1,8 @@
 .pragma library
 
 // Tooltip decisions for a running app, kept pure so they are testable offscreen
-// (the live thumbnail backends — PipeWire on Wayland, WindowThumbnail on X11 —
-// are verified on a real session instead).
+// (the live thumbnail backend — a PipeWire stream, the only one since Plasma
+// 6.8 dropped WindowThumbnail — is verified on a real session instead).
 
 // Which tip a hover shows: an app with live windows gets the tile view, anything
 // else keeps the plain text tooltip.

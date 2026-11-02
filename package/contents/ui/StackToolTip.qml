@@ -361,28 +361,20 @@ Item {
                                     height: root.previewHeight
 
                                     // Fallback: a modest centred icon, not a full-bleed
-                                    // image (a minimized window, no live thumbnail backend,
-                                    // or a session where the Wayland backend cannot even be
-                                    // loaded — see the loader below).
+                                    // image (a minimized window, or a window whose
+                                    // thumbnail backend cannot serve it — see below).
                                     Kirigami.Icon {
                                         anchors.centerIn: parent
                                         width: root.fallbackIconSize
                                         height: root.fallbackIconSize
                                         source: root.fallbackIcon
-                                        visible: !tile.live || waylandThumb.unavailable
+                                        visible: !tile.live || waylandThumb.unavailable || !waylandThumb.active
                                     }
-                                    // X11: Plasma's window pixmap. Sized by the box, never
-                                    // by its own implicit size, so the pixmap arriving can
-                                    // never resize the tile or move the dialog.
-                                    PlasmaCore.WindowThumbnail {
-                                        width: previewBox.width
-                                        height: previewBox.height
-                                        visible: tile.live && (tile.modelData.winId || 0) > 0
-                                        winId: tile.modelData.winId || 0
-                                    }
-                                    // Wayland: PipeWire stream fed by the window UUID and
-                                    // likewise box-sized, so a stream arriving after the
-                                    // show swaps in place without moving anything.
+                                    // The only live thumbnail backend since Plasma 6.8
+                                    // dropped PlasmaCore.WindowThumbnail with the X11
+                                    // session: a PipeWire stream fed by the window UUID.
+                                    // Box-sized, so a stream arriving after the show
+                                    // swaps in place without moving anything.
                                     Loader {
                                         id: waylandThumb
                                         width: previewBox.width
@@ -396,7 +388,7 @@ Item {
                                         // resolved only when this loader actually activates.
                                         property bool unavailable: false
                                         active: !unavailable && root.shown && tile.live
-                                            && (tile.modelData.winId || 0) === 0 && !!tile.modelData.uuid
+                                            && !!tile.modelData.uuid
                                         source: unavailable ? "" : "TaskThumbnail.qml"
                                         // A module-less session can never load it: latch the
                                         // failure so we stop retrying (one log line, not one
