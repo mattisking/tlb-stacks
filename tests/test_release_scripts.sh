@@ -131,6 +131,34 @@ else
     ok 'T-OBS2 mismatched version rejected'
 fi
 
+echo '== T-OBS3: the dry run stages the _service pinned to the release tag =='
+# The source service builds the tarball from the _service revision pin: a pin
+# lagging the release builds a tarball whose debian/changelog predates the
+# contract's, and debtransform fails every Ubuntu target on the mismatch
+# (the 0.3.3 and 0.3.4 releases both tripped on this).
+T9_STAGE="$(mktemp -d)"
+if scripts/obs-release.sh "$ver" --dry-run --stagedir "${T9_STAGE}" >/dev/null 2>&1 \
+    && cmp -s "${T9_STAGE}/_service" packaging/obs/tlbstacks/_service \
+    && grep -q "<param name=\"revision\">v${ver}</param>" "${T9_STAGE}/_service"; then
+    ok 'T-OBS3 dry run stages the _service pinned to the release tag'
+else
+    bad 'T-OBS3 dry run stages the _service pinned to the release tag'
+fi
+rm -rf "${T9_STAGE}"
+
+echo '== T-OBS4: obs-release rejects a _service pin lagging the release =='
+SVC="packaging/obs/tlbstacks/_service"
+cp "${SVC}" "${SVC}.bak"
+trap 'mv "${SVC}.bak" "${SVC}"' EXIT
+sed -i 's|<param name="revision">v[^<]*</param>|<param name="revision">v0.0.0</param>|' "${SVC}"
+if scripts/obs-release.sh "$ver" --dry-run >/dev/null 2>&1; then
+    bad 'T-OBS4 stale _service pin rejected'
+else
+    ok 'T-OBS4 stale _service pin rejected'
+fi
+mv "${SVC}.bak" "${SVC}"
+trap - EXIT
+
 echo
 echo "result: ${pass} passed, ${fail} failed"
 [[ "${fail}" -eq 0 ]]

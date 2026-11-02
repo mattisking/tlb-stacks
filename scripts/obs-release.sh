@@ -9,11 +9,13 @@
 #   --stagedir where --dry-run writes (real runs stage into a temp dir)
 #
 # What it does (real run):
-#   1. renders the OBS flat files from the repo (the single source of truth):
+#   1. verifies the _service pin sits at the release tag, then renders the OBS
+#      flat files from the repo (the single source of truth), _service included:
 #        debian/changelog -> debian.changelog
 #        debian/control   -> debian.control
 #        debian/rules     -> debian.rules
 #        packaging/obs/tlbstacks/tlbstacks.dsc.template -> tlbstacks.dsc
+#        packaging/obs/tlbstacks/_service -> _service (the tar_scm revision pin)
 #      (the template's @VERSION@ placeholders carry the two bits set_version
 #      does not fix at build time: the dsc Version and the DEBTRANSFORM-TAR
 #      tarball reference — a stale reference fails every Ubuntu target)
@@ -61,6 +63,14 @@ head -1 debian/changelog | grep -q "(${VERSION}-" || {
     exit 1
 }
 
+# The source service builds the tarball from the _service revision pin: a pin
+# lagging the release builds a tarball whose changelog predates the contract's,
+# and debtransform fails every Ubuntu target on the mismatch.
+grep -q "<param name=\"revision\">v${VERSION}</param>" packaging/obs/tlbstacks/_service || {
+    echo "ERROR: packaging/obs/tlbstacks/_service revision is not v${VERSION}; bump it first." >&2
+    exit 1
+}
+
 # A real run publishes against the tag: it must exist and match HEAD.
 if [[ $DRY_RUN -eq 0 ]]; then
     tag_commit="$(git rev-parse "v${VERSION}^{commit}" 2>/dev/null)" || {
@@ -76,6 +86,7 @@ render() {
     cp debian/changelog "${dir}/debian.changelog"
     cp debian/control   "${dir}/debian.control"
     cp debian/rules     "${dir}/debian.rules"
+    cp packaging/obs/tlbstacks/_service "${dir}/_service"
     sed "s/@VERSION@/${VERSION}/g" packaging/obs/tlbstacks/tlbstacks.dsc.template > "${dir}/tlbstacks.dsc"
 }
 
@@ -110,8 +121,8 @@ else
     osc -A "${API}" co "${PROJECT}" "${PKG}" -o "${CHECKOUT}"
 fi
 
-cp "${STAGE}/debian.changelog" "${STAGE}/debian.control" "${STAGE}/debian.rules" "${STAGE}/tlbstacks.dsc" "${CHECKOUT}/"
-(cd "${CHECKOUT}" && osc -A "${API}" add -- tlbstacks.dsc debian.changelog debian.control debian.rules 2>/dev/null || true)
+cp "${STAGE}/debian.changelog" "${STAGE}/debian.control" "${STAGE}/debian.rules" "${STAGE}/tlbstacks.dsc" "${STAGE}/_service" "${CHECKOUT}/"
+(cd "${CHECKOUT}" && osc -A "${API}" add -- tlbstacks.dsc debian.changelog debian.control debian.rules _service 2>/dev/null || true)
 (cd "${CHECKOUT}" && osc -A "${API}" ci -m "TLBStacks ${VERSION} — sync the debtransform contract from the repo")
 (cd "${CHECKOUT}" && osc -A "${API}" service remoterun "${PROJECT}" "${PKG}")
 

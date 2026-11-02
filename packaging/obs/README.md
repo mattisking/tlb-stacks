@@ -28,13 +28,17 @@ no web UI required.
 2. Add a `debian/changelog` entry (repo copy).
 3. Update `packaging/obs/tlbstacks/tlbstacks.spec`: `Version:` + `%changelog`.
 4. Update `packaging/obs/tlbstacks/_service`: the `revision` param to the new
-   tag.
+   tag. (obs-release.sh refuses to run against a pin lagging the release, and
+   syncs the pin to OBS with the rest of the contract — the stale-pin failure
+   mode of the 0.3.3/0.3.4 releases cannot recur as long as the script is the
+   only path to OBS.)
 5. Commit, tag `v<VERSION>`, push `main` + the tag. The GitHub Release
    workflow builds and publishes the assets.
 6. Run `scripts/obs-release.sh <VERSION>` — it renders the flat debian files
-   from the repo `debian/` tree and the dsc from
-   `packaging/obs/tlbstacks/tlbstacks.dsc.template`, commits them to the OBS
-   package, and re-runs the source service so the Ubuntu targets rebuild.
+   from the repo `debian/` tree, the dsc from
+   `packaging/obs/tlbstacks/tlbstacks.dsc.template`, and the `_service` pin,
+   commits them to the OBS package, and re-runs the source service so the
+   Ubuntu targets rebuild.
    (Use `--dry-run` to preview without touching OBS. The dsc's
    `DEBTRANSFORM-TAR` reference and Version both come from the template —
    the stale-tarball-reference failure mode of the 0.3.2 release cannot
