@@ -286,6 +286,13 @@ When adding the repository, verify the OBS key fingerprint on the project page
 against the key you import. See [Security notes](SECURITY.md) for what the
 compiled backend does and does not do.
 
+### Fedora 45
+
+```sh
+sudo dnf config-manager addrepo --from-repofile=https://download.opensuse.org/repositories/home:/mattisking:/tlbstacks/Fedora_45/home:mattisking:tlbstacks.repo
+sudo dnf install tlbstacks
+```
+
 ### Fedora 44
 
 ```sh

@@ -7,7 +7,7 @@ no web UI required.
 ## Contents
 
 - `project-meta.xml` — project meta for `home:mattisking:tlbstacks`
-  (Fedora 44, x86_64).
+  (Fedora 44/45, x86_64).
 - `tlbstacks/_service` — `tar_scm` source service pinning the release tag of
   https://github.com/mattisking/tlb-stacks.
 - `tlbstacks/tlbstacks.spec` — RPM spec (builds and installs both widgets:
@@ -76,15 +76,26 @@ osc ci -m "Initial import of TLBStacks 0.2.0"
 
 ```sh
 osc -A https://api.opensuse.org results -w home:mattisking:tlbstacks
-osc -A https://api.opensuse.org buildlog home:mattisking:tlbstacks tlbstacks Fedora_44 x86_64
+osc -A https://api.opensuse.org buildlog home:mattisking:tlbstacks tlbstacks Fedora_45 x86_64
 ```
 
 ## Notes / open items
 
-- **Fedora 45:** add a `Fedora_45` repository (path `Fedora:45` / `standard`) once the
-  target exists on the OBS instance — it does not exist yet (checked Oct 15; Fedora 45
-  not yet GA / not yet mirrored on build.opensuse.org). Probe `osc api /build/Fedora:45`
-  and add the repository block to `project-meta.xml` when it appears.
+- **Fedora 45:** the `Fedora_45` repository (path `Fedora:45` / `standard`)
+  was added on 2026-11-06 and the first build published successfully. It was
+  added through the web UI's Meta editor (the "Add repository" wizard's
+  distribution list did not list Fedora 45 yet) with:
+
+  ```xml
+  <repository name="Fedora_45">
+    <path project="Fedora:45" repository="standard"/>
+    <arch>x86_64</arch>
+  </repository>
+  ```
+
+  `project-meta.xml` in this directory carries the same block; if the web UI
+  and this file ever drift, re-apply the file with the `osc meta prj` command
+  in the "Apply" section above.
 
 - The `Fedora:44` repository name in `project-meta.xml` is assumed to be
   `standard` (the OBS convention for the Fedora build projects). If the
