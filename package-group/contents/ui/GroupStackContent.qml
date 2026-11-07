@@ -37,8 +37,16 @@ ColumnLayout {
         (isFolder ? (folderLoader.item ? folderLoader.item.preferredMenuHeight : initialFolderHeight)
             : entries.length ? Math.min(rowsHeight, 480) : emptyNotice.implicitHeight)
         + (errorText.length ? errorNotice.implicitHeight : 0))
-    width: iconsOnly && !isFolder ? Math.max(40, iconSize + 16) : 260
+    // Declared content width, kept separate from `width`: Plasma's window
+    // resizes mainItem to fit itself, so `width` is not stable, while the
+    // layout hints below (read by AppletPopup::updateSize) must stay honest
+    // even when a delegate has not settled yet.
+    readonly property real contentWidth: iconsOnly && !isFolder ? Math.max(40, iconSize + 16) : 260
+    width: contentWidth
     height: requestedHeight
+    Layout.minimumWidth: contentWidth
+    Layout.preferredWidth: contentWidth
+    Layout.maximumWidth: contentWidth
     Layout.minimumHeight: requestedHeight
     Layout.maximumHeight: requestedHeight
     spacing: 0

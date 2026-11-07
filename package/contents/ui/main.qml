@@ -232,7 +232,11 @@ PlasmoidItem {
 
         // Plasma can retain the saved window size while the async list grows.
         // Resize the applet popup itself; layout hints alone only resize its items.
-        function syncFolderPopupHeight() {
+        // AppletPopup also persists popupWidth/popupHeight into the applet config
+        // on hide and then pins the window to the persisted size (updateSize
+        // early-returns), so one hide captured mid-layout poisons every later
+        // open. Re-assert both dimensions from the layout on every sync.
+        function syncFolderPopupSize() {
             const popup = launcherColumn.Window.window
             if (!root.expanded || !dynamicMenu || !popup
                     || !popup.mainItem || popup.appletInterface !== root) return
@@ -240,18 +244,21 @@ PlasmoidItem {
             const wanted = Math.ceil(dynamicMenuHeight + extra
                 + popup.topPadding + popup.bottomPadding)
             if (wanted > 0 && popup.height !== wanted) popup.height = wanted
+            const wantedWidth = Math.ceil(root.menuWidth
+                + popup.leftPadding + popup.rightPadding)
+            if (wantedWidth > 0 && popup.width !== wantedWidth) popup.width = wantedWidth
         }
-        onDynamicMenuHeightChanged: Qt.callLater(syncFolderPopupHeight)
+        onDynamicMenuHeightChanged: Qt.callLater(syncFolderPopupSize)
         Connections {
             target: root
             function onExpandedChanged() {
-                if (root.expanded) Qt.callLater(launcherColumn.syncFolderPopupHeight)
+                if (root.expanded) Qt.callLater(launcherColumn.syncFolderPopupSize)
             }
         }
         Connections {
             target: launcherColumn.Window.window
             function onVisibleChanged() {
-                Qt.callLater(launcherColumn.syncFolderPopupHeight)
+                Qt.callLater(launcherColumn.syncFolderPopupSize)
             }
         }
 
@@ -276,7 +283,7 @@ PlasmoidItem {
                 menuWidth: root.menuWidth
                 onDismissRequested: root.expanded = false
                 popupOpen: root.expanded
-                onLoadingChanged: Qt.callLater(launcherColumn.syncFolderPopupHeight)
+                onLoadingChanged: Qt.callLater(launcherColumn.syncFolderPopupSize)
                 hoverDelay: root.hoverDelay
             }
         }

@@ -235,6 +235,18 @@ PlasmoidItem {
                 // window in onActiveChanged.
                 requestActivate()
                 openedAt = Date.now()
+                // This Dialog runs as an AppletPopup, and Plasma's AppletPopup
+                // persists popupWidth/popupHeight into the applet's config on
+                // hide and then pins the window to the persisted size
+                // (updateSize early-returns once the keys exist). One hide
+                // captured mid-layout therefore poisons every later open.
+                // Re-assert the width the mainItem asked for on every show;
+                // stackMenu.width itself follows the window, so read the
+                // declared contentWidth instead of the live width.
+                const pad = stackPopup.margins || {}
+                const wantedWidth = stackMenu.contentWidth
+                    + (pad.left || 0) + (pad.right || 0)
+                if (wantedWidth > 0 && stackPopup.width !== wantedWidth) stackPopup.width = wantedWidth
             } else {
                 activityRefresh.stop()
                 launcher.closeApplicationContextMenu()
