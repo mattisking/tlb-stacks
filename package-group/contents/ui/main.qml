@@ -14,6 +14,41 @@ import "BarLayout.js" as BarLayout
 
 PlasmoidItem {
     id: root
+    Component {
+        id: panelAction
+        PlasmaCore.Action {
+            required property var invoke
+            onTriggered: invoke()
+        }
+    }
+    function preparePanelActions(buttons) {
+        const previous = Plasmoid.contextualActions
+        const actions = []
+        for (let i = 0; i < buttons.count; ++i) {
+            const button = buttons.itemAt(i)
+            if (!button || !button.hovered || !ClickMatrix.offersContextMenu(button.modelData))
+                continue
+            const desktopId = button.modelData.desktopId
+            for (const action of launcher.desktopActions(desktopId)) {
+                actions.push(panelAction.createObject(root, {
+                    text: action.text.replace(/&/g, "&&"), "icon.name": action.icon,
+                    invoke: () => launcher.launchDesktopAction(desktopId, action.name)
+                }))
+            }
+            if (button.taskState.running) {
+                const taskKey = button.taskKey || desktopId
+                actions.push(panelAction.createObject(root, {
+                    text: i18n("Close"), invoke: () => Qt.callLater(() => {
+                        if (root.taskArea) root.taskArea.close(taskKey)
+                    })
+                }))
+            }
+            break
+        }
+        const old = Array.from(previous)
+        Plasmoid.contextualActions = actions
+        for (const action of old) action.destroy()
+    }
     readonly property var menuLauncher: launcher
     readonly property bool vertical: Plasmoid.formFactor === PlasmaCore.Types.Vertical
     readonly property bool onPanel: vertical || Plasmoid.formFactor === PlasmaCore.Types.Horizontal
@@ -342,6 +377,10 @@ PlasmoidItem {
         function focusEntry(index) {
             if (buttons.count) buttons.itemAt((index + buttons.count) % buttons.count).forceActiveFocus()
         }
+        Connections {
+            target: Plasmoid
+            function onContextualActionsAboutToShow() { root.preparePanelActions(buttons) }
+        }
         GridLayout {
             anchors.centerIn: parent
             width: content.implicitWidth
@@ -479,18 +518,6 @@ PlasmoidItem {
                         interval: button.modelData.type === "stack" ? button.modelData.settings.hoverDelay : 250
                         onTriggered: if (button.hovered) root.showStack(button, false)
                     }
-                    // Right-click: the native app menu — published desktop
-                    // actions, plus Close while the app has live windows — for
-                    // direct launchers and appended running-app buttons. Stacks
-                    // and custom commands have no menu (no service, no task).
-                    MouseArea {
-                        anchors.fill: parent
-                        enabled: ClickMatrix.offersContextMenu(button.modelData)
-                        acceptedButtons: Qt.RightButton
-                        onClicked: launcher.showEntryContextMenu(button,
-                            Object.assign({}, launcher.applicationEntry(button.modelData.desktopId), {id: button.taskKey || button.modelData.desktopId}),
-                            button.taskState.running)
-                    }
                     // Middle-click opens a new window (or launches an idle
                     // app); the wheel steps through the app's windows. Stacks
                     // and commands keep their plain behavior.
@@ -552,7 +579,7 @@ PlasmoidItem {
                         // is anchored natively to the button at the panel edge.
                         placement: "above"
                         dialogLocation: Plasmoid.location
-                        selected: button.hovered && barToolTip.tileMode
+                        selected: button.hovered && (barToolTip.tileMode || ClickMatrix.offersContextMenu(button.modelData))
                         onWindowActivated: id => {
                             barToolTip.hideToolTip()
                             if (root.taskArea) root.taskArea.activateWindow(id)
@@ -564,7 +591,7 @@ PlasmoidItem {
                     PlasmaComponents.ToolTip {
                         // The tile tip owns the hover while the app is running;
                         // this component only shows itself for non-empty text.
-                        text: barToolTip.tileMode ? "" : (root.launchError || button.appName)
+                        text: barToolTip.tileMode || ClickMatrix.offersContextMenu(button.modelData) ? "" : (root.launchError || button.appName)
                         delay: 700
                     }
                 }

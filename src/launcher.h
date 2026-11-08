@@ -12,6 +12,7 @@
 class QQuickItem;
 class FolderPopup;
 class QMenu;
+class KServiceAction;
 class QProcess;
 
 class Launcher : public QObject
@@ -29,6 +30,8 @@ public:
 
     Q_INVOKABLE void showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool desktopActions = true, const QString &applicationId = {}, bool offerClose = false);
     Q_INVOKABLE void closeApplicationContextMenu();
+    Q_INVOKABLE QVariantList desktopActions(const QString &desktopId) const;
+    Q_INVOKABLE void launchDesktopAction(const QString &desktopId, const QString &name);
 
     Q_INVOKABLE QVariantList applicationEntries(const QStringList &ids, const QVariantMap &icons, const QString &source, const QVariantMap &customLaunchers = {}) const;
     // One application-shaped entry for a desktop id, carrying no removal
@@ -73,6 +76,7 @@ public:
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
 private:
+    void launchServiceAction(const KServiceAction &action);
     QPointer<QProcess> m_profileProcess;
     quint64 m_profileRequest = 0;
     quint64 m_activationGeneration = 0;

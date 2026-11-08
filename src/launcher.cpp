@@ -315,6 +315,42 @@ void Launcher::closeApplicationContextMenu()
     if (m_applicationContextMenu) m_applicationContextMenu->close();
 }
 
+QVariantList Launcher::desktopActions(const QString &desktopId) const
+{
+    QVariantList result;
+    const auto service = KService::serviceByDesktopName(desktopId);
+    if (service) {
+        for (const auto &action : service->actions()) {
+            if (!action.noDisplay() && !action.isSeparator())
+                result.append(QVariantMap{{"name", action.name()}, {"text", action.text()}, {"icon", action.icon()}});
+        }
+    }
+    return result;
+}
+
+void Launcher::launchDesktopAction(const QString &desktopId, const QString &name)
+{
+    const auto service = KService::serviceByDesktopName(desktopId);
+    if (!service) return;
+    for (const auto &action : service->actions()) {
+        if (action.name() == name && !action.noDisplay() && !action.isSeparator()) {
+            launchServiceAction(action);
+            return;
+        }
+    }
+}
+
+void Launcher::launchServiceAction(const KServiceAction &action)
+{
+    const auto generation = ++m_activationGeneration;
+    auto *job = new KIO::ApplicationLauncherJob(action, this);
+    connect(job, &KJob::result, this, [this, job, generation] {
+        if (generation == m_activationGeneration && job->error())
+            Q_EMIT activationFailed(job->errorString());
+    });
+    job->start();
+}
+
 void Launcher::showApplicationContextMenu(QQuickItem *anchor, const QString &desktopId, bool desktopActions, const QString &applicationId, bool offerClose)
 {
     if (!anchor || !anchor->window() || desktopId.isEmpty() ||
@@ -329,13 +365,7 @@ void Launcher::showApplicationContextMenu(QQuickItem *anchor, const QString &des
             auto *action = m_applicationContextMenu->addAction(QIcon::fromTheme(serviceAction.icon()),
                 QString(serviceAction.text()).replace('&', QStringLiteral("&&")));
             connect(action, &QAction::triggered, this, [this, serviceAction] {
-                const auto generation = ++m_activationGeneration;
-                auto *job = new KIO::ApplicationLauncherJob(serviceAction, this);
-                connect(job, &KJob::result, this, [this, job, generation] {
-                    if (generation == m_activationGeneration && job->error())
-                        Q_EMIT activationFailed(job->errorString());
-                });
-                job->start();
+                launchServiceAction(serviceAction);
             });
         }
     }
