@@ -65,6 +65,7 @@ export QT_QPA_PLATFORM=offscreen QT_QUICK_BACKEND=software QML_IMPORT_PATH="${QM
 "${QML_RUNNER}" -input tests/navigation -o -,txt
 "${QML_RUNNER}" -input tests/icons -o -,txt
 "${QML_RUNNER}" -input tests/stack-editor -o -,txt
+"${QML_RUNNER}" -input tests/stack-tooltip -o -,txt
 "${QML_RUNNER}" -input tests/stack-group-runtime -o -,txt
 
 echo '== Python profile tests =='

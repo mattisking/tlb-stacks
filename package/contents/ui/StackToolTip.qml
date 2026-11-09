@@ -177,6 +177,16 @@ Item {
     // Flip visible: the size is final by now, so the first visible frame is
     // already at the right size and place.
     function flipVisible() {
+        // Chokepoint: only displayable content may map the dialog. Plasma maps
+        // an empty dialog anyway (it only warns "trying to show an empty
+        // dialog"), and repeated empty shows churn Wayland surface roles —
+        // the run-up to fatal role conflicts (2026-11-08 plasmashell death).
+        // The check is the mainItem's computed size, not armed state: arm-time
+        // tileMode can go stale mid-pause (windows emptied mid-pause), and an
+        // emptied collection collapses the mainItem to zero either way.
+        const content = tip.mainItem
+        if (!content || !(content.implicitWidth > 0 && content.implicitHeight > 0))
+            return
         root.placeTip()
         root.shown = true
         // The dialog keeps whatever geometry it adopted, so a later show would carry
@@ -236,6 +246,10 @@ Item {
         hoverHide.restart()
     }
     onTextChanged: restart()
+    // A content-class flip while on screen (the app's windows all closed, or
+    // the first windows arriving) leaves the shown payload stale — hide rather
+    // than let the mapped dialog collapse to degenerate content.
+    onTileModeChanged: if (root.shown) hideToolTip()
     // The pointer left the tiles while the anchor is also un-hovered: hide (a move
     // back onto the tiles keeps them up through the grace instead).
     onTipHoveredChanged: if (TaskWindows.shouldHide(root.ready, root.interactive, root.tipHovered))

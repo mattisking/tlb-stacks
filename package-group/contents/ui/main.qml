@@ -579,7 +579,7 @@ PlasmoidItem {
                         // is anchored natively to the button at the panel edge.
                         placement: "above"
                         dialogLocation: Plasmoid.location
-                        selected: button.hovered && (barToolTip.tileMode || ClickMatrix.offersContextMenu(button.modelData))
+                        selected: button.hovered && barToolTip.tileMode
                         onWindowActivated: id => {
                             barToolTip.hideToolTip()
                             if (root.taskArea) root.taskArea.activateWindow(id)
